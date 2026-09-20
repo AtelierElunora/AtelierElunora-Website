@@ -1,0 +1,21 @@
+# Credentials and local tooling
+.env
+.env.*
+!.env.example
+**/.shopify/
+**/.supabase/
+**/.temp/
+**/node_modules/
+**/dist/
+.DS_Store
+# Private data and backups
+storage/
+backups/
+*.zip
+*.dump
+*.bak
+# Licensed font binaries
+*.woff
+*.woff2
+*.ttf
+*.otf
