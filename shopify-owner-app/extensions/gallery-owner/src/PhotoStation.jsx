@@ -9,14 +9,15 @@ export function PhotoStation({event,call,run,busy}){
  const api=useRef(call);api.current=call;
  const route='owner/station/'+event.id;
  useEffect(()=>{
-  let alive=true,timer;
+  let alive=true;
+  let cancelTimer=()=>{};
   setState(null);setLinks([]);setError('');
   async function refresh(){
    try{const next=await api.current(route);if(alive){setState(next);setError('');}}
    catch(e){if(alive)setError(e instanceof Error?e.message:'Could not refresh photo station.');}
-   finally{if(alive)timer=setTimeout(refresh,5000);}
+   finally{if(alive){const timer=setTimeout(refresh,5000);cancelTimer=()=>clearTimeout(timer);}}
   }
-  refresh();return()=>{alive=false;clearTimeout(timer);};
+  refresh();return()=>{alive=false;cancelTimer();};
  },[event.id]);
  async function create(purpose){const result=await call(route,{action:'create',purpose});setLinks(current=>[...current,{...result,purpose}]);setState(await call(route));}
  return <s-section heading="Photo station & live print queue">
