@@ -25,7 +25,8 @@ p.document.getElementById('zoom').value=2;p.document.getElementById('zoom').disp
 assert.equal(draws.at(-1)[3],450);assert.equal(p.document.getElementById('zoom-value').textContent,'2.00×');
 p.document.getElementById('reset-crop').click();assert.equal(p.document.getElementById('zoom').value,'1');
 p.document.getElementById('zoom').value=2;p.document.getElementById('zoom').dispatchEvent(new p.Event('input'));
+assert.equal(p.document.getElementById('template-inset').value,'0.255');p.document.getElementById('template-inset').value='0.2';
 p.document.getElementById('template-background-hex').value='#123456';p.document.getElementById('template-background-hex').dispatchEvent(new p.Event('input'));assert.equal(p.document.getElementById('template-background').value,'#123456');
-p.document.getElementById('prepare').click();await settle();assert.equal(p.document.querySelectorAll('#sheets img').length,3);assert.deepEqual(updates,['claim']);assert.equal(claimZoom,2);assert.equal(claimTemplate.background,'#123456');assert.equal(draws.at(-1)[3],450);
+p.document.getElementById('prepare').click();await settle();assert.equal(p.document.querySelectorAll('#sheets img').length,3);assert.deepEqual(updates,['claim']);assert.equal(claimZoom,2);assert.equal(claimTemplate.background,'#123456');assert.equal(claimTemplate.edgeInset,0.175);assert.equal(draws.at(-1)[3],450);
 p.document.getElementById('print').click();assert.equal(prints,1);assert.deepEqual(updates,['claim']);p.document.getElementById('printed').click();await settle();assert.deepEqual(updates,['claim','printed']);assert.equal(p.document.querySelectorAll('#sheets img').length,0);p.happyDOM.abort();
 console.log('PASS: simulated browser capture, approval, failed upload retry with same ID, reset/privacy, queue loading, 3-copy/3-sheet rendering, claim before print and explicit physical-print confirmation.');

@@ -35,3 +35,9 @@ Publish the previous v1.34 theme and release the previous owner app version. If 
 Kept Brown Carolina unchanged at the owner's request. Added owner background presets (ivory, deep olive, white, black) alongside custom hex entry. Print desk template controls open by default; larger color swatches and a synchronized hex field update the preview and saved print snapshot. Event changes require Save event template; existing job snapshots are replaced only by explicitly choosing Reload event template. Tests verify owner save, picker/hex synchronization, claim snapshot and rendered wrap fill with custom and preset colors. No database/API changes.
 
 Staged only three station files in v1.36 — Wrap Background Colors (191752208672), duplicated from current live v1.35. Owner must publish this theme and deploy/release the updated owner app to see all controls. Prior input and station-link fixes are included on the development branch.
+
+## Image-relative text spacing
+
+The owner and print desk now show Text distance from image edge, inches, measured to the text center. Increasing it moves text outward; decreasing moves it toward the photo. Positive per-side adjustments also move outward. Existing persisted cut-edge measurements are converted for editing and converted back when saved, preserving previous physical positions and API compatibility. Example: 3.25-inch cut, 2.5-inch photo, old 0.12-inch cut inset displays as 0.255 inch from the image. Brown Carolina, colors, front size, security and snapshots remain unchanged. No database/API deployment required.
+
+Staged v1.37 — Image Edge Spacing (191753027872), duplicated from live v1.36. Only station JS and the standalone template changed. Publish v1.37 and deploy/release the latest owner app from the development branch. Tests cover legacy distance display, outward-side conversion, save and print snapshot conversion, and typing across refresh.

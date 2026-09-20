@@ -32,17 +32,18 @@ try{
  assert.deepEqual([...w.document.querySelectorAll('s-link')].map(e=>e.getAttribute('href').split('#')[1]),['capture=test-only','print=test-only']);
  const field=label=>[...w.document.querySelectorAll('s-text-field')].find(e=>e.getAttribute('label')===label);
  async function type(label,value){const el=field(label);assert.ok(el,label);el.value=value;el.dispatchEvent(new w.Event('input',{bubbles:true}));await new Promise(r=>setTimeout(r,30));}
+ assert.equal(field('Text distance from image edge, inches').value,'0.255');
  await type('Wrap background hex (any color)','#123456');
  await type('Couple names','Breanna & Alex');
  await type('Event date text','6/20/2027');
- await type('Text distance from cut edge in inches (0.06–0.25)','0.');
- assert.equal(field('Text distance from cut edge in inches (0.06–0.25)').value,'0.');
- await type('Text distance from cut edge in inches (0.06–0.25)','0.12');
- await type('Position adjustment in inches (−0.04 to 0.04)','-');
- assert.equal(field('Position adjustment in inches (−0.04 to 0.04)').value,'-');
- await type('Position adjustment in inches (−0.04 to 0.04)','-0.01');
+ await type('Text distance from image edge, inches','0.');
+ assert.equal(field('Text distance from image edge, inches').value,'0.');
+ await type('Text distance from image edge, inches','0.2');
+ await type('Outward position adjustment in inches (−0.04 to 0.04)','-');
+ assert.equal(field('Outward position adjustment in inches (−0.04 to 0.04)').value,'-');
+ await type('Outward position adjustment in inches (−0.04 to 0.04)','-0.01');
  assert.ok(scheduled.length);await scheduled.shift()();await new Promise(r=>setTimeout(r,30));
  assert.equal(field('Couple names').value,'Breanna & Alex');assert.equal(field('Event date text').value,'6/20/2027');
- const save=[...w.document.querySelectorAll('s-button')].find(b=>b.textContent==='Save event template');assert.ok(save);save.click();await until(()=>calls.some(c=>c.body?.action==='template'));const saved=calls.find(c=>c.body?.action==='template').body.template;assert.equal(saved.background,'#123456');assert.equal(saved.cutInches,3.25);assert.equal(saved.couple,'Breanna & Alex');assert.equal(saved.date,'6/20/2027');assert.equal(saved.edgeInset,0.12);assert.equal(saved.sides.top.offset,-0.01);
+ const save=[...w.document.querySelectorAll('s-button')].find(b=>b.textContent==='Save event template');assert.ok(save);save.click();await until(()=>calls.some(c=>c.body?.action==='template'));const saved=calls.find(c=>c.body?.action==='template').body.template;assert.equal(saved.background,'#123456');assert.equal(saved.cutInches,3.25);assert.equal(saved.couple,'Breanna & Alex');assert.equal(saved.date,'6/20/2027');assert.equal(saved.edgeInset,0.175);assert.equal(saved.sides.top.offset,0.01);
  console.log('PASS: owner Photo Station panel mounts using Preact, loads queue, creates a capture link, retains typing across queue polling, and saves decimal/negative inputs without blur.');
 }finally{w.unmountOwnerStation();w.happyDOM.abort();}

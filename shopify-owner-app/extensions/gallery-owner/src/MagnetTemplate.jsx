@@ -3,12 +3,17 @@
 import {h} from 'preact';
 import {useState} from 'preact/hooks';
 import {normalizeTemplate,templateSides} from '../../../../supabase/functions/gallery-api/magnet-template.mjs';
+const rounded=value=>Math.round(value*1000000)/1000000;
+function editableTemplate(value){
+ const t=normalizeTemplate(value);
+ return {...t,imageDistance:rounded((t.cutInches-2.5)/2-t.edgeInset),sides:Object.fromEntries(templateSides.map(side=>[side,{...t.sides[side],offset:-t.sides[side].offset}]))};
+}
 function serializeDraft(draft){
  const number=value=>String(value).trim()===''?NaN:Number(value);
- return normalizeTemplate({...draft,...Object.fromEntries(['cutInches','fontSize','edgeInset'].map(key=>[key,number(draft[key])])),sides:Object.fromEntries(templateSides.map(side=>[side,{...draft.sides[side],offset:number(draft.sides[side].offset)}]))});
+ return normalizeTemplate({...draft,...Object.fromEntries(['cutInches','fontSize'].map(key=>[key,number(draft[key])])),edgeInset:rounded((number(draft.cutInches)-2.5)/2-number(draft.imageDistance)),sides:Object.fromEntries(templateSides.map(side=>[side,{...draft.sides[side],offset:-number(draft.sides[side].offset)}]))});
 }
 export function MagnetTemplate({initial,call,route,run,busy}){
- const [draft,setDraft]=useState(()=>normalizeTemplate(initial)),[message,setMessage]=useState('');
+ const [draft,setDraft]=useState(()=>editableTemplate(initial)),[message,setMessage]=useState('');
  const change=(key,value)=>{setDraft(t=>({...t,[key]:value}));setMessage('Unsaved changes');};
  const sideChange=(side,key,value)=>{setDraft(t=>({...t,sides:{...t.sides,[side]:{...t.sides[side],[key]:value}}}));setMessage('Unsaved changes');};
  return <s-section heading="Magnet wrap template">
@@ -19,17 +24,18 @@ export function MagnetTemplate({initial,call,route,run,busy}){
   </s-select>
   <s-paragraph>Save the event template to use this background on new print jobs. In an already-open print desk, choose Reload event template. For dark backgrounds, choose a light text color.</s-paragraph>
   {[['company','Company name'],['couple','Couple names'],['date','Event date text'],['background','Wrap background hex (any color)'],['color','Text color (hex)']].map(([key,label])=><s-text-field key={key} label={label} value={draft[key]} onInput={e=>change(key,e.currentTarget.value)} />)}
-  {[['cutInches','Cut size in inches (3–3.75)'],['fontSize','Text size in points (5–12)'],['edgeInset','Text distance from cut edge in inches (0.06–0.25)']].map(([key,label])=><s-text-field key={key} label={label} value={String(draft[key])} onInput={e=>change(key,e.currentTarget.value)} />)}
+  {[['cutInches','Cut size in inches (3–3.75)'],['fontSize','Text size in points (5–12)'],['imageDistance','Text distance from image edge, inches']].map(([key,label])=><s-text-field key={key} label={label} value={String(draft[key])} onInput={e=>change(key,e.currentTarget.value)} />)}
+  <s-paragraph>Distance is measured from the photo edge to the center of the text. Larger values move lettering away from the photo; smaller values bring it closer. Positive side adjustments also move outward. Text must still fit between the fold and cut edges.</s-paragraph>
   {templateSides.map(side=><s-box key={side} padding="base" border="base">
    <s-select label={side[0].toUpperCase()+side.slice(1)+' text'} value={draft.sides[side].source} onChange={e=>sideChange(side,'source',e.currentTarget.value)}>
     {[['blank','Blank'],['company','Company name'],['couple','Couple names'],['date','Event date text'],['event','Gallery event name'],['photo','Photo reference'],['custom','Custom text']].map(([value,label])=><s-option key={value} value={value}>{label}</s-option>)}
    </s-select>
    {draft.sides[side].source==='custom'&&<s-text-field label="Custom text" value={draft.sides[side].text} onInput={e=>sideChange(side,'text',e.currentTarget.value)} />}
-   <s-text-field label="Position adjustment in inches (−0.04 to 0.04)" value={String(draft.sides[side].offset)} onInput={e=>sideChange(side,'offset',e.currentTarget.value)} />
+   <s-text-field label="Outward position adjustment in inches (−0.04 to 0.04)" value={String(draft.sides[side].offset)} onInput={e=>sideChange(side,'offset',e.currentTarget.value)} />
    <s-select label="Text orientation" value={String(draft.sides[side].rotate)} onChange={e=>sideChange(side,'rotate',Number(e.currentTarget.value))}><s-option value="0">Standard</s-option><s-option value="180">Rotate 180°</s-option></s-select>
   </s-box>)}
   <s-paragraph>A 3.25-inch design prints one magnet per 4 × 6 sheet. Preview and override individual lines in the print desk. Fold guides appear in the preview only.</s-paragraph>
-  <s-button disabled={busy} onClick={()=>run(async()=>{const template=serializeDraft(draft);await call(route,{action:'template',template});setDraft(template);setMessage('Template saved for this event. Reopen a pending photo in the print desk to load it.');})}>Save event template</s-button>
+  <s-button disabled={busy} onClick={()=>run(async()=>{const template=serializeDraft(draft);await call(route,{action:'template',template});setDraft(editableTemplate(template));setMessage('Template saved for this event. Reopen a pending photo in the print desk to load it.');})}>Save event template</s-button>
   {message&&<s-paragraph>{message}</s-paragraph>}
  </s-section>;
 }

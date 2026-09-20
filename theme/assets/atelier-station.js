@@ -68,7 +68,7 @@ function templateContext(){return {name:eventName,photo:selected?.id.slice(0,8)?
 function populateTemplate(value){
  template=normalizeTemplate(value);$('template-enabled').checked=template.enabled;
  $('cut').value=template.enabled?template.cutInches:template.photoCutInches;
- $('template-background').value=template.background;$('template-background-hex').value=template.background;$('template-color').value=template.color;$('template-font').value=template.fontSize;$('template-inset').value=template.edgeInset;
+ $('template-background').value=template.background;$('template-background-hex').value=template.background;$('template-color').value=template.color;$('template-font').value=template.fontSize;$('template-inset').value=Math.round(((template.cutInches-2.5)/2-template.edgeInset)*1000000)/1000000;
  $('template-sides').replaceChildren();
  for(const side of templateSides){
   const label=document.createElement('label');label.textContent=side[0].toUpperCase()+side.slice(1)+' text';
@@ -80,7 +80,7 @@ function populateTemplate(value){
 }
 function currentTemplate(){
  const enabled=$('template-enabled').checked;
- return normalizeTemplate({...template,enabled,photoCutInches:Number($('cut').value),cutInches:enabled?Number($('cut').value):template.cutInches,background:$('template-background-hex').value.trim(),color:$('template-color').value,fontSize:Number($('template-font').value),edgeInset:Number($('template-inset').value),sides:Object.fromEntries(templateSides.map(side=>[side,{...template.sides[side],source:'custom',text:$('wrap-'+side)?.value??'',rotate:Number($('rotate-'+side)?.value??0)}]))});
+ return normalizeTemplate({...template,enabled,photoCutInches:Number($('cut').value),cutInches:enabled?Number($('cut').value):template.cutInches,background:$('template-background-hex').value.trim(),color:$('template-color').value,fontSize:Number($('template-font').value),edgeInset:Math.round((((enabled?Number($('cut').value):template.cutInches)-2.5)/2-($('template-inset').value.trim()===''?NaN:Number($('template-inset').value)))*1000000)/1000000,sides:Object.fromEntries(templateSides.map(side=>[side,{...template.sides[side],source:'custom',text:$('wrap-'+side)?.value??'',rotate:Number($('rotate-'+side)?.value??0)}]))});
 }
 function drawTemplatePreview(){
  if(!picture)return;
