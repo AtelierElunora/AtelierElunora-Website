@@ -1,0 +1,38 @@
+:root{--ae-desktop-cream:#E7E5D9;--ae-desktop-ivory:#F4F2EF;--ae-desktop-olive:#4A4B36;--ae-desktop-gold:#B19A73;--ae-desktop-sand:#D6D2BC;--ae-desktop-stone:#CDCBAF;--ae-desktop-sage:#888D6F;--ae-heading:"Brown Carolina Sans","Brown Carolina",Arial,sans-serif;--ae-body:"Brown Carolina Sans","Brown Carolina",Arial,sans-serif;--ae-script:"ITC Edwardian Script","Edwardian Script ITC","Edwardian Script",cursive;--ae-serif:var(--ae-heading);--ae-sans:var(--ae-body)}
+body.ae-site{font-family:var(--ae-body)!important;background:var(--ae-desktop-cream)!important;color:var(--ae-desktop-olive)!important;--font-body--family:var(--ae-body)!important;--font-paragraph--family:var(--ae-body)!important;--font-subheading--family:var(--ae-heading)!important;--font-heading--family:var(--ae-heading)!important;--font-accent--family:var(--ae-script)!important;--font-h1--family:var(--ae-heading)!important;--font-h2--family:var(--ae-heading)!important;--font-h3--family:var(--ae-heading)!important;--font-h4--family:var(--ae-heading)!important;--font-h5--family:var(--ae-heading)!important;--font-h6--family:var(--ae-heading)!important;--button-font-family-primary:var(--ae-body)!important;--button-font-family-secondary:var(--ae-body)!important}
+body.ae-site :is(p,li,ol,ul,dd,dt,label,input,textarea,select,button,a,small,.paragraph,.rte,.field__input,.field__label,.product-form,.cart-item,.facets,.pagination,.tax-note,.unit-price,.price,.money){font-family:var(--ae-body)!important;font-style:normal}
+body.ae-site :is(h1,h2,h3,h4,h5,h6,.h1,.h2,.h3,.h4,.h5,.h6,.product-title,.collection-title,.product-card__title,.card__heading,.ae-service-card h3,.ae-quote blockquote){font-family:var(--ae-heading)!important;font-weight:400!important;font-style:normal!important;letter-spacing:.01em}
+body.ae-site :is(.ae-script,.ae-offer>h2 em,.ae-process h2 span,.ae-final-cta h2 em){font-family:var(--ae-script)!important;font-weight:400!important;font-style:normal!important;letter-spacing:0!important;text-transform:none!important}
+body.ae-site .ae-header,body.ae-site .ae-olive,body.ae-site .ae-about,body.ae-site .ae-process,body.ae-site .ae-final-cta,body.ae-site .ae-footer{background:var(--ae-desktop-olive)!important;color:var(--ae-desktop-ivory)!important}
+body.ae-site .ae-cream,body.ae-site .ae-intro,body.ae-site .ae-offer,body.ae-site .ae-shop-feature,body.ae-site .ae-quote{background:var(--ae-desktop-cream)!important;color:var(--ae-desktop-olive)!important}
+body.ae-site .ae-header{border-bottom-color:rgba(231,229,217,.22)!important}
+body.ae-site .ae-nav a,body.ae-site .ae-header__actions>a,body.ae-site .ae-mobile-menu summary{font-family:var(--ae-body)!important;font-weight:400!important;color:var(--ae-desktop-ivory)!important;letter-spacing:.19em}
+body.ae-site .ae-kicker{font-family:var(--ae-body)!important;font-weight:400!important;color:var(--ae-desktop-sage)!important;letter-spacing:.24em}
+body.ae-site .ae-kicker--light{color:var(--ae-desktop-sand)!important}
+body.ae-site .ae-about .ae-script,body.ae-site .ae-process h2 span,body.ae-site .ae-final-cta h2 em{color:var(--ae-desktop-ivory)!important}
+body.ae-site .ae-offer>h2 em{color:var(--ae-desktop-gold)!important}
+body.ae-site .ae-about h2,body.ae-site .ae-process h2,body.ae-site .ae-process h3,body.ae-site .ae-final-cta h2{color:var(--ae-desktop-ivory)!important}
+body.ae-site .ae-about p:not(.ae-kicker,.ae-script),body.ae-site .ae-process p,body.ae-site .ae-footer__brand p{color:var(--ae-desktop-cream)!important}
+body.ae-site .ae-intro h1,body.ae-site .ae-offer>h2,body.ae-site .ae-shop-feature h2,body.ae-site .ae-quote blockquote,body.ae-site .ae-service-card h3{color:var(--ae-desktop-olive)!important}
+body.ae-site .ae-button,body.ae-site .button,body.ae-site button[name='add'],body.ae-site .shopify-payment-button__button--unbranded{font-family:var(--ae-body)!important;font-weight:400!important;background:var(--ae-desktop-olive)!important;color:var(--ae-desktop-ivory)!important;border-color:var(--ae-desktop-olive)!important;letter-spacing:.18em}
+body.ae-site .ae-button:hover,body.ae-site .button:hover,body.ae-site button[name='add']:hover{background:var(--ae-desktop-gold)!important;color:var(--ae-desktop-olive)!important;border-color:var(--ae-desktop-gold)!important}
+body.ae-site .ae-button--light{background:var(--ae-desktop-ivory)!important;color:var(--ae-desktop-olive)!important;border-color:var(--ae-desktop-ivory)!important}
+body.ae-site .ae-service-card,body.ae-site :where(.card,.product-card,.collection-card,.ae-card,.ae-price-card,.ae-flow>div,.ae-step-grid>div,.ae-product-placeholder){background:var(--ae-desktop-cream)!important;color:var(--ae-desktop-olive)!important;border-color:var(--ae-desktop-sand)!important}
+body.ae-site .ae-service-card:hover,body.ae-site .ae-service-card--shop{background:var(--ae-desktop-ivory)!important}
+body.ae-site .ae-shop-feature__visual{background:var(--ae-desktop-sand)!important;color:var(--ae-desktop-olive)!important}
+body.ae-site :where(input,textarea,select,.field__input,.select__select,.customer .field input){background:var(--ae-desktop-cream)!important;color:var(--ae-desktop-olive)!important;border-color:var(--ae-desktop-sand)!important}
+body.ae-site :where(.price,.product-price,.price-item,.money){font-family:var(--ae-body)!important;color:var(--ae-desktop-olive)!important}
+body.ae-site .ae-hero{background:var(--ae-desktop-olive)!important}
+body.ae-site .ae-hero__veil{background:linear-gradient(180deg,rgba(74,75,54,.16),rgba(74,75,54,.44))!important}
+body.ae-site .ae-hero__cue{font-family:var(--ae-body)!important;color:var(--ae-desktop-ivory)!important}
+body.ae-site .ae-footer__links a{font-family:var(--ae-body)!important;font-weight:400!important;color:var(--ae-desktop-ivory)!important}
+body.ae-site .ae-footer__links span,body.ae-site .ae-footer__bottom small{font-family:var(--ae-body)!important}
+body.ae-site .ae-back-to-top{background:var(--ae-desktop-olive)!important;color:var(--ae-desktop-ivory)!important;border-color:var(--ae-desktop-gold)!important}
+body.ae-site .ae-intro h1{letter-spacing:.015em!important;line-height:1.02!important}
+body.ae-site .ae-about h2{letter-spacing:.1em!important}
+body.ae-site .ae-offer>h2,body.ae-site .ae-process h2,body.ae-site .ae-shop-feature h2,body.ae-site .ae-final-cta h2{letter-spacing:.005em!important}
+body.ae-site .rte{font-family:var(--ae-body)!important;font-weight:400!important;line-height:1.7}
+body.ae-site .rte :is(h1,h2,h3,h4,h5,h6){font-family:var(--ae-heading)!important;font-weight:400!important}
+@media(max-width:749px){body.ae-site .ae-mobile-menu__panel{background:var(--ae-desktop-cream)!important}body.ae-site .ae-mobile-menu__panel a{color:var(--ae-desktop-olive)!important}}
+/* Keep opening characters identical to their surrounding Brown Carolina Sans text; neutralize any inherited/drop-cap first-letter treatment. */
+body.ae-site :is(h1,h2,h3,h4,h5,h6,p,blockquote)::first-letter{font-family:inherit!important;font-size:inherit!important;font-style:inherit!important;font-weight:inherit!important;line-height:inherit!important;letter-spacing:inherit!important;text-transform:inherit!important;color:inherit!important}

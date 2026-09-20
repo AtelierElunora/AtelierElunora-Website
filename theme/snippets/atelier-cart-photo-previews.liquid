@@ -1,0 +1,71 @@
+{% doc %}
+  Displays the photos attached to a gallery magnet pack.
+  @param {line_item} item - The cart line item.
+{% enddoc %}
+
+{% if item.properties['Gallery selection'] != blank %}
+  <atelier-cart-photos
+    data-photos="{{ item.properties['__image_previews'] | escape }}"
+    data-count="{{ item.properties['Magnet count'] | escape }}"
+    data-heading="{{ 'atelier.cart_photos.heading' | t | escape }}"
+    data-alt="{{ 'atelier.cart_photos.alt' | t | escape }}"
+    data-error="{{ 'atelier.cart_photos.error' | t | escape }}"
+  >
+    <noscript>{{ 'atelier.cart_photos.no_script' | t }}</noscript>
+  </atelier-cart-photos>
+{% endif %}
+
+{% stylesheet %}
+  atelier-cart-photos { display: block; margin-block: 12px; }
+  atelier-cart-photos .atelier-cart-photos__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; max-width: 300px; margin-block-start: 8px; }
+  atelier-cart-photos img { display: block; width: 100%; height: auto; aspect-ratio: 1; object-fit: contain; }
+  atelier-cart-photos .atelier-cart-photos__error { margin-block-start: 8px; }
+{% endstylesheet %}
+
+{% javascript %}
+  if (!customElements.get('atelier-cart-photos')) {
+    customElements.define('atelier-cart-photos', class extends HTMLElement {
+      connectedCallback() {
+        const signature = this.dataset.photos + '|' + this.dataset.count;
+        if (this.photoSignature === signature && this.querySelector('.atelier-cart-photos__content')) return;
+        this.photoSignature = signature;
+        const content = document.createElement('div');
+        content.className = 'atelier-cart-photos__content';
+        const heading = document.createElement('p');
+        heading.textContent = this.dataset.heading;
+        content.append(heading);
+        const showError = () => {
+          if (content.querySelector('.atelier-cart-photos__error')) return;
+          const message = document.createElement('p');
+          message.className = 'atelier-cart-photos__error';
+          message.setAttribute('role', 'status');
+          message.textContent = this.dataset.error;
+          content.append(message);
+        };
+        try {
+          const photos = JSON.parse(this.dataset.photos || 'null');
+          const count = Number(this.dataset.count);
+          if (![6, 12].includes(count) || !Array.isArray(photos) || photos.length !== count) throw new Error('Invalid photos');
+          if (!photos.every(url => typeof url === 'string' && /^https:\/\/ucarecdn\.com\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\/$/i.test(url))) throw new Error('Invalid photo URL');
+          const grid = document.createElement('div');
+          grid.className = 'atelier-cart-photos__grid';
+          photos.forEach((url, index) => {
+            const img = document.createElement('img');
+            img.width = 240;
+            img.height = 240;
+            img.alt = this.dataset.alt + ' ' + (index + 1);
+            img.loading = 'lazy';
+            img.referrerPolicy = 'no-referrer';
+            img.addEventListener('error', showError, { once: true });
+            img.src = url + '-/resize/240x240/';
+            grid.append(img);
+          });
+          content.append(grid);
+        } catch {
+          showError();
+        }
+        this.replaceChildren(content);
+      }
+    });
+  }
+{% endjavascript %}

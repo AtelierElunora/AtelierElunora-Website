@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="{{ request.locale.iso_code }}"{% if request.design_mode %} class="shopify-design-mode"{% endif %}>
+<head>
+<link rel="icon" type="image/png" href="{{ 'atelier-favicon.png' | asset_url }}">
+{%- render 'meta-tags' -%}{%- render 'stylesheets' -%}{%- render 'fonts' -%}{%- render 'scripts' -%}{%- render 'theme-styles-variables' -%}{%- render 'color-palette' -%}
+<style>
+@font-face{font-family:'Brown Carolina Sans';src:url('{{ 'brown-carolina-sans.woff' | asset_url }}') format('woff');font-style:normal;font-weight:400;font-display:swap}
+@font-face{font-family:'ITC Edwardian Script';src:url('{{ 'itc-edwardian-regular.woff2' | asset_url }}') format('woff2');font-style:normal;font-weight:400;font-display:swap}
+</style>
+<link rel="stylesheet" href="{{ 'atelier-brand.css' | asset_url }}">
+<link rel="stylesheet" href="{{ 'atelier-typography.css' | asset_url }}">
+<link rel="stylesheet" href="{{ 'atelier-scroll-fix.css' | asset_url }}">
+<link rel="stylesheet" href="{{ 'atelier-navigation.css' | asset_url }}">
+<link rel="stylesheet" href="{{ 'atelier-guidelines.css' | asset_url }}">
+<link rel="stylesheet" href="{{ 'atelier-desktop-match.css' | asset_url }}">
+{% if request.design_mode %}{%- render 'theme-editor' -%}{% endif %}{{ content_for_header }}
+</head>
+<body class="ae-site page-width-{{ settings.page_width }} card-hover-effect-{{ settings.card_hover_effect }}">
+{% render 'skip-to-content-link', href: '#MainContent', text: 'accessibility.skip_to_text' %}{% render 'chat-drawer' %}
+<div class="page-wrapper">{% section 'atelier-header' %}<main id="MainContent" class="content-for-layout" role="main" data-template="{{ template }}">{{ content_for_layout }}</main>{% section 'atelier-footer' %}</div>
+<button class="ae-back-to-top" type="button" aria-label="Back to top"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 14l6-6 6 6"/></svg></button>
+{% render 'cart-drawer', render_wrapper: true %}{% render 'theme-drawer' %}{% render 'search-modal' %}{% if settings.quick_add or settings.mobile_quick_add %}{% render 'quick-add-modal' %}{% endif %}
+<script src="{{ 'atelier-navigation.js' | asset_url }}" defer></script>
+</body></html>

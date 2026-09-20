@@ -1,0 +1,14 @@
+{% doc %}
+Renders the wedding keepsake purchase form with post-event personalization.
+@param {product} product - Wedding keepsake product
+{% enddoc %}
+{% assign selected = product.selected_or_first_available_variant %}
+<section class="ae-audit-wedding"><div>{{ product.featured_image | image_url: width: 1400 | image_tag: loading: 'eager' }}<p>{{ 'audit.preview' | t }}</p></div><div><h1>{{ product.title | escape }}</h1><h2>{{ 'audit.later' | t }}</h2><p>{{ 'audit.later_body' | t }}</p>
+{% form 'product', product, id: 'AuditWeddingForm' %}
+<label for="AuditWeddingVariant">{{ 'audit.variant' | t }}</label>
+<select id="AuditWeddingVariant" name="id" data-ae-magnet-selector>{% for variant in product.variants %}<option data-magnet-count="{{ variant.metafields.custom.included_magnet_count.value }}" data-magnet-format="{{ variant.metafields.custom.magnet_format.value | escape }}" data-variant-title="{{ variant.title | escape }}" value="{{ variant.id }}" {% if variant.id == selected.id %}selected{% endif %} {% unless variant.available %}disabled{% endunless %}>{{ variant.title | escape }} — {{ variant.price | money }}{% unless variant.available %} — {{ 'audit.unavailable' | t }}{% endunless %}</option>{% endfor %}</select>
+<input type="hidden" name="quantity" value="1"><input type="hidden" name="properties[Personalization]" value="{{ 'audit.later_property' | t }}">
+<button type="submit" name="add" class="ae-button" {% unless product.available %}disabled{% endunless %}>{{ 'audit.add' | t }}</button>
+{% endform %}<p>{{ 'audit.size_note' | t }}</p><p><a href="/pages/personalize-your-wedding-keepsake">{{ 'audit.later_steps' | t }}</a></p><div class="rte">{% render 'atelier-magnet-description', product: product %}</div><p>{{ 'audit.shipping_help' | t }} <a href="/pages/contact">{{ 'audit.contact' | t }}</a></p></div></section>
+{% stylesheet %}.ae-audit-wedding{display:grid;grid-template-columns:1fr 1fr;gap:48px;max-width:1260px;margin:auto;padding:40px 24px}.ae-audit-wedding img{width:100%;height:auto}.ae-audit-wedding h1{font-size:36px;line-height:1.2}.ae-audit-wedding h2{font-size:24px;margin:24px 0 12px}.ae-audit-wedding p{line-height:1.6}.ae-audit-wedding form{display:flex;flex-direction:column;gap:16px;margin:24px 0}.ae-audit-wedding select{width:100%;padding:16px 12px;border:1px solid #888D6F;font-size:16px}.ae-audit-wedding a{text-decoration:underline;text-underline-offset:4px}.ae-audit-wedding .rte h3{font-size:24px}@media(max-width:749px){.ae-audit-wedding{grid-template-columns:1fr;gap:20px;padding:24px 20px}.ae-audit-wedding h1{font-size:30px}}{% endstylesheet %}
+

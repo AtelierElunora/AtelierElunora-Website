@@ -1,0 +1,110 @@
+<section data-ae-ninemags data-variant="{{ product.selected_or_first_available_variant.id }}" data-count="{{ product.selected_or_first_available_variant.title | split: ' ' | first }}">
+<h1>{{ 'atelier_ninemags.title' | t }}</h1><p>{{ 'atelier_ninemags.intro' | t }}</p>
+<button type="button">{{ 'atelier_ninemags.load' | t }}</button><p role="status" aria-live="polite"></p>
+<a href="/pages/client-gallery">{{ 'atelier_ninemags.back' | t }}</a>
+<script type="application/json" data-copy>{"title": {{ 'atelier_ninemags.title' | t | json }},"intro": {{ 'atelier_ninemags.intro' | t | json }},"load": {{ 'atelier_ninemags.load' | t | json }},"reopen": {{ 'atelier_ninemags.reopen' | t | json }},"preparing": {{ 'atelier_ninemags.preparing' | t | json }},"signin": {{ 'atelier_ninemags.signin' | t | json }},"expired": {{ 'atelier_ninemags.expired' | t | json }},"failed": {{ 'atelier_ninemags.failed' | t | json }},"unavailable": {{ 'atelier_ninemags.unavailable' | t | json }},"packMismatch": {{ 'atelier_ninemags.packMismatch' | t | json }},"notEmpty": {{ 'atelier_ninemags.notEmpty' | t | json }},"review": {{ 'atelier_ninemags.review' | t | json }},"ready": {{ 'atelier_ninemags.ready' | t | json }},"back": {{ 'atelier_ninemags.back' | t | json }}}</script></section>
+{% stylesheet %}
+[data-ae-ninemags]{max-width:900px;margin:32px auto;padding:24px;background:#ebe5d9;color:#4b4d37}
+[data-ae-ninemags] button{padding:16px 24px;background:#4b4d37;color:#f4f2ef;border:0;cursor:pointer}
+[data-ae-ninemags] button:disabled{opacity:.5}
+body:has([data-ae-ninemags]) [id^="ninemags-uploader-button-"]{display:none!important}
+{% endstylesheet %}
+{% javascript %}
+(() => {
+ const root=document.querySelector('[data-ae-ninemags]');
+ if(!root||root.dataset.ready)return;
+ root.dataset.ready='1';
+ const copy=JSON.parse(root.querySelector('[data-copy]').textContent);
+ const button=root.querySelector('button'),status=root.querySelector('[role=status]');
+ const base='https://gefdlubvqymyxrguhtnc.supabase.co/functions/v1/gallery-api/';
+ const transferKey='elunora-ninemags-transfer',sessionKey='elunora-shopify-gallery-session';
+ let running=false,loaded=false;
+ function message(text){status.textContent=text;}
+ function parse(key){try{return JSON.parse(sessionStorage.getItem(key)||'null');}catch{return null;}}
+ async function api(body){
+  let session=parse(sessionKey);
+  if(!session?.access_token)throw Error(copy.signin);
+  if(session.expires_at*1000<Date.now()+60000){
+   const r=await fetch(base+'refresh',{method:'POST',credentials:'omit',headers:{'Content-Type':'application/json','X-Elunora-Request':'1'},body:JSON.stringify({refresh_token:session.refresh_token})});
+   if(!r.ok)throw Error(copy.signin);
+   session=await r.json();sessionStorage.setItem(sessionKey,JSON.stringify(session));
+  }
+  const transfer=parse(transferKey);
+  if(!transfer||transfer.expiresAt<Date.now()||!/^[-a-f0-9]{36}$/.test(transfer.event))throw Error(copy.expired);
+  const r=await fetch(base+'events/'+transfer.event+'/checkout',{method:'POST',credentials:'omit',cache:'no-store',headers:{'Content-Type':'application/json','X-Elunora-Request':'1',Authorization:'Bearer '+session.access_token},body:JSON.stringify({...transfer,ninemags:true,...body}),signal:AbortSignal.timeout(45000)});
+  const d=await r.json();if(!r.ok)throw Error(d.error||copy.failed);return d;
+ }
+ function findProvider(){
+  return [...document.querySelectorAll('lr-upload-ctx-provider')].find(p=>typeof p.addFileFromObject==='function'&&typeof p.initFlow==='function');
+ }
+ async function waitProvider(){
+  for(let i=0;i<100;i++){const p=findProvider();if(p)return p;await new Promise(r=>setTimeout(r,100));}
+  throw Error(copy.unavailable);
+ }
+ async function crop(item){
+  const zoom=item.zoom===undefined?1:Number(item.zoom);
+  if(!Number.isFinite(zoom)||zoom<1||zoom>3)throw Error(copy.failed);
+  const u=new URL(item.url);
+  if(u.origin!=='https://gefdlubvqymyxrguhtnc.supabase.co'||!u.pathname.startsWith('/storage/v1/object/sign/gallery-originals/'))throw Error(copy.failed);
+  const r=await fetch(u.href,{credentials:'omit',cache:'no-store',signal:AbortSignal.timeout(60000)});
+  if(!r.ok)throw Error(copy.expired);
+  const blob=await r.blob();
+  if(blob.size>15728640||!['image/jpeg','image/png','image/webp'].includes(blob.type))throw Error(copy.failed);
+  const bitmap=await createImageBitmap(blob,{imageOrientation:'from-image'});
+  try{
+   const side=Math.min(bitmap.width,bitmap.height)/zoom,size=Math.max(1,Math.round(Math.min(side,3000)));
+   if(!side||bitmap.width*bitmap.height>60000000)throw Error(copy.failed);
+   const canvas=document.createElement('canvas');canvas.width=canvas.height=size;
+   const ctx=canvas.getContext('2d');if(!ctx)throw Error(copy.unavailable);
+   ctx.fillStyle='#ffffff';ctx.fillRect(0,0,size,size);
+   ctx.drawImage(bitmap,(bitmap.width-side)*item.x/100,(bitmap.height-side)*item.y/100,side,side,0,0,size,size);
+   const jpeg=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',0.95));
+   canvas.width=canvas.height=1;
+   if(!jpeg||jpeg.size>15728640)throw Error(copy.failed);
+   return jpeg;
+  }finally{bitmap.close();}
+ }
+ function property(key,value){let input=root.querySelector('[data-property="'+key+'"]');if(!input){input=document.createElement('input');input.type='hidden';input.dataset.property=key;input.name='properties['+key+']';root.append(input);}input.value=value;}
+ button.onclick=async()=>{
+  if(running)return;
+  if(loaded){try{(await waitProvider()).initFlow();}catch(e){message(e.message);}return;}
+  running=true;button.disabled=true;
+  try{
+   message(copy.preparing);
+   const provider=await waitProvider(),ctx=provider.getAttribute('ctx-name');
+   const config=[...document.querySelectorAll('lr-config')].find(e=>e.getAttribute('ctx-name')===ctx);
+   if(!config||Number(config.getAttribute('multiple-max'))!==Number(root.dataset.count)||Number(config.getAttribute('multiple-min'))!==Number(root.dataset.count))throw Error(copy.packMismatch);
+   if(provider.uploadCollection?.size)throw Error(copy.notEmpty);
+   let manifest=null,files=[];
+    manifest=await api();
+    if(String(manifest.variant)!==root.dataset.variant||manifest.count!==Number(root.dataset.count))throw Error(copy.packMismatch);
+    for(let n=0;n<manifest.items.length;n++){
+     const item=manifest.items[n];message(copy.preparing+' '+(n+1)+' / '+manifest.items.length);
+     const jpeg=await crop(item);
+     for(let j=0;j<item.quantity;j++)files.push(new File([jpeg],(n+1)+'-'+(j+1)+'-'+item.filename.replace(/\.[^.]+$/,'')+'.jpg',{type:'image/jpeg'}));
+    }
+    const fresh=await api();
+    if(fresh.reference!==manifest.reference)throw Error(copy.expired);
+   if(files.length!==Number(root.dataset.count))throw Error(copy.packMismatch);
+   if(provider!==findProvider()||provider.uploadCollection?.size)throw Error(copy.notEmpty);
+   property('Magnet count',String(files.length));
+   property('Gallery selection',manifest.reference);
+   for(const file of files)provider.addFileFromObject(file);
+   loaded=true;button.textContent=copy.reopen;
+   provider.initFlow();
+   message(copy.review);
+   sessionStorage.removeItem(transferKey);
+  }catch(e){message(e.message||copy.failed);}
+  finally{running=false;button.disabled=false;}
+ };
+ const output=document.querySelector('lr-data-output');
+ document.addEventListener('lr-data-output',e=>{
+  if(!loaded)return;const d=e.detail?.data;
+  if(d?.groupData&&d.files?.length===Number(root.dataset.count))message(copy.ready);
+ },true);
+ if(!parse(transferKey))message(copy.expired);
+})();
+{% endjavascript %}
+{% schema %}
+{"name":"Gallery photo transfer","settings":[],"presets":[{"name":"Gallery photo transfer"}]}
+{% endschema %}

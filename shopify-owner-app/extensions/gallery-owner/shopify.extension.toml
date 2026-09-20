@@ -1,0 +1,11 @@
+api_version = "2026-07"
+[[extensions]]
+name = "Atelier Elunora galleries"
+handle = "gallery-owner"
+uid = "d588d79d-bef2-3c76-c91b-ae72c215d1d675a12eee"
+type = "ui_extension"
+[[extensions.targeting]]
+module = "./src/AppHome.jsx"
+target = "admin.app.home.render"
+[extensions.capabilities]
+network_access = true

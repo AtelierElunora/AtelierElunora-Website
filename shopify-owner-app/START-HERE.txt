@@ -1,0 +1,28 @@
+Atelier Elunora owner app — registration handoff
+
+Status: initial source; NOT deployed or installed. Registration Client ID was supplied in your screenshot.
+
+1. Install the current Node.js LTS from https://nodejs.org if needed.
+2. Extract this ZIP. Open a terminal inside the shopify-owner-app folder.
+3. Run these commands one at a time:
+
+npm install -g @shopify/cli@latest
+npm ci
+shopify app config link --client-id 2a9c81b25ec07613126f8d84b8ebd307
+
+Follow Shopify's browser sign-in. Select the existing Atelier Elunora Galleries app if asked. Do not create another app. Let the CLI generate the app configuration.
+
+Then run:
+
+shopify app config validate --json
+shopify app build
+
+Send the validation/build result back to this conversation, hiding any credentials. Do not deploy yet: the App Home target, generated configuration, and extension identity need to pass these checks first. This package does not contain an invented app configuration or extension UID.
+
+After validation, the remaining workflow is development preview, deployment of a private custom-distribution app version, and installation on v0j63n-ms.myshopify.com. Registration alone does not install the interface.
+
+The app's gallery login currently uses the existing owner email-code verification. Shopify staff access alone does not grant access to private galleries. Photo upload UI and cropped order exports still require implementation before retiring Netlify. See README.md for exact scope.
+
+Official references:
+https://shopify.dev/docs/api/shopify-cli/app/config-link
+https://shopify.dev/docs/apps/build/app-home/app-home-ui-extensions

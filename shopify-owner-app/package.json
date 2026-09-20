@@ -1,0 +1,1 @@
+{"name":"atelier-elunora-owner-app","private":true,"type":"module","dependencies":{"@preact/signals":"2.11.2","@shopify/ui-extensions":"2026.7.0","preact":"10.29.8"},"devDependencies":{"@shopify/app-bridge-types":"0.7.2","@shopify/polaris-types":"1.0.7","@types/react":"19.3.0"}}

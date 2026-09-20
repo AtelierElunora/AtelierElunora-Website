@@ -1,0 +1,80 @@
+{% doc %}
+Renders a frame description with variant-specific magnet quantities and format.
+@param {product} product - Frame and magnet product
+{% enddoc %}
+{% liquid
+  assign selected = product.selected_or_first_available_variant
+  assign count = selected.metafields.custom.included_magnet_count.value
+  assign fallback_format = 'magnet_selection.format_missing' | t
+  assign format = selected.metafields.custom.magnet_format.value | default: fallback_format
+  assign copy = product.description
+  assign prefix = copy | split: '<h3>Magnets included by frame size</h3>' | first
+  assign suffix = copy | split: '<h3>Included</h3>' | last | replace: 'adequate space for square cropping', 'adequate space for cropping to your selected magnet format'
+  assign prefix = prefix | replace: '12, 20, 30, or 48 removable 2.5-inch square photo magnets created from your own photographs, depending on frame size', 'a collection of removable photo magnets created from your own photographs'
+  assign prefix = prefix | replace: '12, 20, 30, or 48 removable 2.5-inch square photo magnets, depending on frame size, that preserve', 'a collection of removable photo magnets that preserve'
+  assign prefix = prefix | replace: 'Available in 12 × 16, 16 × 20, 18 × 24, and 24 × 30 inches.', 'Choose from the available sizes above. Frame dimensions are in inches.'
+%}
+<ae-magnet-description data-product-id="{{ product.id }}" data-variant-id="{{ selected.id }}" data-count="{{ count }}" data-format="{{ format | escape }}" data-included-template="{{ 'magnet_selection.included' | t | escape }}" data-photo-template="{% if product.handle contains 'wedding' %}{{ 'magnet_selection.later' | t | escape }}{% else %}{{ 'magnet_selection.photos' | t | escape }}{% endif %}" data-missing="{{ 'magnet_selection.missing' | t | escape }}" data-format-missing="{{ 'magnet_selection.format_missing' | t | escape }}">
+{{ prefix }}
+<div class="ae-magnet-summary" aria-live="polite" aria-atomic="true">
+<h3>{{ 'magnet_selection.heading' | t }}</h3>
+<p data-ae-selection>{{ selected.title | escape }}</p>
+<p data-ae-included>{% if count > 0 %}{{ 'magnet_selection.included' | t | replace: '__COUNT__', count | replace: '__FORMAT__', format | escape }}{% else %}{{ 'magnet_selection.missing' | t }}{% endif %}</p>
+</div>
+{% capture dynamic_item %}<li data-ae-included>{% if count > 0 %}{{ 'magnet_selection.included' | t | replace: '__COUNT__', count | replace: '__FORMAT__', format | escape }}{% else %}{{ 'magnet_selection.missing' | t }}{% endif %}</li>{% endcapture %}
+{% capture dynamic_photos %}<p data-ae-photos>{% if count > 0 %}{% if product.handle contains 'wedding' %}{{ 'magnet_selection.later' | t | replace: '__COUNT__', count }}{% else %}{{ 'magnet_selection.photos' | t | replace: '__COUNT__', count }}{% endif %}{% else %}{{ 'magnet_selection.missing' | t }}{% endif %}</p><p>{{ 'magnet_selection.tip' | t }}</p>{% endcapture %}
+{% assign suffix = suffix | replace: '<li>Custom 2.5-inch square photo magnets: 12 with 12 × 16, 20 with 16 × 20, 30 with 18 × 24, or 48 with 24 × 30</li>', dynamic_item %}
+{% assign suffix = suffix | replace: '<p>Use the photo uploader to choose and crop your photographs. Provide one photo selection per included magnet: 12 for a 12 × 16 frame, 20 for 16 × 20, 30 for 18 × 24, or 48 for 24 × 30. Use high-resolution photographs with adequate space for square cropping.</p>', dynamic_photos %}
+{% if product.handle contains 'wedding' %}{% capture photo_section %}{{ dynamic_photos }}<h3>Photo permissions</h3>{% endcapture %}{% assign suffix = suffix | replace: '<h3>Photo permissions</h3>', photo_section %}{% endif %}
+<h3>{{ 'audit_dynamic.included_heading' | t }}</h3>{{ suffix }}
+</ae-magnet-description>
+<script type="module">
+import { StandardEvents } from '@shopify/events';
+if (!customElements.get('ae-magnet-description')) {
+  customElements.define('ae-magnet-description', class extends HTMLElement {
+    connectedCallback() {
+      this.scope = this.closest('.shopify-section');
+      this.version = 0;
+      this.onSelect = (event) => {
+        if (!(event.target instanceof Element) || event.target.closest('product-card, quick-add-dialog')) return;
+        const ticket = ++this.version;
+        if (!event.promise) return;
+        event.promise.then(({ detail }) => {
+          if (!this.isConnected || ticket !== this.version || !detail?.html) return;
+          if (String(detail.productId) !== this.dataset.productId) return;
+          const fresh = detail.html.querySelector('ae-magnet-description[data-product-id="' + this.dataset.productId + '"]');
+          if (!fresh) return;
+          this.update(fresh.dataset.count, fresh.dataset.format, fresh.querySelector('[data-ae-selection]')?.textContent || '', fresh.dataset.variantId);
+        }).catch(() => {});
+      };
+      this.onChange = (event) => {
+        if (!event.target.matches('select[data-ae-magnet-selector]')) return;
+        const option = event.target.selectedOptions[0];
+        ++this.version;
+        this.update(option.dataset.magnetCount, option.dataset.magnetFormat, option.dataset.variantTitle, option.value);
+      };
+      this.scope?.addEventListener(StandardEvents.productSelect, this.onSelect);
+      this.scope?.addEventListener('change', this.onChange);
+    }
+    disconnectedCallback() {
+      this.scope?.removeEventListener(StandardEvents.productSelect, this.onSelect);
+      this.scope?.removeEventListener('change', this.onChange);
+    }
+    update(rawCount, rawFormat, title, id) {
+      const count = Number(rawCount);
+      const valid = Number.isInteger(count) && count > 0;
+      const format = rawFormat || this.dataset.formatMissing;
+      const fill = (template) => valid ? template.replaceAll('__COUNT__', String(count)).replaceAll('__FORMAT__', format) : this.dataset.missing;
+      this.dataset.variantId = id || '';
+      this.dataset.count = valid ? String(count) : '';
+      this.dataset.format = rawFormat || '';
+      this.querySelector('[data-ae-selection]').textContent = title || '';
+      this.querySelectorAll('[data-ae-included]').forEach(node => node.textContent = fill(this.dataset.includedTemplate));
+      this.querySelectorAll('[data-ae-photos]').forEach(node => node.textContent = fill(this.dataset.photoTemplate));
+    }
+  });
+}
+</script>
+{% stylesheet %}
+ae-magnet-description{display:block}.ae-magnet-summary{padding:20px;border:1px solid currentColor;border-radius:8px;margin:24px 0}.ae-magnet-summary h3{margin-top:0}.ae-magnet-summary [data-ae-included]{font-weight:600}.ae-magnet-summary p:last-child{margin-bottom:0}
+{% endstylesheet %}
