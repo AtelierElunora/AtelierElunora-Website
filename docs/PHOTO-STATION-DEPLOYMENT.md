@@ -33,3 +33,10 @@ Physical camera/printer acceptance and MFA-protected end-to-end capture remain o
 Supabase reports live gallery-api version 17 ACTIVE with verify_jwt=false, the exact bundle checksum tested on the isolated endpoint, and photoStationRolloutReady=false. The final direct live HTTP checks timed out from this environment; the browser check was blocked by the browser client. Therefore final live HTTP/end-to-end acceptance is not complete. Do not enable capture until these checks can be completed.
 
 The temporary gallery-api-photo-station-check function was neutralized as version 3: verify_jwt=true, a single 404 response, and no gallery/database code.
+
+## Follow-up checks and owner build fix
+Both live HTTP checks now pass: station returns 503 with the deliberate disabled message; unauthenticated owner/events returns 401. This resolves the earlier final HTTP timeout uncertainty, but does not replace MFA-protected end-to-end acceptance.
+
+Fixed PhotoStation.jsx to use the same explicit Preact JSX factory as AppHome.jsx. A new simulated-DOM mount test loads the panel, verifies the queue, and creates a capture link. The prior syntax bundle check alone did not exercise rendering.
+
+Shopify CLI authentication still fails at device_authorization from this environment. A second themeDuplicate request again returned newTheme=null and no errors. No new theme or page was created. Prepare-Owner-App.cmd now provides a Windows path through dependency installation, tests, Shopify authentication, build, and upload of an unreleased app version. Release, installation, theme integration and acceptance remain outstanding.

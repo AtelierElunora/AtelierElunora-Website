@@ -4,8 +4,9 @@
   "type": "module",
   "scripts": {
     "test": "node tests/activity-log.mjs && node tests/photo-station.mjs && node tests/photo-station-db.mjs && node tests/photo-station-browser.mjs",
-    "check:build": "esbuild shopify-owner-app/extensions/gallery-owner/src/AppHome.jsx --bundle --external:preact --external:preact/* --external:@shopify/* --outfile=/tmp/elunora-owner-check.js",
-    "demo": "node scripts/preview-station.mjs"
+    "check:build": "node scripts/check-owner-build.mjs",
+    "demo": "node scripts/preview-station.mjs",
+    "test:owner": "node tests/photo-station-owner.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.3.14",

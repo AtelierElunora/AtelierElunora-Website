@@ -1,3 +1,6 @@
+/** @jsxRuntime classic */
+/** @jsx h */
+import {h} from 'preact';
 import {useEffect,useRef,useState} from 'preact/hooks';
 
 export function PhotoStation({event,call,run,busy}){

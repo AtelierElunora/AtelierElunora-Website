@@ -11,6 +11,12 @@ Built from the supplied Atelier-Elunora-GitHub-Source.zip. **Source changes only
 - Each job creates landscape 6 × 4 inch sheets with up to two copies of that job's photo per sheet. Odd quantities leave one slot blank. Different guests' jobs are not combined on one sheet in this first version.
 - Print dialog plus downloadable 1800 × 1200 pixel PNG sheets. No NineMags integration, DNP driver, unattended print agent or automatic hardware completion detection is included.
 
+## Windows owner-app setup
+
+Extract the latest archive fully, then double-click `Prepare-Owner-App.cmd`. It installs pinned dependencies, runs automated checks (including mounting the owner panel), asks for Shopify sign-in in the browser, validates/builds the app, and uploads an **unreleased** app version. It stops on any error. It does not install/release the app, change your theme, or enable capture. Share the version identifier or a screenshot of any error; never share sign-in codes or credentials.
+
+Run this from the updated download or the development branch, not the older demo folder. Windows itself was not available to execute this launcher here; its individual Node checks passed on the build system.
+
 ## Try the interface without equipment or deployment
 
 On Windows PowerShell, use `npm.cmd` wherever these instructions say `npm`. To update an existing demo, stop it with Ctrl+C, replace its `theme` folder with the one from this download, start `npm.cmd run demo` again, and refresh the browser with Ctrl+F5. No dependency changes are needed for the zoom update.
