@@ -1,0 +1,30 @@
+# Photo station deployment — September 20, 2026
+
+## Live database
+Applied on the existing Atelier Elunora Gallery project with user approval to skip paid staging.
+- event_photo_station: deployed migration version 20260920025307
+- photo_station_zoom: deployed migration version 20260920025317
+
+The repository migration filenames are reconciled to these actual versions. They replace the original pre-deployment filenames 20260920020218 and 20260920023850. Do not apply both sets.
+
+Service-role transaction test passed capture reservation, duplicate finalization, queue creation, zoom, claim and print confirmation, then rolled back all test records. New tables have RLS enabled and no anon/authenticated privileges. All four RPCs are SECURITY INVOKER and have no anon/authenticated EXECUTE. Security advisors reported only three informational RLS-without-policy notices, intentional for these server-only tables: https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy
+
+## API rollout
+Version 15 failed startup smoke checks and was immediately restored to the exact backed-up version-14 bundle as version 16. A corrected candidate was verified separately: station requests returned the intentional 503 disabled response, and unauthenticated owner requests returned 401.
+
+The corrected candidate is deployed as gallery-api version 17, bundle checksum 84c6ac26d36c84b247ad6c60984904f7a55954ad702bc5d8b96e6a68748c6474.
+
+The candidate loads the image engine lazily and uses station-rollout.mts with photoStationRolloutReady=false. It does not mutate Deno environment variables at startup. Enabling requires both this code gate and PHOTO_STATION_ENABLED=true after the UI is ready. Do not treat an environment-variable change alone as activation.
+
+## Shopify blockers
+- Published theme: v1.30 Service Area & Travel, ID 191726092576.
+- Latest unpublished package/theme work: v1.31 Photo Station, ID 191736709408.
+- Request to duplicate v1.31 returned newTheme=null with no userErrors. Follow-up listing showed no new theme. No theme file writes or theme publication were performed.
+- Registered Atelier Elunora Galleries app (client ID in shopify.app.toml) has installation=null for this store.
+- Developer dashboard was blocked at connection verification. Shopify CLI config validation could not authenticate: device_authorization proxy tunnel timed out. No app deployment or installation was performed.
+- No photo-station page or private acceptance event was created. No capture/print capabilities were issued.
+
+## Rollback
+Redeploy the 15 original version-14 source files from the saved deployment backup with index.ts, deno.json and verify_jwt=false. Leave the new database tables and migration history intact; the old API ignores them. This preserves any later photo/queue history. Dropping tables is not the routine reversal and requires separate data review.
+
+Physical camera/printer acceptance and MFA-protected end-to-end capture remain outstanding.

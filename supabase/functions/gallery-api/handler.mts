@@ -1,5 +1,7 @@
+import {photoStationRolloutReady} from './station-rollout.mts';
 import {ownerStation,stationRequest} from './station.mjs';
-import {makeServerPreview} from './server-preview.mts';
+// Load the image engine only when a capture needs rendering, as owner uploads do.
+const makeServerPreview=async(bytes:Uint8Array)=>{const renderer=await import('./server-preview.mts');return renderer.makeServerPreview(bytes);};
 import {activityFor,auditedOwnerAction} from './activity.mjs';
 import {createClient} from '@supabase/supabase-js';
 import {runtime} from './runtime.mts';
@@ -28,7 +30,7 @@ export async function storefrontHandler(request:Request, factory=createClient){
  const path=pathname.slice(pathname.indexOf(marker)+marker.length);
  try{
   if(path==='station'){
-   if(Deno.env.get('PHOTO_STATION_ENABLED')!=='true')return reply({error:'Photo station is not enabled yet.'},503);
+   if(!photoStationRolloutReady||Deno.env.get('PHOTO_STATION_ENABLED')!=='true')return reply({error:'Photo station is not enabled yet.'},503);
    if(request.method!=='POST')return reply({error:'Method not allowed.'},405);
    const secret=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
    if(!secret)return reply({error:'Station unavailable.'},503);
@@ -71,7 +73,7 @@ export async function storefrontHandler(request:Request, factory=createClient){
   if(path.startsWith('mfa/'))return await ownerMfa(path,request.method,request.method==='POST'?await jsonBody(request,4096):{},client,data.user,security,reply);
   if(needsMfa(security))return reply({error:'Verify your authenticator in the owner app to continue.',code:'MFA_REQUIRED'},403);
   if(path.startsWith('owner/station/')){
-   if(Deno.env.get('PHOTO_STATION_ENABLED')!=='true')return reply({error:'Photo station is not enabled yet.'},503);
+   if(!photoStationRolloutReady||Deno.env.get('PHOTO_STATION_ENABLED')!=='true')return reply({error:'Photo station is not enabled yet.'},503);
    if(!security.owner||security.aal!=='aal2')return reply({error:'Owner authenticator verification required.'},403);
    const secret=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
    if(!secret)return reply({error:'Station unavailable.'},503);

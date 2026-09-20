@@ -10,8 +10,8 @@ create table public.gallery_events(id uuid primary key,name text,deleted_at time
 create table public.gallery_photos(id uuid primary key,event_id uuid references gallery_events(id),filename text,sample_asset text,original_key text,preview_key text,position integer,ready boolean,hidden boolean,original_bytes bigint default 0,preview_bytes bigint default 0);
 create table public.gallery_activity_log(source text,actor_user_id uuid,event_id uuid,action text,outcome text,subject_reference text,details jsonb);
 grant usage on schema public,auth to service_role; grant all on all tables in schema public,auth to service_role;`);
-await db.exec(await readFile(new URL('../supabase/migrations/20260920020218_event_photo_station.sql',import.meta.url),'utf8'));
-await db.exec(await readFile(new URL('../supabase/migrations/20260920023850_photo_station_zoom.sql',import.meta.url),'utf8'));
+await db.exec(await readFile(new URL('../supabase/migrations/20260920025307_event_photo_station.sql',import.meta.url),'utf8'));
+await db.exec(await readFile(new URL('../supabase/migrations/20260920025317_photo_station_zoom.sql',import.meta.url),'utf8'));
 const event='11111111-1111-4111-8111-111111111111',owner='22222222-2222-4222-8222-222222222222',cap='a'.repeat(64),printer='b'.repeat(64),request='33333333-3333-4333-8333-333333333333';
 await db.query('insert into auth.users values($1)',[owner]);await db.query('insert into gallery_admins values($1)',[owner]);await db.query('insert into gallery_events(id,name) values($1,$2)',[event,'Test']);
 for(const [token,purpose] of [[cap,'capture'],[printer,'print']])await db.query("insert into gallery_stations(event_id,actor_id,token_hash,purpose,expires_at) values($1,$2,$3,$4,now()+interval '12 hours')",[event,owner,token,purpose]);
