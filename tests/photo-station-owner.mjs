@@ -16,7 +16,7 @@ const calls=[];const route='owner/station/11111111-1111-4111-8111-111111111111';
 const props={event:{id:route.split('/')[2]},busy:false,run:fn=>fn(),call:async(path,body)=>{
  calls.push({path,body});assert.equal(path,route);
  if(body?.action==='template')return {template:body.template};
- if(body?.action==='create')return {id:'station-1',expiresAt:'2026-09-21T01:00:00Z',url:'https://www.atelierelunora.com/pages/photo-station#capture=test-only'};
+ if(body?.action==='create')return {id:'station-'+body.purpose,expiresAt:'2026-09-21T01:00:00Z',url:'https://www.atelierelunora.com/pages/photo-station#'+body.purpose+'=test-only'};
  return {stations:[],jobs:[{id:'photo-12345678',status:'pending',created_at:'2026-09-20T01:00:00Z'}]};
 }};
 async function until(fn){for(let i=0;i<100;i++){if(fn())return;await new Promise(r=>setTimeout(r,20));}assert.ok(fn(),'owner panel did not settle');}
@@ -27,6 +27,9 @@ try{
  await until(()=>w.document.querySelector('s-link'));
  assert.ok(calls.some(c=>c.body?.action==='create'&&c.body.purpose==='capture'));
  assert.match(w.document.querySelector('s-link').getAttribute('href'),/#capture=test-only$/);
+ [ ...w.document.querySelectorAll('s-button')].find(b=>b.textContent==='Open event print desk').click();
+ await until(()=>w.document.querySelectorAll('s-link').length===2);
+ assert.deepEqual([...w.document.querySelectorAll('s-link')].map(e=>e.getAttribute('href').split('#')[1]),['capture=test-only','print=test-only']);
  const field=label=>[...w.document.querySelectorAll('s-text-field')].find(e=>e.getAttribute('label')===label);
  async function type(label,value){const el=field(label);assert.ok(el,label);el.value=value;el.dispatchEvent(new w.Event('input',{bubbles:true}));await new Promise(r=>setTimeout(r,30));}
  await type('Couple names','Breanna & Alex');
