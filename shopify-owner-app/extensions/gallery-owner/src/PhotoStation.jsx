@@ -9,7 +9,7 @@ export function PhotoStation({event,call,run,busy}){
  const api=useRef(call);api.current=call;
  const route='owner/station/'+event.id;
  useEffect(()=>{
-  let alive=true,timer=0;
+  let alive=true,timer;
   setState(null);setLinks([]);setError('');
   async function refresh(){
    try{const next=await api.current(route);if(alive){setState(next);setError('');}}
