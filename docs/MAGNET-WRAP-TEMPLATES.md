@@ -29,3 +29,9 @@ Before client use: publish the theme, release the app, save a template to a priv
 ## Rollback
 
 Publish the previous v1.34 theme and release the previous owner app version. If the API needs rollback, redeploy the backed-up v19 bundle with verify_jwt=false. The new RPC accepts the old eight-argument call through its default ninth parameter, so the previous API remains compatible. Leave the additive table/column in place to preserve event settings and job snapshots. Do not drop tables or replay old migrations.
+
+## Wrap background color controls
+
+Kept Brown Carolina unchanged at the owner's request. Added owner background presets (ivory, deep olive, white, black) alongside custom hex entry. Print desk template controls open by default; larger color swatches and a synchronized hex field update the preview and saved print snapshot. Event changes require Save event template; existing job snapshots are replaced only by explicitly choosing Reload event template. Tests verify owner save, picker/hex synchronization, claim snapshot and rendered wrap fill with custom and preset colors. No database/API changes.
+
+Staged only three station files in v1.36 — Wrap Background Colors (191752208672), duplicated from current live v1.35. Owner must publish this theme and deploy/release the updated owner app to see all controls. Prior input and station-link fixes are included on the development branch.

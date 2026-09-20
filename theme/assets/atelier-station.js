@@ -68,7 +68,7 @@ function templateContext(){return {name:eventName,photo:selected?.id.slice(0,8)?
 function populateTemplate(value){
  template=normalizeTemplate(value);$('template-enabled').checked=template.enabled;
  $('cut').value=template.enabled?template.cutInches:template.photoCutInches;
- $('template-background').value=template.background;$('template-color').value=template.color;$('template-font').value=template.fontSize;$('template-inset').value=template.edgeInset;
+ $('template-background').value=template.background;$('template-background-hex').value=template.background;$('template-color').value=template.color;$('template-font').value=template.fontSize;$('template-inset').value=template.edgeInset;
  $('template-sides').replaceChildren();
  for(const side of templateSides){
   const label=document.createElement('label');label.textContent=side[0].toUpperCase()+side.slice(1)+' text';
@@ -80,7 +80,7 @@ function populateTemplate(value){
 }
 function currentTemplate(){
  const enabled=$('template-enabled').checked;
- return normalizeTemplate({...template,enabled,photoCutInches:Number($('cut').value),cutInches:enabled?Number($('cut').value):template.cutInches,background:$('template-background').value,color:$('template-color').value,fontSize:Number($('template-font').value),edgeInset:Number($('template-inset').value),sides:Object.fromEntries(templateSides.map(side=>[side,{...template.sides[side],source:'custom',text:$('wrap-'+side)?.value??'',rotate:Number($('rotate-'+side)?.value??0)}]))});
+ return normalizeTemplate({...template,enabled,photoCutInches:Number($('cut').value),cutInches:enabled?Number($('cut').value):template.cutInches,background:$('template-background-hex').value.trim(),color:$('template-color').value,fontSize:Number($('template-font').value),edgeInset:Number($('template-inset').value),sides:Object.fromEntries(templateSides.map(side=>[side,{...template.sides[side],source:'custom',text:$('wrap-'+side)?.value??'',rotate:Number($('rotate-'+side)?.value??0)}]))});
 }
 function drawTemplatePreview(){
  if(!picture)return;
@@ -88,7 +88,9 @@ function drawTemplatePreview(){
  try{const t=currentTemplate(),r=cropRect(picture.naturalWidth,picture.naturalHeight,Number($('x').value),Number($('y').value),Number($('zoom').value));drawMagnet(ctx,picture,r,{x:0,y:0,size:c.width},t,templateContext(),true);$('template-status').textContent=t.enabled?'Preview only: dashed fold guide does not print.':'Photo-only printing; wrap text is disabled.';}
  catch(e){$('template-status').textContent=e.message;}
 }
-for(const id of ['cut','template-background','template-color','template-font','template-inset'])$(id).oninput=drawTemplatePreview;
+for(const id of ['cut','template-color','template-font','template-inset'])$(id).oninput=drawTemplatePreview;
+$('template-background').oninput=()=>{$('template-background-hex').value=$('template-background').value;drawTemplatePreview();};
+$('template-background-hex').oninput=()=>{const color=$('template-background-hex').value.trim();if(/^#[a-f0-9]{6}$/i.test(color))$('template-background').value=color;drawTemplatePreview();};
 $('template-enabled').onchange=()=>{if($('template-enabled').checked&&Number($('cut').value)<3)$('cut').value=template.cutInches;drawTemplatePreview();};
 $('template-reset').onclick=()=>run(async()=>{populateTemplate((await api({action:'template'})).template);notice('Event template loaded.');});
 

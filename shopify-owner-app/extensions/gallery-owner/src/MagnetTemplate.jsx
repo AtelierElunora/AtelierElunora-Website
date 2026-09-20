@@ -14,7 +14,11 @@ export function MagnetTemplate({initial,call,route,run,busy}){
  return <s-section heading="Magnet wrap template">
   <s-paragraph>Keep the photo on the 2.5-inch front. These four text lines fold onto the back edges. Start with your approximate 3.25-inch cut size, then calibrate with a printed and pressed sample.</s-paragraph>
   <s-select label="Template printing" value={String(draft.enabled)} onChange={e=>change('enabled',e.currentTarget.value==='true')}><s-option value="false">Off — photo only</s-option><s-option value="true">On — photo with customized wrap</s-option></s-select>
-  {[['company','Company name'],['couple','Couple names'],['date','Event date text'],['background','Wrap color (hex)'],['color','Text color (hex)']].map(([key,label])=><s-text-field key={key} label={label} value={draft[key]} onInput={e=>change(key,e.currentTarget.value)} />)}
+  <s-select label="Wrap background color" value={['#EBE5D9','#252B1D','#FFFFFF','#000000'].includes(draft.background.toUpperCase())?draft.background.toUpperCase():'custom'} onChange={e=>{if(e.currentTarget.value!=='custom')change('background',e.currentTarget.value);}}>
+   <s-option value="#EBE5D9">Ivory</s-option><s-option value="#252B1D">Deep olive</s-option><s-option value="#FFFFFF">White</s-option><s-option value="#000000">Black</s-option><s-option value="custom">Custom — enter hex below</s-option>
+  </s-select>
+  <s-paragraph>Save the event template to use this background on new print jobs. In an already-open print desk, choose Reload event template. For dark backgrounds, choose a light text color.</s-paragraph>
+  {[['company','Company name'],['couple','Couple names'],['date','Event date text'],['background','Wrap background hex (any color)'],['color','Text color (hex)']].map(([key,label])=><s-text-field key={key} label={label} value={draft[key]} onInput={e=>change(key,e.currentTarget.value)} />)}
   {[['cutInches','Cut size in inches (3–3.75)'],['fontSize','Text size in points (5–12)'],['edgeInset','Text distance from cut edge in inches (0.06–0.25)']].map(([key,label])=><s-text-field key={key} label={label} value={String(draft[key])} onInput={e=>change(key,e.currentTarget.value)} />)}
   {templateSides.map(side=><s-box key={side} padding="base" border="base">
    <s-select label={side[0].toUpperCase()+side.slice(1)+' text'} value={draft.sides[side].source} onChange={e=>sideChange(side,'source',e.currentTarget.value)}>
