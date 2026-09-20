@@ -28,3 +28,8 @@ The candidate loads the image engine lazily and uses station-rollout.mts with ph
 Redeploy the 15 original version-14 source files from the saved deployment backup with index.ts, deno.json and verify_jwt=false. Leave the new database tables and migration history intact; the old API ignores them. This preserves any later photo/queue history. Dropping tables is not the routine reversal and requires separate data review.
 
 Physical camera/printer acceptance and MFA-protected end-to-end capture remain outstanding.
+
+## Final verification boundary
+Supabase reports live gallery-api version 17 ACTIVE with verify_jwt=false, the exact bundle checksum tested on the isolated endpoint, and photoStationRolloutReady=false. The final direct live HTTP checks timed out from this environment; the browser check was blocked by the browser client. Therefore final live HTTP/end-to-end acceptance is not complete. Do not enable capture until these checks can be completed.
+
+The temporary gallery-api-photo-station-check function was neutralized as version 3: verify_jwt=true, a single 404 response, and no gallery/database code.
