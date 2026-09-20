@@ -1,4 +1,4 @@
-import {cropRect,sheetLayout} from './atelier-station-core.js';
+import {cropRect,sheetLayout,normalizeTemplate,templateSides,resolveTemplateText,drawMagnet} from './atelier-station-core.js';
 const API='https://gefdlubvqymyxrguhtnc.supabase.co/functions/v1/gallery-api/station';
 const $=id=>document.getElementById(id),notice=message=>{$('notice').textContent=message;};
 const demo=new URLSearchParams(location.search).get('demo');
@@ -9,16 +9,18 @@ if(token){sessionStorage.setItem('ae-station',JSON.stringify({purpose,token}));h
 else{try{({purpose,token}=JSON.parse(sessionStorage.getItem('ae-station')||'{}'));}catch{}}
 if(demo==='capture'||demo==='print'){purpose=demo;token='demo';$('demo-label').hidden=false;}
 let stream,face='user',jpeg=null,requestId=null,attempted=false,busy=false,closed=false,selected=null,picture=null,timer,loadGeneration=0;
+let eventName='',template=normalizeTemplate();
 let demoJobs=[{id:'DEMO-001',status:'pending',quantity:2,x:50,y:50,zoom:1,version:1,created_at:new Date().toISOString()}];
 async function api(body){
  if(closed)throw Error('This station is closed.');
  if(token==='demo'){
   if(body.action==='info')return {name:'Sample celebration',purpose};
+  if(body.action==='template')return {template:normalizeTemplate({enabled:true,sides:{top:{source:'company'},bottom:{source:'event'}}})};
   if(body.action==='submit')return {received:true,photoId:'DEMO'};
   if(body.action==='queue')return {jobs:demoJobs.filter(j=>j.status===($('queue-filter').value||'pending'))};
   if(body.action==='update'){
    const j=demoJobs.find(j=>j.id===body.id);if(!j||j.version!==body.version)throw Error('Refresh the queue.');
-   Object.assign(j,{version:j.version+1,status:({claim:'printing',printed:'printed',retry:'pending',hold:'held'})[body.operation]},body.operation==='claim'?{quantity:body.quantity,x:body.x,y:body.y,zoom:body.zoom}:{});return {job:{...j}};
+   Object.assign(j,{version:j.version+1,status:({claim:'printing',printed:'printed',retry:'pending',hold:'held'})[body.operation]},body.operation==='claim'?{quantity:body.quantity,x:body.x,y:body.y,zoom:body.zoom,template:body.template}:{});return {job:{...j}};
   }
  }
  const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),90000);
@@ -32,6 +34,7 @@ function sync(){
  $('prepare').disabled=busy||!picture||selected?.status!=='pending'||closed;
  $('hold').disabled=busy||selected?.status!=='pending'||closed;
  $('printed').hidden=selected?.status!=='printing';$('retry').hidden=!['printing','held'].includes(selected?.status);
+ document.querySelectorAll('#template-editor input,#template-editor select,#template-editor button').forEach(el=>{el.disabled=busy||selected?.status!=='pending'||closed;});
  for(const id of ['x','y','zoom','reset-crop','quantity','cut'])$(id).disabled=busy||selected?.status!=='pending';
 }
 function stopCamera(){stream?.getTracks().forEach(t=>t.stop());stream=null;}
@@ -57,9 +60,38 @@ $('accept').onclick=()=>run(async()=>{
  try{const r=await api({action:'submit',requestId,jpeg});if(!r.received)throw Error('Receipt not confirmed. Retry this photo.');reset();notice(token==='demo'?'Demo complete. Nothing was uploaded.':'Photo received! Your attendant will prepare your magnet. Ready for the next guest.');}
  catch(e){$('accept').textContent='Retry this photo';throw e;}
 });
-function drawCrop(){$('zoom-value').textContent=Number($('zoom').value).toFixed(2)+'×';if(!picture)return;const c=$('crop'),ctx=c.getContext('2d'),r=cropRect(picture.naturalWidth,picture.naturalHeight,Number($('x').value),Number($('y').value),Number($('zoom').value));ctx.drawImage(picture,r.sx,r.sy,r.size,r.size,0,0,c.width,c.height);}
+function drawCrop(){$('zoom-value').textContent=Number($('zoom').value).toFixed(2)+'×';if(!picture)return;const c=$('crop'),ctx=c.getContext('2d'),r=cropRect(picture.naturalWidth,picture.naturalHeight,Number($('x').value),Number($('y').value),Number($('zoom').value));ctx.drawImage(picture,r.sx,r.sy,r.size,r.size,0,0,c.width,c.height);drawTemplatePreview();}
 $('x').oninput=drawCrop;$('y').oninput=drawCrop;$('zoom').oninput=drawCrop;
 $('reset-crop').onclick=()=>{if(busy||selected?.status!=='pending')return;$('x').value=50;$('y').value=50;$('zoom').value=1;drawCrop();};
+
+function templateContext(){return {name:eventName,photo:selected?.id.slice(0,8)??''};}
+function populateTemplate(value){
+ template=normalizeTemplate(value);$('template-enabled').checked=template.enabled;
+ $('cut').value=template.enabled?template.cutInches:template.photoCutInches;
+ $('template-background').value=template.background;$('template-color').value=template.color;$('template-font').value=template.fontSize;$('template-inset').value=template.edgeInset;
+ $('template-sides').replaceChildren();
+ for(const side of templateSides){
+  const label=document.createElement('label');label.textContent=side[0].toUpperCase()+side.slice(1)+' text';
+  const input=document.createElement('input');input.id='wrap-'+side;input.maxLength=100;input.value=resolveTemplateText(template,side,templateContext());input.oninput=drawTemplatePreview;label.append(input);$('template-sides').append(label);
+  const rotationLabel=document.createElement('label');rotationLabel.textContent=side+' orientation';const rotation=document.createElement('select');rotation.id='rotate-'+side;
+  for(const [value,text] of [['0','Standard'],['180','Rotate 180°']]){const option=document.createElement('option');option.value=value;option.textContent=text;rotation.append(option);}rotation.value=String(template.sides[side].rotate);rotation.onchange=drawTemplatePreview;rotationLabel.append(rotation);$('template-sides').append(rotationLabel);
+ }
+ drawTemplatePreview();sync();
+}
+function currentTemplate(){
+ const enabled=$('template-enabled').checked;
+ return normalizeTemplate({...template,enabled,photoCutInches:Number($('cut').value),cutInches:enabled?Number($('cut').value):template.cutInches,background:$('template-background').value,color:$('template-color').value,fontSize:Number($('template-font').value),edgeInset:Number($('template-inset').value),sides:Object.fromEntries(templateSides.map(side=>[side,{...template.sides[side],source:'custom',text:$('wrap-'+side)?.value??'',rotate:Number($('rotate-'+side)?.value??0)}]))});
+}
+function drawTemplatePreview(){
+ if(!picture)return;
+ const c=$('template-preview'),ctx=c.getContext('2d');ctx.clearRect(0,0,c.width,c.height);
+ try{const t=currentTemplate(),r=cropRect(picture.naturalWidth,picture.naturalHeight,Number($('x').value),Number($('y').value),Number($('zoom').value));drawMagnet(ctx,picture,r,{x:0,y:0,size:c.width},t,templateContext(),true);$('template-status').textContent=t.enabled?'Preview only: dashed fold guide does not print.':'Photo-only printing; wrap text is disabled.';}
+ catch(e){$('template-status').textContent=e.message;}
+}
+for(const id of ['cut','template-background','template-color','template-font','template-inset'])$(id).oninput=drawTemplatePreview;
+$('template-enabled').onchange=()=>{if($('template-enabled').checked&&Number($('cut').value)<3)$('cut').value=template.cutInches;drawTemplatePreview();};
+$('template-reset').onclick=()=>run(async()=>{populateTemplate((await api({action:'template'})).template);notice('Event template loaded.');});
+
 async function loadImage(url){const image=new Image();image.crossOrigin='anonymous';await new Promise((resolve,reject)=>{image.onload=resolve;image.onerror=()=>reject(Error('Photo could not load. Open the job again to refresh its link.'));image.src=url;});return image;}
 function sampleImage(){const c=document.createElement('canvas');c.width=1200;c.height=900;const x=c.getContext('2d');x.fillStyle='#d6d2bc';x.fillRect(0,0,1200,900);x.fillStyle='#4a4b36';x.fillRect(150,100,900,650);x.fillStyle='#fff';x.font='50px Georgia';x.fillText('DEMO · crop and print test',270,400);return c.toDataURL('image/jpeg');}
 function clearSheets(){$('sheets').replaceChildren();$('downloads').replaceChildren();$('sheet-controls').hidden=true;}
@@ -67,6 +99,8 @@ async function openJob(job){
  clearSheets();selected={...job};picture=null;$('editor').hidden=false;$('job-title').textContent='Photo '+job.id.slice(0,8)+' · '+job.status;
  $('zoom').value=job.zoom??1;$('zoom-value').textContent=Number($('zoom').value).toFixed(2)+'×';$('quantity').value=job.quantity;$('x').value=job.x;$('y').value=job.y;$('print-note').textContent=job.status==='printing'?'This job is reserved for printing. Check physical output before confirming or returning it to pending.':'';sync();
  const generation=++loadGeneration;
+ const templateData=job.template??(await api({action:'template'})).template;
+ if(closed||generation!==loadGeneration)return;populateTemplate(templateData);
  const url=token==='demo'?sampleImage():(await api({action:'image',id:job.id})).url;
  const loaded=await loadImage(url);if(closed||generation!==loadGeneration)return;picture=loaded;drawCrop();sync();
 }
@@ -78,13 +112,15 @@ async function queue(){
  if(r.jobs.length===100){const p=document.createElement('p');p.textContent='Showing the oldest 100 jobs in this status. Completing jobs reveals the next ones.';$('jobs').append(p);}
  if(selected){const fresh=r.jobs.find(j=>j.id===selected.id);if(fresh&&fresh.version!==selected.version){picture=null;clearSheets();sync();notice('This job changed in another window. Open it again before printing.');}}
 }
-async function update(operation){const r=await api({action:'update',id:selected.id,version:selected.version,operation,quantity:Number($('quantity').value),x:Number($('x').value),y:Number($('y').value),zoom:Number($('zoom').value)});selected=r.job;return r.job;}
+async function update(operation,printTemplate){const r=await api({action:'update',...(printTemplate?{template:printTemplate}:{}),id:selected.id,version:selected.version,operation,quantity:Number($('quantity').value),x:Number($('x').value),y:Number($('y').value),zoom:Number($('zoom').value)});selected=r.job;return r.job;}
 $('prepare').onclick=()=>run(async()=>{
+ const printTemplate=currentTemplate();
+ if(printTemplate.enabled){const loaded=await document.fonts.load('12px "Brown Carolina"');if(!loaded.length)throw Error('Print font could not load. Check your connection and retry.');}
  const pages=sheetLayout(Number($('quantity').value),Number($('cut').value));
  const r=cropRect(picture.naturalWidth,picture.naturalHeight,Number($('x').value),Number($('y').value),Number($('zoom').value));
  // Render first; reserve atomically before exposing a printable sheet.
- const urls=pages.map(slots=>{const c=document.createElement('canvas');c.width=1800;c.height=1200;const ctx=c.getContext('2d');ctx.fillStyle='white';ctx.fillRect(0,0,c.width,c.height);for(const slot of slots){ctx.drawImage(picture,r.sx,r.sy,r.size,r.size,slot.x,slot.y,slot.size,slot.size);}return c.toDataURL('image/png');});
- await update('claim');clearSheets();
+ const urls=pages.map(slots=>{const c=document.createElement('canvas');c.width=1800;c.height=1200;const ctx=c.getContext('2d');ctx.fillStyle='white';ctx.fillRect(0,0,c.width,c.height);for(const slot of slots){drawMagnet(ctx,picture,r,slot,printTemplate,templateContext());}return c.toDataURL('image/png');});
+ await update('claim',printTemplate);clearSheets();
  urls.forEach((url,i)=>{const img=document.createElement('img');img.src=url;img.alt='Print sheet '+(i+1);$('sheets').append(img);const a=document.createElement('a');a.href=url;a.download='AE-'+selected.id+'-sheet-'+(i+1)+'.png';a.textContent='Download sheet '+(i+1);$('downloads').append(a);});
  $('sheet-controls').hidden=false;notice('Sheets ready. Print at actual size, then verify physical output.');await queue();
 });
@@ -99,4 +135,4 @@ window.addEventListener('beforeunload',e=>{if(jpeg){e.preventDefault();e.returnV
 window.addEventListener('pagehide',stopCamera);
 document.addEventListener('visibilitychange',()=>{if(document.hidden)stopCamera();else if(purpose==='capture'&&!jpeg&&!closed){$('start').hidden=false;$('take').hidden=true;$('switch').hidden=true;notice('Tap Enable camera to resume.');}});
 async function poll(){if(closed)return;try{if(!busy&&!document.hidden)await queue();}catch(e){notice('Queue refresh failed: '+e.message);}finally{if(!closed)timer=setTimeout(poll,5000);}}
-(async()=>{try{if(!token||!['capture','print'].includes(purpose))throw Error('Open an event-specific station link created in your owner app.');const info=await api({action:'info'});$('event-name').textContent=info.name;$('title').textContent=purpose==='capture'?'Make a memory':'Event print desk';$(purpose==='capture'?'capture':'printing').hidden=false;notice(purpose==='capture'?'Tap Enable camera to begin.':'Print desk connected.');if(purpose==='print')await poll();}catch(e){notice(e.message);}sync();})();
+(async()=>{try{if(!token||!['capture','print'].includes(purpose))throw Error('Open an event-specific station link created in your owner app.');const info=await api({action:'info'});eventName=info.name;$('event-name').textContent=info.name;$('title').textContent=purpose==='capture'?'Make a memory':'Event print desk';$(purpose==='capture'?'capture':'printing').hidden=false;notice(purpose==='capture'?'Tap Enable camera to begin.':'Print desk connected.');if(purpose==='print'){document.fonts.load('12px "Brown Carolina"').then(drawTemplatePreview).catch(()=>{});await poll();}}catch(e){notice(e.message);}sync();})();

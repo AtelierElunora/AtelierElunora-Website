@@ -11,6 +11,7 @@ const w=new Window({url:'https://admin.shopify.com/'});w.eval(outputFiles[0].tex
 const calls=[];const route='owner/station/11111111-1111-4111-8111-111111111111';
 const props={event:{id:route.split('/')[2]},busy:false,run:fn=>fn(),call:async(path,body)=>{
  calls.push({path,body});assert.equal(path,route);
+ if(body?.action==='template')return {template:body.template};
  if(body?.action==='create')return {id:'station-1',expiresAt:'2026-09-21T01:00:00Z',url:'https://www.atelierelunora.com/pages/photo-station#capture=test-only'};
  return {stations:[],jobs:[{id:'photo-12345678',status:'pending',created_at:'2026-09-20T01:00:00Z'}]};
 }};
@@ -22,5 +23,6 @@ try{
  await until(()=>w.document.querySelector('s-link'));
  assert.ok(calls.some(c=>c.body?.action==='create'&&c.body.purpose==='capture'));
  assert.match(w.document.querySelector('s-link').getAttribute('href'),/#capture=test-only$/);
+ const save=[...w.document.querySelectorAll('s-button')].find(b=>b.textContent==='Save event template');assert.ok(save);save.click();await until(()=>calls.some(c=>c.body?.action==='template'));assert.equal(calls.find(c=>c.body?.action==='template').body.template.cutInches,3.25);
  console.log('PASS: owner Photo Station panel mounts using Preact, loads queue, and creates a capture link.');
 }finally{w.unmountOwnerStation();w.happyDOM.abort();}

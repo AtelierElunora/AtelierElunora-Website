@@ -8,10 +8,10 @@ assert.deepEqual(cropRect(900,1200,50,0),{sx:0,sy:0,size:900});
 assert.deepEqual(cropRect(1200,900,50,50,2),{sx:375,sy:225,size:450});
 assert.deepEqual(cropRect(1200,900,100,100,3),{sx:900,sy:600,size:300});
 for(const z of [0,0.9,3.1,NaN,Infinity])assert.throws(()=>cropRect(1200,900,50,50,z));
-for(const qty of [1,2,3,12])for(const cut of [2.5,2.75,2.9]){
+for(const qty of [1,2,3,12])for(const cut of [2.5,2.75,2.9,3.25,3.75]){
  const pages=sheetLayout(qty,cut);assert.equal(pages.flat().length,qty);for(const slot of pages.flat()){assert.ok(slot.x>=0&&slot.y>=0&&slot.x+slot.size<=1800&&slot.y+slot.size<=1200);}
 }
-assert.throws(()=>sheetLayout(13));assert.throws(()=>sheetLayout(2,3));assert.throws(()=>cropRect(1,1,Infinity,0));
+assert.throws(()=>sheetLayout(13));assert.throws(()=>sheetLayout(2,4));assert.throws(()=>cropRect(1,1,Infinity,0));
 const token='a'.repeat(64),id='11111111-1111-4111-8111-111111111111';let calls=[];
 const service={rpc:async(name)=>{calls.push(name);return {data:{event_id:id}};},from:()=>({select:()=>({eq:()=>({single:async()=>({data:{name:'Test'}})})})})};
 assert.equal((await stationRequest({token:'bad'},service,reply)).status,403);assert.equal(calls.length,0);

@@ -1,6 +1,7 @@
 /** @jsxRuntime classic */
 /** @jsx h */
 import {h} from 'preact';
+import {MagnetTemplate} from './MagnetTemplate.jsx';
 import {useEffect,useRef,useState} from 'preact/hooks';
 
 export function PhotoStation({event,call,run,busy}){
@@ -31,6 +32,7 @@ export function PhotoStation({event,call,run,busy}){
    <s-link href={link.url} target="_blank">{link.purpose==='capture'?'Open capture screen':'Open print desk'}</s-link>
    <s-text-field label="Private device link — copy the complete link" value={link.url} readOnly />
   </s-box>}
+  {state&&<MagnetTemplate key={event.id} initial={state.template} call={call} route={route} run={run} busy={busy} />}
   {state&&<s-stack gap="base">
    <s-paragraph>{state.jobs.filter(j=>j.status==='pending').length} pending | {state.jobs.filter(j=>j.status==='printing').length} awaiting print confirmation | {state.jobs.filter(j=>j.status==='held').length} held{state.jobs.length===100?' (oldest 100 outstanding jobs)':''}. Refreshes every 5 seconds.</s-paragraph>
    {state.jobs.slice(0,8).map(j=><s-paragraph key={j.id}>Photo {j.id.slice(0,8)} · {j.status} · {new Date(j.created_at).toLocaleTimeString()}</s-paragraph>)}

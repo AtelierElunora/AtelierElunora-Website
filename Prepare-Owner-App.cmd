@@ -24,12 +24,12 @@ call npx.cmd --yes --package=@shopify/cli@4.8.0 shopify app config validate --js
 if errorlevel 1 goto :failed
 call npx.cmd --yes --package=@shopify/cli@4.8.0 shopify app build
 if errorlevel 1 goto :failed
-call npx.cmd --yes --package=@shopify/cli@4.8.0 shopify app deploy --no-release --message "Photo station capture and print queue"
+call npx.cmd --yes --package=@shopify/cli@4.8.0 shopify app deploy --no-release --message "Magnet wrap templates"
 if errorlevel 1 goto :failed
 echo.
 echo App version uploaded for review. It has NOT been released or installed.
 echo Save the version identifier shown above and share it in the conversation.
-echo Photo capture remains disabled until theme and app acceptance are complete.
+echo Publish the prepared Magnet Wrap Templates theme and release this app version.
 pause
 exit /b 0
 :missing

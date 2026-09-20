@@ -12,6 +12,7 @@ create table public.gallery_activity_log(source text,actor_user_id uuid,event_id
 grant usage on schema public,auth to service_role; grant all on all tables in schema public,auth to service_role;`);
 await db.exec(await readFile(new URL('../supabase/migrations/20260920025307_event_photo_station.sql',import.meta.url),'utf8'));
 await db.exec(await readFile(new URL('../supabase/migrations/20260920025317_photo_station_zoom.sql',import.meta.url),'utf8'));
+await db.exec(await readFile(new URL('../supabase/migrations/20260920183216_magnet_wrap_template.sql',import.meta.url),'utf8'));
 const event='11111111-1111-4111-8111-111111111111',owner='22222222-2222-4222-8222-222222222222',cap='a'.repeat(64),printer='b'.repeat(64),request='33333333-3333-4333-8333-333333333333';
 await db.query('insert into auth.users values($1)',[owner]);await db.query('insert into gallery_admins values($1)',[owner]);await db.query('insert into gallery_events(id,name) values($1,$2)',[event,'Test']);
 for(const [token,purpose] of [[cap,'capture'],[printer,'print']])await db.query("insert into gallery_stations(event_id,actor_id,token_hash,purpose,expires_at) values($1,$2,$3,$4,now()+interval '12 hours')",[event,owner,token,purpose]);
@@ -32,13 +33,13 @@ const change=(version,action,q=2,x=50,zoom=2)=>db.query('select * from gallery_p
 await assert.rejects(change(1,'claim',99),/check constraint/);
 await assert.rejects(change(1,'claim',2,101),/check constraint/);
 await assert.rejects(change(1,'claim',2,50,4),/check constraint/);
-const claimed=(await change(1,'claim')).rows[0];assert.equal(Number(claimed.zoom),2);assert.equal(claimed.status,'printing');assert.equal(claimed.version,2);
+const claimed=(await db.query("select * from gallery_print_update($1,$2,1,'claim',2,50,50,2,$3)",[printer,photo.id,JSON.stringify({enabled:true,cutInches:3.25})])).rows[0];assert.equal(claimed.template.cutInches,3.25);assert.equal(Number(claimed.zoom),2);assert.equal(claimed.status,'printing');assert.equal(claimed.version,2);
 await assert.rejects(change(1,'claim'),/Queue changed/);
 await assert.rejects(change(2,'claim'),/Invalid print transition/);
 await change(2,'retry');await change(3,'hold');await change(4,'retry');await change(5,'claim');await change(6,'printed');
 await assert.rejects(change(7,'claim'),/Invalid print transition/);
 await assert.rejects(db.query('select gallery_station_check($1,$2)',[cap,'print']),/Station unavailable/);
-await db.exec('reset role');await db.exec('set role anon');await assert.rejects(db.query('select * from gallery_stations'),/permission denied/);await assert.rejects(db.query('select gallery_station_check($1,$2)',[cap,'capture']),/permission denied/);await db.exec('reset role');
+await db.exec('reset role');await db.exec('set role anon');await assert.rejects(db.query('select * from gallery_magnet_templates'),/permission denied/);await assert.rejects(db.query('select * from gallery_stations'),/permission denied/);await assert.rejects(db.query('select gallery_station_check($1,$2)',[cap,'capture']),/permission denied/);await db.exec('reset role');
 await db.exec('set role authenticated');await assert.rejects(db.query('select * from gallery_print_jobs'),/permission denied/);await assert.rejects(db.query('select gallery_capture_finish($1,$2,1000,200)',[cap,request]),/permission denied/);await db.exec('reset role');
 await db.query('update gallery_events set deleted_at=now() where id=$1',[event]);await assert.rejects(reserve(),/Event unavailable/);await db.query('update gallery_events set deleted_at=null where id=$1',[event]);
 await db.query('update gallery_stations set revoked=true where token_hash=$1',[cap]);await assert.rejects(reserve(),/Station unavailable/);

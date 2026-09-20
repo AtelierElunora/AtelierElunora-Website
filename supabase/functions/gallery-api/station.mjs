@@ -1,3 +1,4 @@
+import {normalizeTemplate} from './magnet-template.mjs';
 // No owner JWTs on guest devices. Capabilities are random, hashed, scoped and expiring.
 export const uuid=v=>typeof v==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
 export const hash=async value=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',typeof value==='string'?new TextEncoder().encode(value):value)),b=>b.toString(16).padStart(2,'0')).join('');
@@ -6,9 +7,16 @@ export async function ownerStation(request,parts,client,service,actor,body,reply
  const eventId=parts[2]; if(!uuid(eventId)||parts.length!==3)return reply({error:'Not found.'},404);
  const {data:event,error}=await client.from('gallery_events').select('id,name,deleted_at,purge_started_at').eq('id',eventId).maybeSingle();
  if(error||!event||event.deleted_at||event.purge_started_at)return reply({error:'Event unavailable.'},404);
+ if(body.action==='template'&&request.method==='POST'){
+  let template;try{template=normalizeTemplate(body.template);}catch(e){return reply({error:e.message},400);}
+  const saved=await service.from('gallery_magnet_templates').upsert({event_id:eventId,template,updated_at:new Date().toISOString()},{onConflict:'event_id'});
+  return saved.error?fail(reply,saved.error):reply({template});
+ }
  if(request.method==='GET'){
+  const saved=await service.from('gallery_magnet_templates').select('template').eq('event_id',eventId).maybeSingle();
+  if(saved.error)return fail(reply,saved.error);
   const [stations,jobs]=await Promise.all([service.from('gallery_stations').select('id,purpose,expires_at,revoked,submitted').eq('event_id',eventId).eq('revoked',false).gt('expires_at',new Date().toISOString()),service.from('gallery_print_jobs').select('id,status,quantity,created_at').eq('event_id',eventId).neq('status','printed').order('created_at').order('id').limit(100)]);
-  return stations.error||jobs.error?reply({error:'Could not load station status.'},503):reply({stations:stations.data,jobs:jobs.data});
+  return stations.error||jobs.error?reply({error:'Could not load station status.'},503):reply({stations:stations.data,jobs:jobs.data,template:saved.data?.template??normalizeTemplate()});
  }
  if(body.action==='revoke'&&uuid(body.id)){
   const r=await service.from('gallery_stations').update({revoked:true}).eq('id',body.id).eq('event_id',eventId);
@@ -52,9 +60,13 @@ export async function stationRequest(body,service,reply,render){
   const done=await service.rpc('gallery_capture_finish',{p_hash:digest,p_request:body.requestId,p_original_bytes:bytes.length,p_preview_bytes:preview.length});
   return done.error?fail(reply,done.error):reply({received:true,photoId:done.data});
  }
+ if(body.action==='template'){
+  const saved=await service.from('gallery_magnet_templates').select('template').eq('event_id',station.event_id).maybeSingle();
+  return saved.error?fail(reply,saved.error):reply({template:saved.data?.template??normalizeTemplate()});
+ }
  if(body.action==='queue'){
   if(!['pending','printing','held'].includes(body.status))return reply({error:'Invalid queue status.'},400);
-  const r=await service.from('gallery_print_jobs').select('id,status,quantity,x,y,zoom,version,created_at').eq('event_id',station.event_id).eq('status',body.status).order('created_at').order('id').limit(100);
+  const r=await service.from('gallery_print_jobs').select('id,status,quantity,x,y,zoom,version,created_at,template').eq('event_id',station.event_id).eq('status',body.status).order('created_at').order('id').limit(100);
   return r.error?fail(reply,r.error):reply({jobs:r.data});
  }
  if(body.action==='image'&&uuid(body.id)){
@@ -68,7 +80,8 @@ export async function stationRequest(body,service,reply,render){
  if(body.action==='update'&&uuid(body.id)&&Number.isSafeInteger(body.version)&&['claim','printed','retry','hold'].includes(body.operation)){
   const quantity=body.quantity??1,x=body.x??50,y=body.y??50,zoom=body.zoom??1;
   if(!Number.isFinite(zoom)||zoom<1||zoom>3||!Number.isInteger(quantity)||quantity<1||quantity>12||!Number.isFinite(x)||!Number.isFinite(y)||x<0||x>100||y<0||y>100)return reply({error:'Invalid crop or quantity.'},400);
-  const r=await service.rpc('gallery_print_update',{p_hash:digest,p_id:body.id,p_version:body.version,p_action:body.operation,p_quantity:quantity,p_x:x,p_y:y,p_zoom:zoom});
+  let template=null;if(body.template!==undefined){try{template=normalizeTemplate(body.template);}catch(e){return reply({error:e.message},400);}}
+  const r=await service.rpc('gallery_print_update',{p_hash:digest,p_id:body.id,p_version:body.version,p_action:body.operation,p_quantity:quantity,p_x:x,p_y:y,p_zoom:zoom,p_template:template});
   return r.error?fail(reply,r.error):reply({job:r.data});
  }
  return reply({error:'Not found.'},404);

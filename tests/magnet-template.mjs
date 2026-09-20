@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import {normalizeTemplate,drawMagnet,sheetLayout} from '../theme/assets/atelier-station-core.js';
+import {normalizeTemplate as serverTemplate} from '../supabase/functions/gallery-api/magnet-template.mjs';
+const t=normalizeTemplate({enabled:true,sides:{top:{source:'company'},right:{source:'couple'},bottom:{source:'date'},left:{source:'photo'}},couple:'Alex & Sam',date:'September 20, 2026'});
+assert.deepEqual(t,serverTemplate(t));assert.equal(t.cutInches,3.25);
+for(const bad of [{cutInches:2.5},{cutInches:4},{fontSize:NaN},{edgeInset:0.25,fontSize:12,cutInches:3},{color:'red'},{company:'a'.repeat(101)},{sides:{top:{source:'html'}}}])assert.throws(()=>normalizeTemplate(bad));
+const text=[],images=[],guides=[];const ctx={save(){},restore(){},translate(){},rotate(){},fillRect(){},fillText(...a){text.push(a)},drawImage(...a){images.push(a)},setLineDash(){},strokeRect(...a){guides.push(a)}};
+drawMagnet(ctx,{}, {sx:0,sy:0,size:900},{x:0,y:0,size:975},t,{photo:'12345678'});
+assert.deepEqual(text.map(x=>x[0]),['Atelier Elunora','Alex & Sam','September 20, 2026','12345678']);
+assert.deepEqual(images[0].slice(-4),[112.5,112.5,750,750]);assert.equal(guides.length,0);
+drawMagnet(ctx,{}, {sx:0,sy:0,size:900},{x:0,y:0,size:975},t,{},true);assert.equal(guides.length,1);
+assert.equal(sheetLayout(2,3.25).length,2);assert.equal(sheetLayout(2,2.9).length,1);
+console.log('PASS: template validation, server/client parity, text sources, 2.5-inch face, preview-only guides, 3.25-inch layout.');
