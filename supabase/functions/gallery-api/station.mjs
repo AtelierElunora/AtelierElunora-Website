@@ -60,13 +60,29 @@ export async function stationRequest(body,service,reply,render){
   const done=await service.rpc('gallery_capture_finish',{p_hash:digest,p_request:body.requestId,p_original_bytes:bytes.length,p_preview_bytes:preview.length});
   return done.error?fail(reply,done.error):reply({received:true,photoId:done.data});
  }
+ if(body.action==='batch-status'){
+  const r=await service.from('gallery_print_jobs').select('id,status,quantity,x,y,zoom,version,created_at,template,letter_batch_id,letter_slot').eq('event_id',station.event_id).eq('status','printing').not('letter_batch_id','is',null).order('letter_slot').limit(6);
+  return r.error?fail(reply,r.error):reply({batch:r.data.length?{id:r.data[0].letter_batch_id,jobs:r.data,created:false}:null});
+ }
+ if(body.action==='batch-claim'&&uuid(body.requestId)&&typeof body.partial==='boolean'){
+  const saved=await service.from('gallery_magnet_templates').select('template').eq('event_id',station.event_id).maybeSingle();
+  if(saved.error)return fail(reply,saved.error);
+  let template;try{template=normalizeTemplate(saved.data?.template??{});}catch{return reply({error:'Correct the saved event template before using automatic printing.'},400);}
+  const r=await service.rpc('gallery_letter_claim',{p_hash:digest,p_request:body.requestId,p_template:template,p_partial:body.partial});
+  if(r.error?.code==='PT422')return reply({error:'Six-up letter printing needs a cut size of 3.6 inches or less. Update the event template or use single-photo printing; 3.75 inches will not fit.'},422);
+  return r.error?fail(reply,r.error):reply(r.data);
+ }
+ if(body.action==='batch-finish'&&uuid(body.id)&&['printed','release'].includes(body.operation)){
+  const r=await service.rpc('gallery_letter_finish',{p_hash:digest,p_batch:body.id,p_action:body.operation});
+  return r.error?fail(reply,r.error):reply(r.data);
+ }
  if(body.action==='template'){
   const saved=await service.from('gallery_magnet_templates').select('template').eq('event_id',station.event_id).maybeSingle();
   return saved.error?fail(reply,saved.error):reply({template:saved.data?.template??normalizeTemplate()});
  }
  if(body.action==='queue'){
   if(!['pending','printing','held'].includes(body.status))return reply({error:'Invalid queue status.'},400);
-  const r=await service.from('gallery_print_jobs').select('id,status,quantity,x,y,zoom,version,created_at,template').eq('event_id',station.event_id).eq('status',body.status).order('created_at').order('id').limit(100);
+  const r=await service.from('gallery_print_jobs').select('id,status,quantity,x,y,zoom,version,created_at,template,letter_batch_id,letter_slot').eq('event_id',station.event_id).eq('status',body.status).order('created_at').order('id').limit(100);
   return r.error?fail(reply,r.error):reply({jobs:r.data});
  }
  if(body.action==='image'&&uuid(body.id)){

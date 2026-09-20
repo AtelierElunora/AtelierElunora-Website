@@ -30,3 +30,30 @@ p.document.getElementById('template-background-hex').value='#123456';p.document.
 p.document.getElementById('prepare').click();await settle();assert.equal(p.document.querySelectorAll('#sheets img').length,3);assert.deepEqual(updates,['claim']);assert.equal(claimZoom,2);assert.equal(claimTemplate.background,'#123456');assert.equal(claimTemplate.edgeInset,0.175);assert.equal(draws.at(-1)[3],450);
 p.document.getElementById('print').click();assert.equal(prints,1);assert.deepEqual(updates,['claim']);p.document.getElementById('printed').click();await settle();assert.deepEqual(updates,['claim','printed']);assert.equal(p.document.querySelectorAll('#sheets img').length,0);p.happyDOM.abort();
 console.log('PASS: simulated browser capture, approval, failed upload retry with same ID, reset/privacy, queue loading, 3-copy/3-sheet rendering, claim before print and explicit physical-print confirmation.');
+// Full sheets trigger one print request; recovery and polling never reprint them.
+const l=windowFor('print');let jobs=Array.from({length:5},(_,i)=>({id:'00000000-0000-4000-8000-'+String(i+10).padStart(12,'0'),status:'pending',version:1,quantity:1,x:50,y:50,zoom:1,created_at:new Date().toISOString()})),active=null,letterPrints=0,claims=0;
+l.Image=class{naturalWidth=1200;naturalHeight=900;set src(v){queueMicrotask(()=>this.onload());}};l.print=()=>letterPrints++;l.confirm=()=>true;
+const fetchLetter=async(_,options)=>{const b=JSON.parse(options.body);let data;
+ if(b.action==='info')data={name:'Letter event'};
+ if(b.action==='template')data={template:{enabled:true,cutInches:3.6,background:'#123456'}};
+ if(b.action==='queue')data={jobs:jobs.filter(j=>j.status===b.status)};
+ if(b.action==='batch-status')data={batch:active};
+ if(b.action==='image')data={url:'https://example.test/photo.jpg'};
+ if(b.action==='batch-claim'){claims++;const eligible=jobs.filter(j=>j.status==='pending').slice(0,6);if(active)data={...active,created:false};else if(eligible.length<6&&!b.partial)data={waiting:true,count:eligible.length};else{eligible.forEach((j,i)=>Object.assign(j,{status:'printing',letter_batch_id:b.requestId,letter_slot:i,template:{enabled:true,cutInches:3.6,background:'#123456'}}));active={id:b.requestId,jobs:eligible};data={...active,created:true};}}
+ if(b.action==='batch-finish'){active.jobs.forEach(j=>j.status=b.operation==='printed'?'printed':'pending');data={updated:active.jobs.length};active=null;}
+ return {ok:true,json:async()=>data};};
+l.fetch=fetchLetter;l.eval(script);await settle();l.document.getElementById('letter-toggle').click();await settle();assert.equal(letterPrints,0);assert.match(l.document.getElementById('letter-status').textContent,/5 of 6/);
+jobs.push({...jobs[0],id:'00000000-0000-4000-8000-000000000099'});l.document.getElementById('refresh').click();await settle();assert.equal(letterPrints,1);assert.equal(l.document.querySelectorAll('#sheets.letter-sheets img').length,1);
+l.document.getElementById('refresh').click();await settle();assert.equal(letterPrints,1);
+const recovery=windowFor('print');recovery.fetch=fetchLetter;recovery.print=()=>letterPrints++;recovery.confirm=()=>true;recovery.eval(script);await settle();assert.match(recovery.document.getElementById('letter-status').textContent,/already reserved/);assert.equal(letterPrints,1);assert.equal(recovery.document.getElementById('letter-confirm').disabled,false);recovery.happyDOM.abort();
+for(let i=0;i<6;i++)jobs.push({...jobs[0],id:'00000000-0000-4000-8000-'+String(i+200).padStart(12,'0'),status:'pending',letter_batch_id:null});
+l.document.getElementById('refresh').click();await settle();assert.equal(letterPrints,1);
+l.document.getElementById('letter-confirm').click();await settle();assert.equal(letterPrints,2);assert.equal(jobs.filter(j=>j.status==='printed').length,6);
+l.document.getElementById('letter-release').click();await settle();assert.equal(l.document.querySelectorAll('#sheets img').length,0);assert.equal(l.document.getElementById('letter-toggle').textContent,'Start automatic six-photo sheets');l.happyDOM.abort();
+console.log('PASS: five-photo wait, sixth-photo automatic print, no repeat on polling/recovery, next batch after confirmation and cancellation pauses queue.');
+// A rendering failure reserves the sheet but pauses automation without printing.
+const broken=windowFor('print');let brokenPrints=0;broken.fetch=fetchLetter;broken.confirm=()=>true;broken.print=()=>brokenPrints++;broken.Image=class{set src(v){queueMicrotask(()=>this.onerror());}};
+broken.eval(script);await settle();broken.document.getElementById('letter-toggle').click();await settle();assert.equal(brokenPrints,0);assert.ok(active);assert.match(broken.document.getElementById('letter-status').textContent,/paused/);assert.equal(broken.document.querySelectorAll('#sheets img').length,0);broken.happyDOM.abort();
+active=null;jobs=jobs.filter(j=>j.status==='pending'||j.status==='printing').slice(0,2).map(j=>({...j,status:'pending',letter_batch_id:null}));
+const partialWindow=windowFor('print');let partialPrints=0;partialWindow.fetch=fetchLetter;partialWindow.confirm=()=>true;partialWindow.print=()=>partialPrints++;partialWindow.Image=l.Image;partialWindow.eval(script);await settle();partialWindow.document.getElementById('letter-partial').click();await settle();assert.equal(partialPrints,1);assert.equal(active.jobs.length,2);partialWindow.happyDOM.abort();
+console.log('PASS: image-load failure leaves a recoverable reservation and pauses automation; explicit partial-sheet printing works.');

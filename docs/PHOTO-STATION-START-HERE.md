@@ -90,3 +90,7 @@ Use `PHOTO_STATION_ENABLED=false` to stop all station API operations quickly. Ex
 - Owner app and Edge Function source bundled to verify import/syntax compatibility. This is not a live Supabase Edge Runtime deployment or production end-to-end test.
 
 Reference documentation: [Supabase standard uploads](https://supabase.com/docs/guides/storage/uploads/standard-uploads), [Edge Function authentication](https://supabase.com/docs/guides/functions/auth), [browser camera access](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia).
+
+## Automatic six-photo Letter sheets
+
+See [LETTER-PRINT-QUEUE.md](LETTER-PRINT-QUEUE.md) for the new print-desk mode, v1.38 publication steps, 3.6-inch cut limit, browser print-dialog behavior and physical acceptance checks. This feature does not require another owner-app deployment.

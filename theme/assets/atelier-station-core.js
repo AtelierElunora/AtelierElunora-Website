@@ -33,3 +33,9 @@ export function drawMagnet(ctx,picture,crop,slot,template,context={},guides=fals
  if(guides){ctx.strokeStyle='#b34c26';ctx.lineWidth=1;ctx.setLineDash([6,4]);ctx.strokeRect(margin,margin,face,face);ctx.setLineDash([]);}
  ctx.restore();
 }
+
+export function letterLayout(cuts){
+ if(!Array.isArray(cuts)||cuts.length<1||cuts.length>6||cuts.some(c=>!Number.isFinite(c)||c<2.5||c>3.6))throw Error('Letter sheets hold up to six designs with cuts of 2.5–3.6 inches.');
+ const cell=Math.round(Math.max(...cuts)*300),gap=30,left=(2550-2*cell-gap)/2,top=(3300-3*cell)/2;
+ return cuts.map((cut,i)=>{const size=Math.round(cut*300);return {x:left+(i%2)*(cell+gap)+(cell-size)/2,y:top+Math.floor(i/2)*cell+(cell-size)/2,size};});
+}

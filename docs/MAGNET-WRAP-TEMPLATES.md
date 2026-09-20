@@ -41,3 +41,7 @@ Staged only three station files in v1.36 — Wrap Background Colors (19175220867
 The owner and print desk now show Text distance from image edge, inches, measured to the text center. Increasing it moves text outward; decreasing moves it toward the photo. Positive per-side adjustments also move outward. Existing persisted cut-edge measurements are converted for editing and converted back when saved, preserving previous physical positions and API compatibility. Example: 3.25-inch cut, 2.5-inch photo, old 0.12-inch cut inset displays as 0.255 inch from the image. Brown Carolina, colors, front size, security and snapshots remain unchanged. No database/API deployment required.
 
 Staged v1.37 — Image Edge Spacing (191753027872), duplicated from live v1.36. Only station JS and the standalone template changed. Publish v1.37 and deploy/release the latest owner app from the development branch. Tests cover legacy distance display, outward-side conversion, save and print snapshot conversion, and typing across refresh.
+
+## Automatic six-photo Letter sheets
+
+See [LETTER-PRINT-QUEUE.md](LETTER-PRINT-QUEUE.md) for the new print-desk mode, v1.38 publication steps, 3.6-inch cut limit, browser print-dialog behavior and physical acceptance checks. This feature does not require another owner-app deployment.
