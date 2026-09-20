@@ -1,0 +1,102 @@
+import {cropRect,sheetLayout} from './atelier-station-core.js';
+const API='https://gefdlubvqymyxrguhtnc.supabase.co/functions/v1/gallery-api/station';
+const $=id=>document.getElementById(id),notice=message=>{$('notice').textContent=message;};
+const demo=new URLSearchParams(location.search).get('demo');
+const fragment=new URLSearchParams(location.hash.slice(1));
+let purpose=fragment.has('capture')?'capture':fragment.has('print')?'print':null;
+let token=purpose?fragment.get(purpose):null;
+if(token){sessionStorage.setItem('ae-station',JSON.stringify({purpose,token}));history.replaceState(null,'',location.pathname+location.search);}
+else{try{({purpose,token}=JSON.parse(sessionStorage.getItem('ae-station')||'{}'));}catch{}}
+if(demo==='capture'||demo==='print'){purpose=demo;token='demo';$('demo-label').hidden=false;}
+let stream,face='user',jpeg=null,requestId=null,attempted=false,busy=false,closed=false,selected=null,picture=null,timer,loadGeneration=0;
+let demoJobs=[{id:'DEMO-001',status:'pending',quantity:2,x:50,y:50,zoom:1,version:1,created_at:new Date().toISOString()}];
+async function api(body){
+ if(closed)throw Error('This station is closed.');
+ if(token==='demo'){
+  if(body.action==='info')return {name:'Sample celebration',purpose};
+  if(body.action==='submit')return {received:true,photoId:'DEMO'};
+  if(body.action==='queue')return {jobs:demoJobs.filter(j=>j.status===($('queue-filter').value||'pending'))};
+  if(body.action==='update'){
+   const j=demoJobs.find(j=>j.id===body.id);if(!j||j.version!==body.version)throw Error('Refresh the queue.');
+   Object.assign(j,{version:j.version+1,status:({claim:'printing',printed:'printed',retry:'pending',hold:'held'})[body.operation]},body.operation==='claim'?{quantity:body.quantity,x:body.x,y:body.y,zoom:body.zoom}:{});return {job:{...j}};
+  }
+ }
+ const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),90000);
+ try{const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json','X-Elunora-Request':'1'},body:JSON.stringify({...body,token,purpose}),signal:controller.signal});const d=await r.json();if(!r.ok)throw Error(d.error||'Please retry.');return d;}
+ catch(e){if(e.name==='AbortError'||e instanceof TypeError)throw Error('Connection interrupted. Keep this screen open and retry.');throw e;}finally{clearTimeout(timeout);}
+}
+async function run(fn){if(busy||closed)return;busy=true;sync();try{await fn();}catch(e){notice(e.message);}finally{busy=false;sync();}}
+function sync(){
+ document.querySelectorAll('button').forEach(b=>{b.disabled=busy||closed;});
+ $('retake').disabled=busy||attempted||closed;
+ $('prepare').disabled=busy||!picture||selected?.status!=='pending'||closed;
+ $('hold').disabled=busy||selected?.status!=='pending'||closed;
+ $('printed').hidden=selected?.status!=='printing';$('retry').hidden=!['printing','held'].includes(selected?.status);
+ for(const id of ['x','y','zoom','reset-crop','quantity','cut'])$(id).disabled=busy||selected?.status!=='pending';
+}
+function stopCamera(){stream?.getTracks().forEach(t=>t.stop());stream=null;}
+async function camera(){
+ stopCamera();
+ if(!navigator.mediaDevices?.getUserMedia)throw Error('Open this page in Safari or Chrome over HTTPS to use the camera.');
+ stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:face},width:{ideal:2400},height:{ideal:1800}},audio:false});
+ $('camera').srcObject=stream;await $('camera').play();$('start').hidden=true;$('take').hidden=false;$('switch').hidden=false;notice('Ready for your photo.');
+}
+function reset(){$('start').hidden=Boolean(stream);jpeg=null;requestId=null;attempted=false;$('review').removeAttribute('src');$('review').hidden=true;$('camera').hidden=false;$('retake').hidden=true;$('accept').hidden=true;$('accept').textContent='Use this photo';$('take').hidden=!stream;$('switch').hidden=!stream;}
+$('start').onclick=()=>run(camera);
+$('switch').onclick=()=>run(async()=>{face=face==='user'?'environment':'user';await camera();});
+$('take').onclick=()=>run(async()=>{
+ const v=$('camera');if(!v.videoWidth||v.readyState<2)throw Error('Camera is still starting. Please try again.');
+ const c=document.createElement('canvas'),scale=Math.min(1,2400/Math.max(v.videoWidth,v.videoHeight));c.width=Math.round(v.videoWidth*scale);c.height=Math.round(v.videoHeight*scale);c.getContext('2d').drawImage(v,0,0,c.width,c.height);
+ let url;for(const quality of [.9,.8,.65]){url=c.toDataURL('image/jpeg',quality);if(url.length<5500000)break;}
+ if(url.length>=5500000)throw Error('Photo too large. Try again.');
+ jpeg=url.split(',')[1];requestId=crypto.randomUUID();attempted=false;$('review').src=url;$('review').hidden=false;v.hidden=true;$('take').hidden=true;$('switch').hidden=true;$('retake').hidden=false;$('accept').hidden=false;notice('Happy with your photo?');
+});
+$('retake').onclick=()=>{if(!busy&&!attempted){reset();notice('Ready for another photo.');}};
+$('accept').onclick=()=>run(async()=>{
+ if(!jpeg||!requestId)return;attempted=true;notice('Sending your photo. Please keep this screen open.');
+ try{const r=await api({action:'submit',requestId,jpeg});if(!r.received)throw Error('Receipt not confirmed. Retry this photo.');reset();notice(token==='demo'?'Demo complete. Nothing was uploaded.':'Photo received! Your attendant will prepare your magnet. Ready for the next guest.');}
+ catch(e){$('accept').textContent='Retry this photo';throw e;}
+});
+function drawCrop(){$('zoom-value').textContent=Number($('zoom').value).toFixed(2)+'×';if(!picture)return;const c=$('crop'),ctx=c.getContext('2d'),r=cropRect(picture.naturalWidth,picture.naturalHeight,Number($('x').value),Number($('y').value),Number($('zoom').value));ctx.drawImage(picture,r.sx,r.sy,r.size,r.size,0,0,c.width,c.height);}
+$('x').oninput=drawCrop;$('y').oninput=drawCrop;$('zoom').oninput=drawCrop;
+$('reset-crop').onclick=()=>{if(busy||selected?.status!=='pending')return;$('x').value=50;$('y').value=50;$('zoom').value=1;drawCrop();};
+async function loadImage(url){const image=new Image();image.crossOrigin='anonymous';await new Promise((resolve,reject)=>{image.onload=resolve;image.onerror=()=>reject(Error('Photo could not load. Open the job again to refresh its link.'));image.src=url;});return image;}
+function sampleImage(){const c=document.createElement('canvas');c.width=1200;c.height=900;const x=c.getContext('2d');x.fillStyle='#d6d2bc';x.fillRect(0,0,1200,900);x.fillStyle='#4a4b36';x.fillRect(150,100,900,650);x.fillStyle='#fff';x.font='50px Georgia';x.fillText('DEMO · crop and print test',270,400);return c.toDataURL('image/jpeg');}
+function clearSheets(){$('sheets').replaceChildren();$('downloads').replaceChildren();$('sheet-controls').hidden=true;}
+async function openJob(job){
+ clearSheets();selected={...job};picture=null;$('editor').hidden=false;$('job-title').textContent='Photo '+job.id.slice(0,8)+' · '+job.status;
+ $('zoom').value=job.zoom??1;$('zoom-value').textContent=Number($('zoom').value).toFixed(2)+'×';$('quantity').value=job.quantity;$('x').value=job.x;$('y').value=job.y;$('print-note').textContent=job.status==='printing'?'This job is reserved for printing. Check physical output before confirming or returning it to pending.':'';sync();
+ const generation=++loadGeneration;
+ const url=token==='demo'?sampleImage():(await api({action:'image',id:job.id})).url;
+ const loaded=await loadImage(url);if(closed||generation!==loadGeneration)return;picture=loaded;drawCrop();sync();
+}
+async function queue(){
+ const r=await api({action:'queue',status:$('queue-filter').value});if(closed)return;
+ $('jobs').replaceChildren();
+ if(!r.jobs.length){const p=document.createElement('p');p.textContent='No photos in this queue.';$('jobs').append(p);}
+ r.jobs.forEach(job=>{const b=document.createElement('button');b.textContent=job.id.slice(0,8)+' · '+job.status+' · '+new Date(job.created_at).toLocaleTimeString();b.onclick=()=>run(()=>openJob(job));b.disabled=busy;$('jobs').append(b);});
+ if(r.jobs.length===100){const p=document.createElement('p');p.textContent='Showing the oldest 100 jobs in this status. Completing jobs reveals the next ones.';$('jobs').append(p);}
+ if(selected){const fresh=r.jobs.find(j=>j.id===selected.id);if(fresh&&fresh.version!==selected.version){picture=null;clearSheets();sync();notice('This job changed in another window. Open it again before printing.');}}
+}
+async function update(operation){const r=await api({action:'update',id:selected.id,version:selected.version,operation,quantity:Number($('quantity').value),x:Number($('x').value),y:Number($('y').value),zoom:Number($('zoom').value)});selected=r.job;return r.job;}
+$('prepare').onclick=()=>run(async()=>{
+ const pages=sheetLayout(Number($('quantity').value),Number($('cut').value));
+ const r=cropRect(picture.naturalWidth,picture.naturalHeight,Number($('x').value),Number($('y').value),Number($('zoom').value));
+ // Render first; reserve atomically before exposing a printable sheet.
+ const urls=pages.map(slots=>{const c=document.createElement('canvas');c.width=1800;c.height=1200;const ctx=c.getContext('2d');ctx.fillStyle='white';ctx.fillRect(0,0,c.width,c.height);for(const slot of slots){ctx.drawImage(picture,r.sx,r.sy,r.size,r.size,slot.x,slot.y,slot.size,slot.size);}return c.toDataURL('image/png');});
+ await update('claim');clearSheets();
+ urls.forEach((url,i)=>{const img=document.createElement('img');img.src=url;img.alt='Print sheet '+(i+1);$('sheets').append(img);const a=document.createElement('a');a.href=url;a.download='AE-'+selected.id+'-sheet-'+(i+1)+'.png';a.textContent='Download sheet '+(i+1);$('downloads').append(a);});
+ $('sheet-controls').hidden=false;notice('Sheets ready. Print at actual size, then verify physical output.');await queue();
+});
+$('print').onclick=()=>{if(!busy&&!closed)window.print();};
+$('printed').onclick=()=>run(async()=>{if(!confirm('Have all magnets for this job physically printed correctly?'))return;await update('printed');clearSheets();selected=null;picture=null;$('editor').hidden=true;await queue();notice('Marked printed.');});
+$('retry').onclick=()=>run(async()=>{if(!confirm('Check the printer first to avoid duplicate prints. Return this job to pending?'))return;await update('retry');clearSheets();selected=null;picture=null;$('editor').hidden=true;await queue();notice('Returned to pending.');});
+$('hold').onclick=()=>run(async()=>{await update('hold');selected=null;picture=null;$('editor').hidden=true;await queue();});
+$('refresh').onclick=()=>run(queue);$('queue-filter').onchange=()=>run(queue);
+function end(){closed=true;clearTimeout(timer);loadGeneration++;stopCamera();sessionStorage.removeItem('ae-station');jpeg=null;token=null;picture=null;selected=null;$('review').removeAttribute('src');$('capture').hidden=true;$('printing').hidden=true;clearSheets();notice('Station closed on this device. Revoke its link in the owner app to disable it everywhere.');sync();}
+$('close').onclick=()=>{if(!busy&&(!jpeg||confirm('An unconfirmed photo is on screen. Closing may lose it. Close this device?')))end();};
+window.addEventListener('beforeunload',e=>{if(jpeg){e.preventDefault();e.returnValue='';}});
+window.addEventListener('pagehide',stopCamera);
+document.addEventListener('visibilitychange',()=>{if(document.hidden)stopCamera();else if(purpose==='capture'&&!jpeg&&!closed){$('start').hidden=false;$('take').hidden=true;$('switch').hidden=true;notice('Tap Enable camera to resume.');}});
+async function poll(){if(closed)return;try{if(!busy&&!document.hidden)await queue();}catch(e){notice('Queue refresh failed: '+e.message);}finally{if(!closed)timer=setTimeout(poll,5000);}}
+(async()=>{try{if(!token||!['capture','print'].includes(purpose))throw Error('Open an event-specific station link created in your owner app.');const info=await api({action:'info'});$('event-name').textContent=info.name;$('title').textContent=purpose==='capture'?'Make a memory':'Event print desk';$(purpose==='capture'?'capture':'printing').hidden=false;notice(purpose==='capture'?'Tap Enable camera to begin.':'Print desk connected.');if(purpose==='print')await poll();}catch(e){notice(e.message);}sync();})();

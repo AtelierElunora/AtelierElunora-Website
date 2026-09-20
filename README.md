@@ -1,3 +1,7 @@
+# Photo station prototype update
+
+Start with [docs/PHOTO-STATION-START-HERE.md](docs/PHOTO-STATION-START-HERE.md) for the new tablet capture and print workflow, deployment order, limitations and tests. This is an updated source package, not a deployed service. The original import manifest below describes the supplied baseline, not these new changes.
+
 # Atelier Elunora website and gallery
 
 Source consolidated on September 19, 2026 from the published Shopify theme, deployed Supabase functions, recorded database migrations, and the latest supplied owner-app archive.

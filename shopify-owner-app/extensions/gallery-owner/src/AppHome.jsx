@@ -1,3 +1,4 @@
+import {PhotoStation} from './PhotoStation.jsx';
 /** @jsxRuntime classic */
 /** @jsx h */
 import '@shopify/ui-extensions/preact';
@@ -320,6 +321,7 @@ export function OwnerGallery() {
       </s-section>}
       {event && detail && <s-stack gap="base">
         <s-section heading={event.name}>
+          <PhotoStation key={event.id} event={event} call={call} run={run} busy={busy}/>
           <s-paragraph>{event.event_date} | {detail.photos.filter(p => p.ready).length} completed photos | {event.active ? 'Guest access enabled' : 'Guest access paused'}</s-paragraph>
           <s-button disabled={busy} onClick={() => run(async () => {await call('owner/events/' + event.id, {active: !event.active}); await reloadEvent();})}>{event.active ? 'Pause guest access' : 'Enable guest access'}</s-button>
         </s-section>
