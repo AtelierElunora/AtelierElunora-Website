@@ -1,4 +1,4 @@
-import {cropRect,sheetLayout,letterLayout,normalizeTemplate,templateSides,resolveTemplateText,drawMagnet} from './atelier-station-core.js';
+import {cropRect,sheetLayout,letterLayout,drawVerticalCutGuides,normalizeTemplate,templateSides,resolveTemplateText,drawMagnet} from './atelier-station-core.js';
 const API='https://gefdlubvqymyxrguhtnc.supabase.co/functions/v1/gallery-api/station';
 const $=id=>document.getElementById(id),notice=message=>{$('notice').textContent=message;};
 const demo=new URLSearchParams(location.search).get('demo');
@@ -172,6 +172,7 @@ async function renderLetter(){
  if(closed||letterBatch!==batch)return;
  const canvas=document.createElement('canvas');canvas.width=2550;canvas.height=3300;const ctx=canvas.getContext('2d');ctx.fillStyle='white';ctx.fillRect(0,0,2550,3300);
  batch.jobs.forEach((j,i)=>{const im=images[i];drawMagnet(ctx,im,cropRect(im.naturalWidth,im.naturalHeight,j.x,j.y,j.zoom??1),slots[i],templates[i],{name:eventName,photo:j.id.slice(0,8)});});
+ drawVerticalCutGuides(ctx,slots);
  const url=canvas.toDataURL('image/png');
  // Wait for decoding before opening print, otherwise some browsers print a blank sheet.
  await loadImage(url);
@@ -179,7 +180,7 @@ async function renderLetter(){
  const img=document.createElement('img');img.src=url;img.alt='Letter sheet with '+batch.jobs.length+' magnets';
  $('sheets').classList.add('letter-sheets');$('sheets').append(img);
  const a=document.createElement('a');a.href=url;a.download='AE-letter-'+batch.id+'.png';a.textContent='Download letter sheet';$('downloads').append(a);$('sheet-controls').hidden=false;
- letterReady=true;showLetter(batch.jobs.length+' photos reserved. Print on Letter at 100% / actual size, then confirm the physical sheet.');
+ letterReady=true;showLetter(batch.jobs.length+' photos reserved. Dashed vertical guides mark the outer cut edges; cut along the side nearest the design. Print Letter at 100% / actual size, then confirm the physical sheet.');
 }
 async function recoverLetter(){
  const r=await api({action:'batch-status'});

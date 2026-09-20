@@ -40,3 +40,7 @@ Demo preview (synthetic photos only):
 ## Rollback
 
 Pause automatic sheets and resolve every reserved sheet before reverting. Confirm physically printed sheets or return unprinted ones to pending after checking the printer queue. Publish the previous theme and restore `station.mjs` from branch commit `23ec0a86d96be8274599d81ffbf54c61ad0e0454` through the existing API workflow if a backend rollback is needed. Retain the additive database columns/RPCs and the individual-job guard; they do not affect unbatched jobs and preserve reservation history. Do not drop batch state while jobs are reserved, or replay historical migrations. Previously generated device links keep their existing scope and expiration.
+
+## Vertical cutting guides
+
+Letter sheets and their downloaded PNGs include thin gray dashed vertical guides immediately outside both sides of each full cut area. Cut along the side of the guide nearest the design; the guide ink stays on the waste. Guides include the wrap allowance, do not mark the 2.5-inch front-photo fold, and never cross any photo or wrap artwork, including mixed-size and partial sheets. The sheet dimensions and magnet sizes remain unchanged. This update is included in the unpublished v1.38 theme; publish that theme and prepare a fresh sheet to see the guides.

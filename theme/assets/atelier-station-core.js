@@ -39,3 +39,17 @@ export function letterLayout(cuts){
  const cell=Math.round(Math.max(...cuts)*300),gap=30,left=(2550-2*cell-gap)/2,top=(3300-3*cell)/2;
  return cuts.map((cut,i)=>{const size=Math.round(cut*300);return {x:left+(i%2)*(cell+gap)+(cell-size)/2,y:top+Math.floor(i/2)*cell+(cell-size)/2,size};});
 }
+
+export function drawVerticalCutGuides(ctx,slots){
+ ctx.save();ctx.fillStyle='#555555';
+ for(const slot of slots){
+  for(const x of [slot.x-2,slot.x+slot.size]){
+   for(let y=Math.max(6,slot.y-18);y<Math.min(3294,slot.y+slot.size+18);y+=12){
+    const height=Math.min(6,3294-y);
+    if(slots.some(s=>x<s.x+s.size&&x+2>s.x&&y<s.y+s.size&&y+height>s.y))continue;
+    ctx.fillRect(x,y,2,height);
+   }
+  }
+ }
+ ctx.restore();
+}

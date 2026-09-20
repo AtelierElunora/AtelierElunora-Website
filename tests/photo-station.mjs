@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {stationRequest,hash} from '../supabase/functions/gallery-api/station.mjs';
-import {cropRect,sheetLayout,letterLayout} from '../theme/assets/atelier-station-core.js';
+import {cropRect,sheetLayout,letterLayout,drawVerticalCutGuides} from '../theme/assets/atelier-station-core.js';
 const reply=(body,status=200)=>({body,status});
 assert.equal((await hash('test')).length,64);
 assert.deepEqual(cropRect(1200,900,100,50),{sx:300,sy:0,size:900});
@@ -44,3 +44,12 @@ console.log('PASS: original and preview reuse after failed finalization; success
 for(const cut of [2.5,3.25,3.6]){const slots=letterLayout(Array(6).fill(cut));assert.equal(slots.length,6);for(const s of slots)assert.ok(s.x>=0&&s.y>=0&&s.x+s.size<=2550&&s.y+s.size<=3300);for(let i=0;i<slots.length;i++)for(let j=i+1;j<slots.length;j++){const a=slots[i],b=slots[j];assert.ok(a.x+a.size<=b.x||b.x+b.size<=a.x||a.y+a.size<=b.y||b.y+b.size<=a.y);}}
 assert.equal(letterLayout(Array(6).fill(3.6))[0].y,30);assert.throws(()=>letterLayout([3.75]));assert.throws(()=>letterLayout([]));
 for(const action of ['batch-status','batch-claim','batch-finish'])assert.equal((await stationRequest({token,purpose:'capture',action,requestId:id,id,partial:false,operation:'printed'},service,reply)).status,400);
+
+for(const cuts of [Array(6).fill(3.6),[3.6,3.25,2.5,3.6,3.25,2.5],[3.6]]){
+ const slots=letterLayout(cuts),marks=[];
+ drawVerticalCutGuides({save(){},restore(){},fillRect(...r){marks.push(r);}},slots);
+ assert.ok(marks.length>0);
+ for(const [x,y,w,h] of marks){assert.ok(x>=0&&y>=0&&x+w<=2550&&y+h<=3300);assert.ok(!slots.some(s=>x<s.x+s.size&&x+w>s.x&&y<s.y+s.size&&y+h>s.y));}
+ for(const s of slots)for(const edge of [s.x,s.x+s.size])assert.ok(marks.some(([x])=>x===edge||x+2===edge));
+}
+console.log('PASS: vertical cut guides align with full-cut edges and stay outside artwork on full, partial and mixed-size sheets.');
