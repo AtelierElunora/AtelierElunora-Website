@@ -1,3 +1,11 @@
+## Current update: station connection fix (v1.39)
+
+Publish **Atelier Elunora v1.39 — Station Connection Fix** (191755125024), then reopen the original private capture/print links. The older station used an unversioned helper import; Shopify could return a stale helper without the new cut-guide export, preventing startup. The station now ships as a single versioned asset, including its helpers. Supabase needs no additional deployment for this fix.
+
+The owner-app **Text distance from image edge** change is separate and does require deploying and releasing the updated owner-app source if your installed app still says cut edge. Download the latest `development/photo-station-owner-app` branch, extract the full source into a simple folder such as `C:\Users\amace\Elunora`, run `Prepare-Owner-App.cmd`, and release the uploaded version in Shopify. Keep the source folders together because the app imports shared template validation. The queue and cut-guide work itself did not require another owner deployment; that does not mean older owner UI changes were already installed.
+
+For station development, edit `station/atelier-station.mjs` and `theme/assets/atelier-station-core.js`, then run `npm run build:station`. Commit the generated `theme/assets/atelier-station.js` too. `npm test` checks that source and bundle match. Do not restore a runtime unversioned helper import.
+
 # Photo station prototype · September 20, 2026
 
 Built from the supplied Atelier-Elunora-GitHub-Source.zip. **Source changes only: not deployed or connected to production in this task.** Begin with a private test event before making this a client-facing service.

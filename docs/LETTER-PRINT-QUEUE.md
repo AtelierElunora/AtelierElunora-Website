@@ -44,3 +44,7 @@ Pause automatic sheets and resolve every reserved sheet before reverting. Confir
 ## Vertical cutting guides
 
 Letter sheets and their downloaded PNGs include thin gray dashed vertical guides immediately outside both sides of each full cut area. Cut along the side of the guide nearest the design; the guide ink stays on the waste. Guides include the wrap allowance, do not mark the 2.5-inch front-photo fold, and never cross any photo or wrap artwork, including mixed-size and partial sheets. The sheet dimensions and magnet sizes remain unchanged. This update is included in the unpublished v1.38 theme; publish that theme and prepare a fresh sheet to see the guides.
+
+## Connection fix supersedes v1.38 publication
+
+Publish v1.39 — Station Connection Fix (191755125024) instead. It retains all batching and vertical guides and fixes stale Shopify helper caching by bundling the station into one versioned asset. Older owner-app UI updates still need their separate app deployment/release; see PHOTO-STATION-START-HERE.md.
