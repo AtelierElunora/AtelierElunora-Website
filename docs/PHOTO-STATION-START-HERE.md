@@ -1,3 +1,11 @@
+## Zero text distance update (v1.40)
+
+Publish **Atelier Elunora v1.40 — Zero Text Distance** (191758827808), then reopen the print desk and a pending photo. This replaces the v1.39 publication step below while retaining its connection fix, six-photo batching and cutting guides. Backend gallery-api v22 is deployed; no SQL migration is needed. Deploy/release the latest owner-app source via Prepare-Owner-App.cmd to allow zero in the owner editor as well.
+
+The old 0.06–0.25-inch cut-edge inset restriction conflicted with the image-relative control. Text centers may now reach the image edge (distance 0) or the cut edge. Zero retains its center-based meaning and can overlap the photo; the preview shows actual placement. Saved templates and print snapshots are not rewritten. Per-side adjustments remain supported; an adjustment that moves the text center outside the cut is rejected. Full/partial Letter geometry and magnet dimensions are unchanged.
+
+Validated zero/near-zero distances across cut sizes, front-end/backend parity, print claim at zero, and owner save at zero. Existing station and batching tests pass. Fields on a reserved printing job remain locked; inspect/cancel physical printer output before returning a job to pending to edit it.
+
 ## Current update: station connection fix (v1.39)
 
 Publish **Atelier Elunora v1.39 — Station Connection Fix** (191755125024), then reopen the original private capture/print links. The older station used an unversioned helper import; Shopify could return a stale helper without the new cut-guide export, preventing startup. The station now ships as a single versioned asset, including its helpers. Supabase needs no additional deployment for this fix.
