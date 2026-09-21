@@ -7,7 +7,8 @@
     "check:build": "node scripts/check-owner-build.mjs",
     "demo": "node scripts/preview-station.mjs",
     "test:owner": "node tests/template-preview.mjs && node tests/owner-print-progress.mjs && node tests/photo-station-owner.mjs",
-    "build:station": "node scripts/build-station.mjs"
+    "build:station": "node scripts/build-station.mjs",
+    "test:gallery": "node tests/gallery-downloads.mjs && node tests/gallery-download-browser.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.3.14",

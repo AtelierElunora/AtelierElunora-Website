@@ -1,6 +1,22 @@
 <section data-ae-customer-gallery data-ninemags="{{ section.settings.ninemags }}">
 <script type="application/json" data-gallery-copy>
-{"eyebrow": {{ 'atelier_customer_gallery.eyebrow' | t | json }},
+{"view_gallery": {{ 'atelier_customer_gallery.view_gallery' | t | json }},
+"buy_magnets": {{ 'atelier_customer_gallery.buy_magnets' | t | json }},
+"browse_help": {{ 'atelier_customer_gallery.browse_help' | t | json }},
+"select_all": {{ 'atelier_customer_gallery.select_all' | t | json }},
+"clear_selection": {{ 'atelier_customer_gallery.clear_selection' | t | json }},
+"download_selected": {{ 'atelier_customer_gallery.download_selected' | t | json }},
+"download_count": {{ 'atelier_customer_gallery.download_count' | t | json }},
+"download_help": {{ 'atelier_customer_gallery.download_help' | t | json }},
+"preparing_download": {{ 'atelier_customer_gallery.preparing_download' | t | json }},
+"save_zip": {{ 'atelier_customer_gallery.save_zip' | t | json }},
+"next_zip": {{ 'atelier_customer_gallery.next_zip' | t | json }},
+"cancel_download": {{ 'atelier_customer_gallery.cancel_download' | t | json }},
+"download_complete": {{ 'atelier_customer_gallery.download_complete' | t | json }},
+"original_unavailable": {{ 'atelier_customer_gallery.original_unavailable' | t | json }},
+"download_retry": {{ 'atelier_customer_gallery.download_retry' | t | json }},
+"zip_part": {{ 'atelier_customer_gallery.zip_part' | t | json }},
+"eyebrow": {{ 'atelier_customer_gallery.eyebrow' | t | json }},
 "title": {{ 'atelier_customer_gallery.title' | t | json }},
 "intro": {{ 'atelier_customer_gallery.intro' | t | json }},
 "email": {{ 'atelier_customer_gallery.email' | t | json }},
@@ -104,6 +120,7 @@ body.ae-site .ag-shell h1,body.ae-site .ag-shell h2{font-family:'Elunora Custome
 
 .ag-crop-viewport{width:100%;aspect-ratio:1;overflow:hidden;background:#D6D2BC}.ag-crop-viewport>img{display:block;width:100%;height:100%;object-fit:cover}.ag-dialog output{float:right;font-variant-numeric:tabular-nums}
 
+.ag-download-link{display:inline-block;padding:12px 18px;margin:0 12px 20px 0;background:#4A4B36;color:#F4F2EF;text-decoration:underline}.ag-controls button[aria-pressed="true"]{outline:2px solid #4A4B36;outline-offset:3px}.ag-browse-card img{object-fit:contain;cursor:pointer}.ag-browse-card label{cursor:pointer}
 {% endstylesheet %}
 {% javascript %}
 (() => {
@@ -116,6 +133,8 @@ body.ae-site .ag-shell h1,body.ae-site .ag-shell h2{font-family:'Elunora Custome
  const key='elunora-shopify-gallery-session';
  const ownerSignIn=location.hash==='#owner-sign-in';
  let session=null,event=null,photos=[],items=[],revision=0,purchaseRevision=null,dirty=false,busy=false,pricing=null,pack=6,selectedOnly=false,step=1,epoch=0,refreshing=null;
+ let browsing=false,downloadJob=null;
+ const downloadSelection=new Set();
  const urls=new Map(),loading=new Map();
  if(!ownerSignIn)try{session=JSON.parse(sessionStorage.getItem(key)||'null');}catch{}
  function node(tag,text,cls){const n=document.createElement(tag);if(text)n.textContent=text;if(cls)n.className=cls;return n;}
@@ -197,7 +216,13 @@ body.ae-site .ag-shell h1,body.ae-site .ag-shell h2{font-family:'Elunora Custome
  const summary=node('p',null,'ag-summary'),grid=node('div',null,'ag-grid'),photoProgress=node('div',null,'ag-photo-progress'),reviewButton=node('button',t.review),review=node('section',null,'ag-step ag-review'),reviewList=node('div',null,'ag-review-list'),checkout=node('button',t.checkout),edit=node('button',t.edit);
  summary.setAttribute('aria-live','polite');photoProgress.append(summary,reviewButton);photoStep.append(photoHeading,controls,grid,photoProgress);
  review.append(node('h3',t.reviewTitle),reviewList,node('p',t.shipping),checkout,edit);photoStep.hidden=true;review.hidden=true;
- gallery.append(title,note,stepper,packStep,photoStep,review);gallery.hidden=true;account.append(gallery);
+ const modeBar=node('nav',null,'ag-controls'),browseButton=node('button',t.view_gallery),magnetButton=node('button',t.buy_magnets),browse=node('section'),browseGrid=node('div',null,'ag-grid'),downloadBar=node('div',null,'ag-controls'),selectAll=node('button',t.select_all),clearSelection=node('button',t.clear_selection),downloadButton=node('button',t.download_selected),downloadCount=node('p'),downloadStatus=node('p'),saveZip=node('a'),nextZip=node('button',t.next_zip),cancelDownload=node('button',t.cancel_download);
+ modeBar.setAttribute('aria-label',t.galleries);modeBar.append(magnetButton,browseButton);
+ downloadCount.setAttribute('aria-live','polite');downloadStatus.setAttribute('role','status');
+ saveZip.hidden=nextZip.hidden=cancelDownload.hidden=true;saveZip.className='ag-download-link';
+ downloadBar.append(selectAll,clearSelection,downloadButton,cancelDownload);
+ browse.append(node('h3',t.view_gallery),node('p',t.browse_help),downloadBar,downloadCount,node('p',t.download_help),downloadStatus,saveZip,nextZip,browseGrid);browse.hidden=true;
+ gallery.append(title,note,modeBar,browse,stepper,packStep,photoStep,review);gallery.hidden=true;account.append(gallery);
  const dialog=node('dialog',null,'ag-dialog'),dialogTitle=node('h2'),large=node('img'),viewport=node('div',null,'ag-crop-viewport'),zoomLabel=node('label',t.zoom),zoom=node('input'),zoomValue=node('output'),reset=node('button',t.resetCrop),quantityLabel=node('label',t.quantity),quantity=node('input'),xLabel=node('label',t.horizontal),x=node('input'),yLabel=node('label',t.vertical),y=node('input'),close=node('button',t.done);
  quantity.type='number';quantity.min=1;quantity.max=12;quantity.id='ag-quantity';quantityLabel.htmlFor=quantity.id;
  for(const [input,label,id] of [[x,xLabel,'ag-x'],[y,yLabel,'ag-y']]){input.type='range';input.min=0;input.max=100;input.id=id;label.htmlFor=id;}
@@ -209,8 +234,8 @@ body.ae-site .ag-shell h1,body.ae-site .ag-shell h2{font-family:'Elunora Custome
  function updateCrop(){showCrop(large,active);zoom.value=zoomFor(active);zoomValue.textContent=' '+Math.round(zoomFor(active)*100)+'%';zoom.setAttribute('aria-valuetext',Math.round(zoomFor(active)*100)+'%');}
  const money=c=>new Intl.NumberFormat('en-US',{style:'currency',currency:pricing?.currency||'USD'}).format(c/100);
  function remember(s){session=s;if(s)sessionStorage.setItem(key,JSON.stringify(s));else sessionStorage.removeItem(key);}
- function clearPhotos(){epoch++;for(const url of urls.values())URL.revokeObjectURL(url);urls.clear();loading.clear();observer?.disconnect();grid.replaceChildren();reviewList.replaceChildren();large.removeAttribute('src');if(dialog.open)dialog.close();}
- function clearGallery(){clearPhotos();event=null;photos=[];items=[];dirty=false;step=1;gallery.hidden=true;packStep.hidden=false;photoStep.hidden=true;review.hidden=true;events.replaceChildren();}
+ function clearPhotos(){cancelDownloads();downloadSelection.clear();browseGrid.replaceChildren();epoch++;for(const url of urls.values())URL.revokeObjectURL(url);urls.clear();loading.clear();observer?.disconnect();grid.replaceChildren();reviewList.replaceChildren();large.removeAttribute('src');if(dialog.open)dialog.close();}
+ function clearGallery(){clearPhotos();event=null;photos=[];items=[];dirty=false;step=1;browsing=false;browse.hidden=true;stepper.hidden=false;note.hidden=false;gallery.hidden=true;packStep.hidden=false;photoStep.hidden=true;review.hidden=true;events.replaceChildren();}
  function signedOut(){remember(null);clearGallery();account.hidden=true;login.hidden=false;codeBox.hidden=true;send.hidden=false;email.readOnly=false;code.value='';notice.textContent='';identity.textContent='';resetCaptcha();}
  async function raw(path,body,token=session?.access_token){
   return fetch(base+path,{method:body?'POST':'GET',mode:'cors',credentials:'omit',cache:'no-store',headers:{'X-Elunora-Request':'1',...(token?{Authorization:'Bearer '+token}:{}),...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined});
@@ -227,6 +252,7 @@ body.ae-site .ag-shell h1,body.ae-site .ag-shell h2{font-family:'Elunora Custome
   return blob?r.blob():r.json();
  }
  function sync(){
+  syncDownloads();
   const count=items.reduce((n,i)=>n+i.quantity,0),p=pricing?.packs.find(p=>p.count===pack);
   summary.textContent=count+' / '+pack+' '+t.magnets+(p?' · '+money(p.cents):'')+' · '+(dirty?t.unsaved:t.saved);
   packContinue.disabled=busy||!pricing?.packs?.length;save.disabled=busy||!dirty;reviewButton.disabled=busy||count!==pack||!pricing?.enabled;
@@ -235,7 +261,7 @@ body.ae-site .ag-shell h1,body.ae-site .ag-shell h2{font-family:'Elunora Custome
   packCards.querySelectorAll('input[type=radio]').forEach(input=>{input.checked=Number(input.value)===pack;input.disabled=busy;});
   grid.querySelectorAll('[data-photo]').forEach(card=>{const i=items.find(i=>i.photoId===card.dataset.photo);card.classList.toggle('ag-chosen',!!i);card.querySelector('input').checked=!!i;card.querySelector('[data-edit]').disabled=busy||!i;});
  }
- function setStep(next,scroll=true){step=next;packStep.hidden=step!==1;photoStep.hidden=step!==2;review.hidden=step!==3;stepNodes.forEach((item,index)=>{if(index+1===step)item.setAttribute('aria-current','step');else item.removeAttribute('aria-current');});if(scroll)gallery.scrollIntoView({behavior:'smooth',block:'start'});}
+ function setStep(next,scroll=true){step=next;packStep.hidden=browsing||step!==1;photoStep.hidden=browsing||step!==2;review.hidden=browsing||step!==3;stepNodes.forEach((item,index)=>{if(index+1===step)item.setAttribute('aria-current','step');else item.removeAttribute('aria-current');});if(scroll)gallery.scrollIntoView({behavior:'smooth',block:'start'});}
  async function run(fn){
   if(busy)return;busy=true;error.textContent='';ui.querySelectorAll('button,select,input').forEach(n=>n.disabled=true);
   try{await fn();}catch(e){error.textContent=e.message;}finally{busy=false;ui.querySelectorAll('button,select,input').forEach(n=>n.disabled=false);sync();syncCaptcha();}
@@ -263,7 +289,7 @@ body.ae-site .ag-shell h1,body.ae-site .ag-shell h2{font-family:'Elunora Custome
    input.onchange=()=>{if(!input.checked)return;pack=Number(input.value);review.hidden=true;sync();};
    label.append(input,content);packCards.append(label);
   }
-  gallery.hidden=false;renderGrid();setStep(1,false);sync();
+  gallery.hidden=false;browsing=false;browse.hidden=true;stepper.hidden=false;note.hidden=false;renderGrid();setStep(1,false);sync();
  }
  async function imageUrl(id){
   if(urls.has(id))return urls.get(id);
@@ -287,6 +313,82 @@ body.ae-site .ag-shell h1,body.ae-site .ag-shell h2{font-family:'Elunora Custome
   }
   if(!grid.children.length)grid.append(node('p',t.noPhotos));sync();
  }
+ function syncDownloads(){
+  browseButton.setAttribute('aria-pressed',String(browsing));magnetButton.setAttribute('aria-pressed',String(!browsing));
+  downloadCount.textContent=downloadSelection.size+' '+t.download_count;
+  downloadButton.disabled=busy||!!downloadJob||!downloadSelection.size;
+  selectAll.disabled=clearSelection.disabled=busy||!!downloadJob;
+  browseGrid.querySelectorAll('[data-download-photo]').forEach(card=>{const selected=downloadSelection.has(card.dataset.downloadPhoto);card.classList.toggle('ag-chosen',selected);const check=card.querySelector('input');check.checked=selected;check.disabled=busy||!!downloadJob||!photos.find(p=>p.id===card.dataset.downloadPhoto)?.hasOriginal;});
+ }
+ function renderBrowse(){
+  observer?.disconnect();browseGrid.replaceChildren();
+  for(const p of photos){
+   const card=node('article',null,'ag-card ag-browse-card'),img=node('img'),label=node('label'),check=node('input');
+   card.dataset.downloadPhoto=p.id;img.alt=p.filename;img.dataset.id=p.id;img.width=600;img.height=600;
+   check.type='checkbox';check.setAttribute('aria-label',t.select+' '+p.filename);
+   check.onchange=()=>{if(check.checked)downloadSelection.add(p.id);else downloadSelection.delete(p.id);syncDownloads();};
+   img.onclick=()=>check.click();label.append(check,node('span',p.filename));card.append(img,label);
+   if(!p.hasOriginal)card.append(node('p',t.original_unavailable));
+   browseGrid.append(card);if(observer)observer.observe(img);else fill(img,p.id);
+  }
+  if(!photos.length)browseGrid.append(node('p',t.noPhotos));syncDownloads();
+ }
+ function setMode(value){if(busy)return;browsing=value;browse.hidden=!value;stepper.hidden=value;note.hidden=value;setStep(step,false);if(value)renderBrowse();else renderGrid();sync();}
+ browseButton.onclick=()=>setMode(true);magnetButton.onclick=()=>setMode(false);
+ selectAll.onclick=()=>{photos.filter(p=>p.hasOriginal).forEach(p=>downloadSelection.add(p.id));syncDownloads();};
+ clearSelection.onclick=()=>{downloadSelection.clear();syncDownloads();};
+ function cancelDownloads(){
+  if(downloadJob){downloadJob.cancelled=true;downloadJob.controller?.abort();if(downloadJob.url)URL.revokeObjectURL(downloadJob.url);}
+  downloadJob=null;saveZip.removeAttribute('href');saveZip.hidden=nextZip.hidden=cancelDownload.hidden=true;downloadStatus.textContent='';
+ }
+ cancelDownload.onclick=()=>{cancelDownloads();syncDownloads();};
+ function zipPhotos(files){
+  const chunks=[],directory=[];let offset=0;
+  const header=size=>{const bytes=new Uint8Array(size);return {bytes,view:new DataView(bytes.buffer)};};
+  for(let i=0;i<files.length;i++){
+   const f=files[i],name=new TextEncoder().encode(String(i+1).padStart(3,'0')+'-'+f.name.replace(/[\\/\x00-\x1f:*?"<>|]/g,'_').slice(0,160));
+   let crc=0xffffffff;for(const byte of f.bytes){crc^=byte;for(let bit=0;bit<8;bit++)crc=(crc>>>1)^((crc&1)?0xedb88320:0);}crc=(crc^0xffffffff)>>>0;
+   const local=header(30);local.view.setUint32(0,0x04034b50,true);local.view.setUint16(4,20,true);local.view.setUint16(6,0x800,true);local.view.setUint16(12,33,true);local.view.setUint32(14,crc,true);local.view.setUint32(18,f.bytes.length,true);local.view.setUint32(22,f.bytes.length,true);local.view.setUint16(26,name.length,true);
+   chunks.push(local.bytes,name,f.bytes);
+   const central=header(46);central.view.setUint32(0,0x02014b50,true);central.view.setUint16(4,20,true);central.view.setUint16(6,20,true);central.view.setUint16(8,0x800,true);central.view.setUint16(14,33,true);central.view.setUint32(16,crc,true);central.view.setUint32(20,f.bytes.length,true);central.view.setUint32(24,f.bytes.length,true);central.view.setUint16(28,name.length,true);central.view.setUint32(42,offset,true);directory.push(central.bytes,name);offset+=30+name.length+f.bytes.length;
+  }
+  const end=header(22),length=directory.reduce((n,b)=>n+b.length,0);end.view.setUint32(0,0x06054b50,true);end.view.setUint16(8,files.length,true);end.view.setUint16(10,files.length,true);end.view.setUint32(12,length,true);end.view.setUint32(16,offset,true);
+  return new Blob([...chunks,...directory,end.bytes],{type:'application/zip'});
+ }
+ async function prepareDownloadPart(job){
+  job.working=true;const start=job.cursor,files=[];let size=0;
+  if(job.url)URL.revokeObjectURL(job.url);job.url=null;saveZip.hidden=nextZip.hidden=true;
+  try{
+   while(job.cursor<job.photos.length&&size<48*1024*1024){
+    if(job.cancelled||job.epoch!==epoch)return;
+    const p=job.photos[job.cursor];downloadStatus.textContent=t.preparing_download+' '+(job.cursor+1)+' / '+job.photos.length;
+    await renew();if(job.cancelled||job.epoch!==epoch)return;
+    const controller=new AbortController();job.controller=controller;const timeout=setTimeout(()=>controller.abort(),60000);
+    let bytes;
+    try{
+     const r=await fetch(base+'events/'+job.eventId+'/photos/'+p.id+'/original',{headers:{'X-Elunora-Request':'1',Authorization:'Bearer '+session.access_token},credentials:'omit',cache:'no-store',signal:controller.signal});
+     if(!r.ok){if(r.status===401)signedOut();throw Error(t.download_retry);}
+     bytes=new Uint8Array(await r.arrayBuffer());
+    }finally{clearTimeout(timeout);}
+    if(job.cancelled||job.epoch!==epoch)return;
+    if(bytes.length>16*1024*1024)throw Error(t.download_retry);
+    files.push({name:p.filename,bytes});size+=bytes.length;job.cursor++;
+   }
+   if(job.cancelled||job.epoch!==epoch)return;
+   job.url=URL.createObjectURL(zipPhotos(files));job.batch=job.photos.slice(start,job.cursor);saveZip.href=job.url;saveZip.download='gallery-photos-'+job.part+'.zip';saveZip.textContent=t.save_zip+' - '+job.part;saveZip.hidden=false;
+   downloadStatus.textContent=job.cursor===job.photos.length?t.download_complete:t.zip_part+' '+job.part+' ('+job.cursor+' / '+job.photos.length+')';
+   saveZip.onclick=()=>{job.batch.forEach(p=>downloadSelection.delete(p.id));if(job.cursor<job.photos.length)nextZip.hidden=false;else cancelDownload.textContent=t.done;syncDownloads();};
+  }catch(e){
+   if(!job.cancelled&&job.epoch===epoch){cancelDownloads();downloadStatus.textContent=t.download_retry;error.textContent=e.message;}
+  }finally{job.working=false;syncDownloads();}
+ }
+ downloadButton.onclick=()=>{
+  if(busy||downloadJob||!downloadSelection.size)return;error.textContent='';
+  const selected=photos.filter(p=>p.hasOriginal&&downloadSelection.has(p.id));if(!selected.length)return;
+  downloadJob={photos:selected,cursor:0,part:1,eventId:event.id,epoch,cancelled:false};cancelDownload.textContent=t.cancel_download;cancelDownload.hidden=false;syncDownloads();prepareDownloadPart(downloadJob);
+ };
+ nextZip.onclick=()=>{if(downloadJob&&!downloadJob.working){downloadJob.part++;prepareDownloadPart(downloadJob);}};
+
  for(const [input,field] of [[quantity,'quantity'],[x,'x'],[y,'y'],[zoom,'zoom']])input.oninput=()=>{if(!active||busy)return;const n=Number(input.value);if(!Number.isFinite(n))return;active[field]=field==='quantity'?Math.max(1,Math.min(12,Math.round(n))):field==='zoom'?Math.max(1,Math.min(3,n)):Math.max(0,Math.min(100,n));dirty=true;review.hidden=true;updateCrop();sync();};
  reset.onclick=()=>{if(!active||busy)return;active.x=active.y=50;active.zoom=1;x.value=y.value=50;dirty=true;updateCrop();sync();};
  close.onclick=()=>dialog.close();dialog.onclose=()=>{active=null;large.removeAttribute('src');};
@@ -380,8 +482,8 @@ body.ae-site .ag-shell h1,body.ae-site .ag-shell h2{font-family:'Elunora Custome
  }
 
  checkout.onclick=()=>run(async()=>{await startPurchase();const p=pricing.packs.find(p=>p.count===pack);if(host.dataset.ninemags==='true'){await directGalleryCart(p);return;}const d=await api('events/'+event.id+'/checkout',{revision,count:pack,cents:p.cents});const u=new URL(d.checkoutUrl);if(u.protocol!=='https:'||!['v0j63n-ms.myshopify.com','www.atelierelunora.com','atelierelunora.com'].includes(u.hostname))throw Error(t.retry);dirty=false;location.assign(u.href);});
- window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='';}});
- async function recheck(){if(!session||!event||busy)return;try{const g=await api('events/'+event.id),allowed=new Set(g.photos.map(p=>p.id));if(photos.some(p=>!allowed.has(p.id))){clearPhotos();photos=g.photos;items=items.filter(i=>allowed.has(i.photoId));dirty=true;review.hidden=true;renderGrid();notice.textContent=t.updated;}}catch(e){clearGallery();error.textContent=e.message;}}
+ window.addEventListener('beforeunload',e=>{if(dirty||downloadJob){e.preventDefault();e.returnValue='';}});
+ async function recheck(){if(!session||!event||busy||downloadJob?.working)return;try{const g=await api('events/'+event.id),allowed=new Set(g.photos.map(p=>p.id));if(JSON.stringify(g.photos)!==JSON.stringify(photos)){clearPhotos();photos=g.photos;const remaining=items.filter(i=>allowed.has(i.photoId));if(remaining.length!==items.length){items=remaining;dirty=true;}renderGrid();if(browsing)renderBrowse();setStep(step,false);notice.textContent=t.updated;}}catch(e){clearGallery();error.textContent=e.message;}}
  setInterval(recheck,30000);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')recheck();});
  window.addEventListener('pageshow',e=>{if(e.persisted){clearGallery();run(async()=>{if(session){await api('session');await showAccount();}});}});
  run(async()=>{if(session){await api('session');await showAccount();}});
@@ -391,6 +493,7 @@ body.ae-site .ag-shell h1,body.ae-site .ag-shell h2{font-family:'Elunora Custome
 {% schema %}
 {"name":"Customer event gallery","settings":[{"type":"checkbox","id":"ninemags","label":"Transfer selected photos to NineMags","default":false}],"presets":[{"name":"Customer event gallery"}]}
 {% endschema %}
+
 
 
 
