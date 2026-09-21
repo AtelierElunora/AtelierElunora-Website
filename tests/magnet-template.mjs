@@ -17,3 +17,9 @@ for(const background of ['#123456','#252B1D','#FFFFFF']){drawMagnet(ctx,{}, {sx:
 for(const cutInches of [3,3.25,3.6,3.75])for(const distance of [0,0.01,0.1]){const input={enabled:true,cutInches,edgeInset:Math.round(((cutInches-2.5)/2-distance)*1e6)/1e6};const normalized=normalizeTemplate(input);assert.deepEqual(normalized,serverTemplate(input));assert.ok(Math.abs((cutInches-2.5)/2-normalized.edgeInset-distance)<1e-6);drawMagnet(ctx,{}, {sx:0,sy:0,size:900},{x:0,y:0,size:cutInches*300},normalized);}
 assert.throws(()=>normalizeTemplate({edgeInset:-0.001}));assert.throws(()=>normalizeTemplate({cutInches:3.25,edgeInset:0.4}));
 console.log('PASS: zero and near-zero image distance validate and render across all cut sizes with server/client parity.');
+
+for(const shift of [-0.5,0,0.5]){const value={sides:{top:{source:'company',shift}}};assert.equal(normalizeTemplate(value).sides.top.shift,shift);assert.deepEqual(normalizeTemplate(value),serverTemplate(value));}
+for(const shift of [NaN,Infinity,'0',0.51])assert.throws(()=>normalizeTemplate({sides:{top:{source:'company',shift}}}));
+const moves=[];const movedCtx={...ctx,translate(x,y){moves.push([x,y]);}};
+for(const rotate of [0,180]){moves.length=0;const positioned={...t,sides:Object.fromEntries(['top','right','bottom','left'].map(side=>[side,{...t.sides[side],shift:0.1,rotate}]))};drawMagnet(movedCtx,{}, {sx:0,sy:0,size:900},{x:0,y:0,size:975},positioned,{photo:'test'});assert.deepEqual(moves.filter(([x])=>Math.abs(x)===30).map(([x])=>x),[30,30,-30,-30]);}
+console.log('PASS: per-edge shift bounds, legacy zero default, API parity and physical direction preserved for rotated text.');

@@ -56,3 +56,6 @@ console.log('PASS: vertical cut guides align with full-cut edges and stay outsid
 
 assert.deepEqual(letterCopyLayout(6,3.6).map(p=>p.length),[6]);assert.deepEqual(letterCopyLayout(6,3.75).map(p=>p.length),[4,2]);assert.deepEqual(letterCopyLayout(12,3.6).map(p=>p.length),[6,6]);
 for(const cut of [2.5,3.25,3.6,3.75])for(const page of letterCopyLayout(12,cut))for(const s of page)assert.ok(s.x>=0&&s.y>=0&&s.x+s.size<=2550&&s.y+s.size<=3300);
+const statusFilters=[];const statusService={rpc:service.rpc,from:table=>table==='gallery_events'?service.from():({select:columns=>{assert.equal(table,'gallery_print_jobs');assert.equal(columns,'id,status,version');const q={eq:(key,value)=>{statusFilters.push([key,value]);return q;},maybeSingle:async()=>({data:{id,status:'printed',version:2}})};return q;}})};
+assert.equal((await stationRequest({token,purpose:'capture',action:'job-status',id},statusService,reply)).status,400);
+assert.equal((await stationRequest({token,purpose:'print',action:'job-status',id},statusService,reply)).body.job.status,'printed');assert.deepEqual(statusFilters,[['event_id',id],['id',id]]);

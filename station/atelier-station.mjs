@@ -10,6 +10,7 @@ else{try{({purpose,token}=JSON.parse(sessionStorage.getItem('ae-station')||'{}')
 if(demo==='capture'||demo==='print'){purpose=demo;token='demo';$('demo-label').hidden=false;}
 let stream,face='user',jpeg=null,requestId=null,attempted=false,busy=false,closed=false,selected=null,picture=null,timer,loadGeneration=0;
 let eventName='',template=normalizeTemplate();
+let printReviewPending=false;
 let autoLetter=false,letterBatch=null,letterReady=false,letterRequest=null;
 let demoJobs=[{id:'DEMO-001',status:'pending',quantity:2,x:50,y:50,zoom:1,version:1,created_at:new Date().toISOString()}];
 if(demo==='print'&&new URLSearchParams(location.search).has('batch'))demoJobs=Array.from({length:12},(_,i)=>({id:'DEMO-'+String(i+1).padStart(3,'0'),status:'pending',quantity:1,x:50,y:50,zoom:1,version:1,created_at:new Date().toISOString()}));
@@ -29,6 +30,7 @@ async function api(body){
    return {id:body.requestId,jobs,created:true};
   }
   if(body.action==='batch-finish'){const jobs=demoJobs.filter(j=>j.letter_batch_id===body.id&&j.status==='printing');jobs.forEach(j=>Object.assign(j,{status:body.operation==='printed'?'printed':'pending',version:j.version+1,...(body.operation==='release'?{letter_batch_id:null,letter_slot:null}:{})}));return {updated:jobs.length};}
+  if(body.action==='job-status')return {job:demoJobs.find(j=>j.id===body.id)??null};
   if(body.action==='queue')return {jobs:demoJobs.filter(j=>j.status===($('queue-filter').value||'pending'))};
   if(body.action==='update'){
    const j=demoJobs.find(j=>j.id===body.id);if(!j||j.version!==body.version)throw Error('Refresh the queue.');
@@ -46,7 +48,7 @@ function sync(){
  $('letter-toggle').disabled=busy||closed||Boolean(selected);
  $('letter-partial').disabled=busy||closed||Boolean(selected)||Boolean(letterBatch);
  $('letter-active').hidden=!letterBatch;
- $('letter-print').disabled=busy||closed||!letterBatch;
+ $('letter-print').disabled=busy||closed||!letterBatch||printReviewPending;
  $('letter-confirm').disabled=busy||closed||!letterBatch;
  document.querySelectorAll('#jobs button').forEach(b=>{b.disabled=busy||closed||autoLetter||Boolean(letterBatch)||b.dataset.batchJob==='true';});
  $('retake').disabled=busy||attempted||closed;
@@ -92,6 +94,9 @@ function populateTemplate(value){
  for(const side of templateSides){
   const label=document.createElement('label');label.textContent=side[0].toUpperCase()+side.slice(1)+' text';
   const input=document.createElement('input');input.id='wrap-'+side;input.maxLength=100;input.value=resolveTemplateText(template,side,templateContext());input.oninput=drawTemplatePreview;label.append(input);$('template-sides').append(label);
+  const shiftLabel=document.createElement('label');shiftLabel.textContent=side+' wording '+(['top','bottom'].includes(side)?'left / right (inches; positive = right)':'up / down (inches; positive = down)');
+  const shift=document.createElement('input');shift.id='shift-'+side;shift.type='number';shift.min=-0.5;shift.max=0.5;shift.step=0.01;shift.value=template.sides[side].shift;shift.oninput=drawTemplatePreview;shiftLabel.append(shift);$('template-sides').append(shiftLabel);
+  const center=document.createElement('button');center.textContent='Center '+side+' wording';center.onclick=()=>{shift.value=0;drawTemplatePreview();};$('template-sides').append(center);
   const rotationLabel=document.createElement('label');rotationLabel.textContent=side+' orientation';const rotation=document.createElement('select');rotation.id='rotate-'+side;
   for(const [value,text] of [['0','Standard'],['180','Rotate 180°']]){const option=document.createElement('option');option.value=value;option.textContent=text;rotation.append(option);}rotation.value=String(template.sides[side].rotate);rotation.onchange=drawTemplatePreview;rotationLabel.append(rotation);$('template-sides').append(rotationLabel);
  }
@@ -99,7 +104,7 @@ function populateTemplate(value){
 }
 function currentTemplate(){
  const enabled=$('template-enabled').checked;
- return normalizeTemplate({...template,enabled,photoCutInches:Number($('cut').value),cutInches:enabled?Number($('cut').value):template.cutInches,background:$('template-background-hex').value.trim(),color:$('template-color').value,fontSize:Number($('template-font').value),edgeInset:Math.round((((enabled?Number($('cut').value):template.cutInches)-2.5)/2-($('template-inset').value.trim()===''?NaN:Number($('template-inset').value)))*1000000)/1000000,sides:Object.fromEntries(templateSides.map(side=>[side,{...template.sides[side],source:'custom',text:$('wrap-'+side)?.value??'',rotate:Number($('rotate-'+side)?.value??0)}]))});
+ return normalizeTemplate({...template,enabled,photoCutInches:Number($('cut').value),cutInches:enabled?Number($('cut').value):template.cutInches,background:$('template-background-hex').value.trim(),color:$('template-color').value,fontSize:Number($('template-font').value),edgeInset:Math.round((((enabled?Number($('cut').value):template.cutInches)-2.5)/2-($('template-inset').value.trim()===''?NaN:Number($('template-inset').value)))*1000000)/1000000,sides:Object.fromEntries(templateSides.map(side=>[side,{...template.sides[side],source:'custom',text:$('wrap-'+side)?.value??'',rotate:Number($('rotate-'+side)?.value??0),shift:$('shift-'+side)?.value.trim()===''?NaN:Number($('shift-'+side)?.value??0)}]))});
 }
 function drawTemplatePreview(){
  if(!picture)return;
@@ -115,7 +120,7 @@ $('template-reset').onclick=()=>run(async()=>{populateTemplate((await api({actio
 
 async function loadImage(url){const image=new Image();image.crossOrigin='anonymous';await new Promise((resolve,reject)=>{image.onload=resolve;image.onerror=()=>reject(Error('Photo could not load. Open the job again to refresh its link.'));image.src=url;});return image;}
 function sampleImage(){const c=document.createElement('canvas');c.width=1200;c.height=900;const x=c.getContext('2d');x.fillStyle='#d6d2bc';x.fillRect(0,0,1200,900);x.fillStyle='#4a4b36';x.fillRect(150,100,900,650);x.fillStyle='#fff';x.font='50px Georgia';x.fillText('DEMO · crop and print test',270,400);return c.toDataURL('image/jpeg');}
-function clearSheets(){$('sheets').classList.remove('letter-sheets');$('sheets').replaceChildren();$('downloads').replaceChildren();$('sheet-controls').hidden=true;}
+function clearSheets(){printReviewPending=false;$('print-result').hidden=true;$('downloads').hidden=false;$('print').hidden=false;$('sheets').classList.remove('letter-sheets');$('sheets').replaceChildren();$('downloads').replaceChildren();$('sheet-controls').hidden=true;}
 async function openJob(job){
  if(autoLetter||letterBatch||job.letter_batch_id)throw Error('Pause automatic sheets and finish the active sheet before opening individual photos.');
  clearSheets();selected={...job};picture=null;$('editor').hidden=false;$('job-title').textContent='Photo '+job.id.slice(0,8)+' · '+job.status;
@@ -130,9 +135,9 @@ async function queue(){
  const r=await api({action:'queue',status:$('queue-filter').value});if(closed)return;
  $('jobs').replaceChildren();
  if(!r.jobs.length){const p=document.createElement('p');p.textContent='No photos in this queue.';$('jobs').append(p);}
- r.jobs.forEach(job=>{const b=document.createElement('button');b.textContent=job.id.slice(0,8)+' · '+job.status+' · '+new Date(job.created_at).toLocaleTimeString();b.dataset.batchJob=String(Boolean(job.letter_batch_id));if(job.letter_batch_id)b.textContent+=' · reserved in letter sheet';b.onclick=()=>run(()=>openJob(job));b.disabled=busy||autoLetter||Boolean(letterBatch)||Boolean(job.letter_batch_id);$('jobs').append(b);});
+ r.jobs.forEach(job=>{const b=document.createElement('button');b.textContent=job.id.slice(0,8)+' · '+job.status+' · '+new Date(job.created_at).toLocaleTimeString();b.dataset.jobId=job.id;b.dataset.batchJob=String(Boolean(job.letter_batch_id));if(job.letter_batch_id)b.textContent+=' · reserved in letter sheet';b.onclick=()=>run(()=>openJob(job));b.disabled=busy||autoLetter||Boolean(letterBatch)||Boolean(job.letter_batch_id);$('jobs').append(b);});
  if(r.jobs.length===100){const p=document.createElement('p');p.textContent='Showing the oldest 100 jobs in this status. Completing jobs reveals the next ones.';$('jobs').append(p);}
- if(selected){const fresh=r.jobs.find(j=>j.id===selected.id);if(fresh&&fresh.version!==selected.version){picture=null;clearSheets();sync();notice('This job changed in another window. Open it again before printing.');}}
+ if(selected){const currentId=selected.id;const fresh=(await api({action:'job-status',id:currentId})).job;if(closed||selected?.id!==currentId)return;if(!fresh||fresh.status==='printed'){removeQueueJobs([currentId]);closePhoto();sync();notice('Completed photo cleared from this print desk.');}else if(fresh.version!==selected.version){closePhoto();sync();notice('This job changed in another window. Open it again before printing.');}}
 }
 async function update(operation,printTemplate){const r=await api({action:'update',...(printTemplate?{template:printTemplate}:{}),id:selected.id,version:selected.version,operation,quantity:Number($('quantity').value),x:Number($('x').value),y:Number($('y').value),zoom:Number($('zoom').value)});selected=r.job;return r.job;}
 $('prepare').onclick=()=>run(async()=>{
@@ -147,8 +152,8 @@ $('prepare').onclick=()=>run(async()=>{
  urls.forEach((url,i)=>{const img=document.createElement('img');img.src=url;img.alt='Print sheet '+(i+1);$('sheets').append(img);const a=document.createElement('a');a.href=url;a.download='AE-'+selected.id+'-sheet-'+(i+1)+'.png';a.textContent='Download sheet '+(i+1);$('downloads').append(a);});
  $('sheet-controls').hidden=false;notice(pages.length+' '+(letter?'Letter':'4 × 6')+' sheet(s) ready for '+$('quantity').value+' magnets. Print at 100% / actual size, with margins set to None and headers/footers off.');await queue();
 });
-$('print').onclick=()=>{if(letterBatch){$('letter-print').click();return;}if(!busy&&!closed)window.print();};
-$('printed').onclick=()=>run(async()=>{if(!confirm('Have all magnets for this job physically printed correctly?'))return;await update('printed');clearSheets();selected=null;picture=null;$('editor').hidden=true;await queue();notice('Marked printed.');});
+$('print').onclick=()=>{if(letterBatch){$('letter-print').click();return;}if(!busy&&!closed)requestPrint();};
+$('printed').onclick=()=>run(async()=>{if(!confirm('Have all magnets for this job physically printed correctly?'))return;await update('printed');removeQueueJobs([selected.id]);closePhoto();await queue();notice('Marked printed.');});
 $('retry').onclick=()=>run(async()=>{if(!confirm('Check the printer first to avoid duplicate prints. Return this job to pending?'))return;await update('retry');clearSheets();selected=null;picture=null;$('editor').hidden=true;await queue();notice('Returned to pending.');});
 $('hold').onclick=()=>run(async()=>{await update('hold');selected=null;picture=null;$('editor').hidden=true;await queue();});
 $('refresh').onclick=()=>run(async()=>{await queue();await checkLetter();});$('queue-filter').onchange=()=>run(queue);
@@ -201,7 +206,7 @@ async function claimLetter(partial=false){
   letterBatch=r;letterReady=false;
   if(!r.created){autoLetter=false;showLetter('Recovered a reserved sheet. Check the printer before preparing it; automatic reprinting is blocked.');return;}
   await renderLetter();
-  if(!closed&&letterReady){window.print();notice('Print requested. Check the dialog and actual output, then confirm the sheet.');}
+  if(!closed&&letterReady){requestPrint();notice('Print requested. Check the dialog and actual output, then confirm the sheet.');}
  }catch(e){autoLetter=false;showLetter('Automatic sheets paused. '+e.message+(letterBatch?' Your sheet remains reserved. Use Prepare / print to retry.':' Check for a reserved sheet before retrying.'));throw e;}
  finally{sync();}
 }
@@ -223,11 +228,11 @@ $('letter-print').onclick=()=>run(async()=>{
  if(!letterBatch)return;
  if(!confirm('Check the printer first. Printing this sheet again can create duplicates. Continue?'))return;
  await recoverLetter();if(!letterBatch)throw Error('This sheet was completed or returned to the queue in another window.');
- if(!letterReady)await renderLetter();if(!closed&&letterReady)window.print();
+ if(!letterReady)await renderLetter();if(!closed&&letterReady)requestPrint();
 });
 $('letter-confirm').onclick=()=>run(async()=>{
  if(!letterBatch||!confirm('Have all '+letterBatch.jobs.length+' magnets on this reserved sheet physically printed correctly? Only confirm after checking the actual output.'))return;
- await api({action:'batch-finish',id:letterBatch.id,operation:'printed'});
+ await api({action:'batch-finish',id:letterBatch.id,operation:'printed'});removeQueueJobs(letterBatch.jobs.map(j=>j.id));
  letterBatch=null;letterReady=false;clearSheets();showLetter('Sheet confirmed printed.');await queue();await checkLetter();
 });
 $('letter-release').onclick=()=>run(async()=>{
@@ -235,3 +240,14 @@ $('letter-release').onclick=()=>run(async()=>{
  autoLetter=false;await api({action:'batch-finish',id:letterBatch.id,operation:'release'});letterBatch=null;letterReady=false;clearSheets();showLetter('Photos returned to pending. Automatic sheets paused.');await queue();
 });
 $('editor-close').onclick=()=>run(async()=>{if(selected?.status==='printing')throw Error('Confirm the printed photo or return it to pending first.');selected=null;picture=null;loadGeneration++;clearSheets();$('editor').hidden=true;await queue();});
+
+function removeQueueJobs(ids){for(const b of $('jobs').querySelectorAll('button'))if(ids.includes(b.dataset.jobId))b.remove();}
+function closePhoto(){clearSheets();selected=null;picture=null;loadGeneration++;$('editor').hidden=true;for(const id of ['crop','template-preview']){const c=$(id);c.getContext('2d').clearRect(0,0,c.width,c.height);}}
+function showPrintResult(){
+ if(closed||!$('sheets').children.length||(!letterBatch&&selected?.status!=='printing'))return;
+ printReviewPending=true;$('downloads').hidden=true;$('print').hidden=true;$('print-result').hidden=false;sync();
+}
+function requestPrint(){showPrintResult();window.print();}
+window.addEventListener('afterprint',showPrintResult);
+$('sheet-done').onclick=()=>{if(busy||closed)return;if(letterBatch)$('letter-confirm').click();else $('printed').click();};
+$('sheet-retry').onclick=()=>{if(busy||closed)return;printReviewPending=false;$('print-result').hidden=true;$('downloads').hidden=false;$('print').hidden=false;notice('Kept for retry. Check the printer queue before printing again.');sync();};

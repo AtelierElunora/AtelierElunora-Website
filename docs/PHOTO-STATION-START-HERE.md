@@ -1,3 +1,13 @@
+## Wrap alignment and print cleanup (v1.42)
+
+Publish **Atelier Elunora v1.42 — Wrap Alignment & Print Cleanup** (191759286560). Deploy/release the updated owner-app source with Prepare-Owner-App.cmd for event-wide positioning controls. The print desk controls become available when the theme is published. The API update is deployed separately; no database migration or new credentials are required.
+
+Each wrap edge has its own along-edge shift (−0.5 to +0.5 inches) and a center reset. For top/bottom, positive moves right and negative left; for left/right, positive moves down and negative up. Directions refer to the flat preview and do not reverse when the lettering is rotated 180°. Existing text distance still controls movement toward/away from the photo. Old templates default to zero shift; existing saved print snapshots remain unchanged. Owner defaults apply to new unsnapshotted jobs; Reload event template applies them to an open pending photo.
+
+Printing now hides the prepared download and print links and asks Printed — clear from queue or Not printed — keep for retry. Only physical-print confirmation marks the job complete. It removes the completed queue entry, images and downloads. Cancel/retry retains the reservation. Another desk confirming a selected job clears its stale sheet on the next visible poll, usually within five seconds. Remaining pending jobs stay queued; an active automatic mode may immediately prepare the next full batch. Stored gallery photos and print history are retained. Station pairing links remain available for the next photos.
+
+Tests cover per-edge shift validation and persistence, rotated-direction behavior, printed/canceled handling, link removal and cross-window completion. Theme validation and owner build checks are also run. A browser cannot detect printer success, so dismissing a print dialog alone never empties the queue.
+
 ## Zero text distance update (v1.40)
 
 Publish **Atelier Elunora v1.40 — Zero Text Distance** (191758827808), then reopen the print desk and a pending photo. This replaces the v1.39 publication step below while retaining its connection fix, six-photo batching and cutting guides. Backend gallery-api v22 is deployed; no SQL migration is needed. Deploy/release the latest owner-app source via Prepare-Owner-App.cmd to allow zero in the owner editor as well.

@@ -80,6 +80,10 @@ export async function stationRequest(body,service,reply,render){
   const saved=await service.from('gallery_magnet_templates').select('template').eq('event_id',station.event_id).maybeSingle();
   return saved.error?fail(reply,saved.error):reply({template:saved.data?.template??normalizeTemplate()});
  }
+ if(body.action==='job-status'&&uuid(body.id)){
+  const r=await service.from('gallery_print_jobs').select('id,status,version').eq('event_id',station.event_id).eq('id',body.id).maybeSingle();
+  return r.error?fail(reply,r.error):reply({job:r.data});
+ }
  if(body.action==='queue'){
   if(!['pending','printing','held'].includes(body.status))return reply({error:'Invalid queue status.'},400);
   const r=await service.from('gallery_print_jobs').select('id,status,quantity,x,y,zoom,version,created_at,template,letter_batch_id,letter_slot').eq('event_id',station.event_id).eq('status',body.status).order('created_at').order('id').limit(100);

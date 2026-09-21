@@ -10,7 +10,7 @@ function editableTemplate(value){
 }
 function serializeDraft(draft){
  const number=value=>String(value).trim()===''?NaN:Number(value);
- return normalizeTemplate({...draft,...Object.fromEntries(['cutInches','fontSize'].map(key=>[key,number(draft[key])])),edgeInset:rounded((number(draft.cutInches)-2.5)/2-number(draft.imageDistance)),sides:Object.fromEntries(templateSides.map(side=>[side,{...draft.sides[side],offset:-number(draft.sides[side].offset)}]))});
+ return normalizeTemplate({...draft,...Object.fromEntries(['cutInches','fontSize'].map(key=>[key,number(draft[key])])),edgeInset:rounded((number(draft.cutInches)-2.5)/2-number(draft.imageDistance)),sides:Object.fromEntries(templateSides.map(side=>[side,{...draft.sides[side],offset:-number(draft.sides[side].offset),shift:number(draft.sides[side].shift)}]))});
 }
 export function MagnetTemplate({initial,call,route,run,busy}){
  const [draft,setDraft]=useState(()=>editableTemplate(initial)),[message,setMessage]=useState('');
@@ -32,6 +32,8 @@ export function MagnetTemplate({initial,call,route,run,busy}){
    </s-select>
    {draft.sides[side].source==='custom'&&<s-text-field label="Custom text" value={draft.sides[side].text} onInput={e=>sideChange(side,'text',e.currentTarget.value)} />}
    <s-text-field label="Outward position adjustment in inches (−0.04 to 0.04)" value={String(draft.sides[side].offset)} onInput={e=>sideChange(side,'offset',e.currentTarget.value)} />
+   <s-text-field label={side==='top'||side==='bottom'?'Move wording left / right, inches (−0.5 to 0.5; positive = right)':'Move wording up / down, inches (−0.5 to 0.5; positive = down)'} value={String(draft.sides[side].shift)} onInput={e=>sideChange(side,'shift',e.currentTarget.value)} />
+   <s-button disabled={busy} onClick={()=>sideChange(side,'shift',0)}>Center wording on this edge</s-button>
    <s-select label="Text orientation" value={String(draft.sides[side].rotate)} onChange={e=>sideChange(side,'rotate',Number(e.currentTarget.value))}><s-option value="0">Standard</s-option><s-option value="180">Rotate 180°</s-option></s-select>
   </s-box>)}
   <s-paragraph>A 3.25-inch design prints one magnet per 4 × 6 sheet. Preview and override individual lines in the print desk. Fold guides appear in the preview only.</s-paragraph>
