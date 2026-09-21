@@ -12,12 +12,13 @@ class TextField extends w.HTMLElement{get value(){return this.getAttribute('valu
 w.customElements.define('s-text-field',TextField);
 const scheduled=[];const originalTimeout=w.setTimeout.bind(w);w.setTimeout=(fn,ms,...args)=>ms===5000?(scheduled.push(fn),999):originalTimeout(fn,ms,...args);
 w.eval(outputFiles[0].text);
+let queueOverride;
 const calls=[];const route='owner/station/11111111-1111-4111-8111-111111111111';
 const props={event:{id:route.split('/')[2],name:'Alex & Breanna celebration'},busy:false,run:fn=>fn(),call:async(path,body)=>{
  calls.push({path,body});assert.equal(path,route);
  if(body?.action==='template')return {template:body.template};
  if(body?.action==='create')return {id:'station-'+body.purpose,expiresAt:'2026-09-21T01:00:00Z',url:'https://www.atelierelunora.com/pages/photo-station#'+body.purpose+'=test-only'};
- return {stations:[],jobs:[{id:'photo-12345678',status:'pending',created_at:'2026-09-20T01:00:00Z'}]};
+ return queueOverride??{stations:[],jobs:[{id:'photo-12345678',status:'pending',created_at:'2026-09-20T01:00:00Z'}]};
 }};
 async function until(fn){for(let i=0;i<100;i++){if(fn())return;await new Promise(r=>setTimeout(r,20));}assert.ok(fn(),'owner panel did not settle');}
 try{
@@ -51,5 +52,14 @@ try{
  assert.equal(field('Couple names').value,'Breanna & Alex');assert.equal(field('Event date text').value,'6/20/2027');
  const save=[...w.document.querySelectorAll('s-button')].find(b=>b.textContent==='Save event template');assert.ok(save);save.click();await until(()=>calls.some(c=>c.body?.action==='template'));const saved=calls.find(c=>c.body?.action==='template').body.template;assert.equal(saved.sides.top.shift,0.12);assert.equal(saved.background,'#123456');assert.equal(saved.cutInches,3.25);assert.equal(saved.couple,'Breanna & Alex');assert.equal(saved.date,'6/20/2027');assert.equal(saved.edgeInset,0.175);assert.equal(saved.sides.top.offset,0.01);
  await until(()=>w.document.body.textContent.includes('Template saved for this event.'));await type('Text distance from image edge, inches','0');assert.equal(field('Text distance from image edge, inches').value,'0');save.click();await until(()=>calls.filter(c=>c.body?.action==='template').length===2);assert.equal(calls.filter(c=>c.body?.action==='template').at(-1).body.template.edgeInset,0.375);assert.equal(field('Text distance from image edge, inches').value,'0');
+ queueOverride={stations:[],jobs:Array.from({length:6},(_,i)=>({id:'batch-photo-'+i,status:'printing',quantity:1,created_at:'2026-09-20T01:00:00Z'})),counts:{pending:12,printing:6,held:0,printed:18}};
+ await scheduled.shift()();await until(()=>w.document.body.textContent.includes('18 printed photos'));
+ assert.match(w.document.body.textContent,/12 pending photos/);assert.match(w.document.body.textContent,/6 awaiting print confirmation/);
+ assert.match(w.document.body.textContent,/Awaiting print confirmation · 1 copy/);
+ queueOverride={stations:[],jobs:[],counts:{pending:0,printing:0,held:0,printed:24}};
+ await scheduled.shift()();await until(()=>w.document.body.textContent.includes('24 printed photos'));
+ assert.match(w.document.body.textContent,/0 awaiting print confirmation/);assert.match(w.document.body.textContent,/No photos waiting to print/);
+ assert.doesNotMatch(w.document.body.textContent,/Photo batch-ph/);
+ assert.equal(field('Couple names').value,'Breanna & Alex');
  console.log('PASS: owner Photo Station panel mounts using Preact, loads queue, creates a capture link, retains typing across queue polling, and saves decimal/negative inputs without blur.');
 }finally{w.unmountOwnerStation();w.happyDOM.abort();}

@@ -15,8 +15,9 @@ export async function ownerStation(request,parts,client,service,actor,body,reply
  if(request.method==='GET'){
   const saved=await service.from('gallery_magnet_templates').select('template').eq('event_id',eventId).maybeSingle();
   if(saved.error)return fail(reply,saved.error);
-  const [stations,jobs]=await Promise.all([service.from('gallery_stations').select('id,purpose,expires_at,revoked,submitted').eq('event_id',eventId).eq('revoked',false).gt('expires_at',new Date().toISOString()),service.from('gallery_print_jobs').select('id,status,quantity,created_at').eq('event_id',eventId).neq('status','printed').order('created_at').order('id').limit(100)]);
-  return stations.error||jobs.error?reply({error:'Could not load station status.'},503):reply({stations:stations.data,jobs:jobs.data,template:saved.data?.template??normalizeTemplate()});
+  const statuses=['pending','printing','held','printed'];
+  const [stations,jobs,...totals]=await Promise.all([service.from('gallery_stations').select('id,purpose,expires_at,revoked,submitted').eq('event_id',eventId).eq('revoked',false).gt('expires_at',new Date().toISOString()),service.from('gallery_print_jobs').select('id,status,quantity,created_at').eq('event_id',eventId).neq('status','printed').order('created_at').order('id').limit(100),...statuses.map(status=>service.from('gallery_print_jobs').select('id',{count:'exact',head:true}).eq('event_id',eventId).eq('status',status))]);
+  return stations.error||jobs.error||totals.some(t=>t.error||!Number.isInteger(t.count))?reply({error:'Could not load station status.'},503):reply({stations:stations.data,jobs:jobs.data,counts:Object.fromEntries(statuses.map((status,i)=>[status,totals[i].count])),template:saved.data?.template??normalizeTemplate()});
  }
  if(body.action==='revoke'&&uuid(body.id)){
   const r=await service.from('gallery_stations').update({revoked:true}).eq('id',body.id).eq('event_id',eventId);

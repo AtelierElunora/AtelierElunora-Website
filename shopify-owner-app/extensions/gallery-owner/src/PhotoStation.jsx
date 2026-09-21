@@ -8,6 +8,8 @@ export function PhotoStation({event,call,run,busy}){
  const [state,setState]=useState(null),[error,setError]=useState(''),[links,setLinks]=useState([]);
  const api=useRef(call);api.current=call;
  const route='owner/station/'+event.id;
+ const count=status=>state?.counts?.[status]??state?.jobs.filter(j=>j.status===status).length??0;
+ const statusLabel={pending:'Queued',printing:'Awaiting print confirmation',held:'On hold',printed:'Printed'};
  useEffect(()=>{
   let alive=true;
   let cancelTimer=()=>{};
@@ -35,8 +37,13 @@ export function PhotoStation({event,call,run,busy}){
   </s-box>)}
   {state&&<MagnetTemplate key={event.id} initial={state.template} eventName={event.name} call={call} route={route} run={run} busy={busy} />}
   {state&&<s-stack gap="base">
-   <s-paragraph>{state.jobs.filter(j=>j.status==='pending').length} pending | {state.jobs.filter(j=>j.status==='printing').length} awaiting print confirmation | {state.jobs.filter(j=>j.status==='held').length} held{state.jobs.length===100?' (oldest 100 outstanding jobs)':''}. Refreshes every 5 seconds.</s-paragraph>
-   {state.jobs.slice(0,8).map(j=><s-paragraph key={j.id}>Photo {j.id.slice(0,8)} · {j.status} · {new Date(j.created_at).toLocaleTimeString()}</s-paragraph>)}
+   <s-heading>Print progress</s-heading>
+   <s-paragraph>{count('pending')} pending photos | {count('printing')} awaiting print confirmation | {count('held')} held{state.counts&&<s-text> | {state.counts.printed} printed photos</s-text>}</s-paragraph>
+   <s-paragraph>Totals count photo jobs, not individual magnet copies. In the print desk, choose Printed — clear from queue after checking the sheet. Confirmed photos leave this list and the printed total updates within 5 seconds.</s-paragraph>
+   {!state.counts&&<s-paragraph>Showing loaded queue counts. The event-wide printed total is currently unavailable.</s-paragraph>}
+   {state.jobs.length===0&&<s-paragraph>No photos waiting to print.</s-paragraph>}
+   {state.jobs.length>8&&<s-paragraph>Showing the oldest 8 outstanding photos.</s-paragraph>}
+   {state.jobs.slice(0,8).map(j=><s-paragraph key={j.id}>Photo {j.id.slice(0,8)} · {statusLabel[j.status]??j.status} · {j.quantity??1} {(j.quantity??1)===1?'copy':'copies'} · {new Date(j.created_at).toLocaleTimeString()}</s-paragraph>)}
    {state.stations.map(s=><s-stack key={s.id} direction="inline" gap="base"><s-paragraph>{s.purpose==='capture'?'Tablet capture':'Print desk'} · expires {new Date(s.expires_at).toLocaleTimeString()}</s-paragraph><s-button disabled={busy} onClick={()=>run(async()=>{await call(route,{action:'revoke',id:s.id});setLinks(current=>current.filter(link=>link.id!==s.id));setState(await call(route));})}>Revoke link</s-button></s-stack>)}
   </s-stack>}
  </s-section>;

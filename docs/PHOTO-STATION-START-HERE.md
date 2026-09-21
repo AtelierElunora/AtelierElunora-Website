@@ -1,3 +1,11 @@
+## Owner print progress update
+
+The owner app now shows event-wide photo-job counts: pending, awaiting print confirmation, held, and printed. Each visible job also shows its copy quantity. These totals count photo jobs, not physical magnet copies or sheets. After checking the physical sheet, select **Printed — clear from queue** in the print desk; the owner app updates on its next five-second refresh. Closing the browser print dialog alone does not confirm success.
+
+The gallery-api count update was deployed as version 24. No database migration or theme change is needed for these owner progress labels and totals. Deploy and release the updated owner app. Keep the complete repository together in a simple local path and run `Prepare-Owner-App.cmd` there. The script uploads a version without releasing it; release the exact uploaded version in Shopify Developer Dashboard.
+
+Validation: owner polling test covers six awaiting photos becoming six more printed photos with no outstanding rows; backend tests cover counts beyond the 100-row queue window, event authorization and count-query failure. Physical printer confirmation remains an operator action.
+
 ## Live owner template preview
 
 Deploy/release the latest owner-app branch with Prepare-Owner-App.cmd. Open any gallery and its Magnet wrap template section: Live template preview shows that gallery’s current unsaved draft using a sample photo area, the actual Brown Carolina font embedded locally, selected wrap/text colors, text sources, size, distance, rotation and along-edge shifts. The dashed line is the 2.5-inch photo/fold guide and is not printed. The full-cut dimension is labeled; template-off mode shows photo-only output. Saving remains explicit.
