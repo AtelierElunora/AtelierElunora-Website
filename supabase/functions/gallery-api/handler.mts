@@ -1,3 +1,7 @@
+import {photoStationRolloutReady} from './station-rollout.mts';
+import {ownerStation,stationRequest} from './station.mjs';
+// Load the image engine only when a capture needs rendering, as owner uploads do.
+const makeServerPreview=async(bytes:Uint8Array)=>{const renderer=await import('./server-preview.mts');return renderer.makeServerPreview(bytes);};
 import {activityFor,auditedOwnerAction} from './activity.mjs';
 import {createClient} from '@supabase/supabase-js';
 import {runtime} from './runtime.mts';
@@ -25,6 +29,14 @@ export async function storefrontHandler(request:Request, factory=createClient){
  if(!pathname.includes(marker))return reply({error:'Not found.'},404);
  const path=pathname.slice(pathname.indexOf(marker)+marker.length);
  try{
+  if(path==='station'){
+   if(!photoStationRolloutReady||Deno.env.get('PHOTO_STATION_ENABLED')!=='true')return reply({error:'Photo station is not enabled yet.'},503);
+   if(request.method!=='POST')return reply({error:'Method not allowed.'},405);
+   const secret=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+   if(!secret)return reply({error:'Station unavailable.'},503);
+   const service=factory(base,secret,{auth:{persistSession:false,autoRefreshToken:false}});
+   return await stationRequest(await jsonBody(request,5700000),service,reply,makeServerPreview);
+  }
   if(['login','verify','refresh','logout'].includes(path)&&request.method==='POST'){
    const b=await jsonBody(request,8192);
    if(path==='login'||path==='verify'){
@@ -60,6 +72,18 @@ export async function storefrontHandler(request:Request, factory=createClient){
   if(path==='session'&&request.method==='GET')return reply({email:data.user.email,owner:security.owner,mfaRequired:security.required,aal:security.aal});
   if(path.startsWith('mfa/'))return await ownerMfa(path,request.method,request.method==='POST'?await jsonBody(request,4096):{},client,data.user,security,reply);
   if(needsMfa(security))return reply({error:'Verify your authenticator in the owner app to continue.',code:'MFA_REQUIRED'},403);
+  if(path.startsWith('owner/station/')){
+   if(!photoStationRolloutReady||Deno.env.get('PHOTO_STATION_ENABLED')!=='true')return reply({error:'Photo station is not enabled yet.'},503);
+   if(!security.owner||security.aal!=='aal2')return reply({error:'Owner authenticator verification required.'},403);
+   const secret=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+   if(!secret)return reply({error:'Station unavailable.'},503);
+   const service=factory(base,secret,{auth:{persistSession:false,autoRefreshToken:false}});
+   const parts=path.split('/');
+   const body=request.method==='POST'?await jsonBody(request,4096):{};
+   const run=()=>ownerStation(request,parts,client,service,data.user!.id,body,reply);
+   if(request.method==='GET')return await run();
+   return await auditedOwnerAction({service,actor:data.user.id,activity:{action:'station.manage',event_id:/^[0-9a-f-]{36}$/i.test(parts[2])?parts[2]:null},run,reply});
+  }
   if(path==='owner'||path.startsWith('owner/')){
    const parts=path.split('/');
    const activity=security.owner?activityFor(request,parts):null;

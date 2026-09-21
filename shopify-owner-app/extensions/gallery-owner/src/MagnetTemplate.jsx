@@ -1,0 +1,55 @@
+/** @jsxRuntime classic */
+/** @jsx h */
+import {h} from 'preact';
+import {useMemo,useState} from 'preact/hooks';
+import {normalizeTemplate,templateSides} from '../../../../supabase/functions/gallery-api/magnet-template.mjs';
+import {templatePreview} from './template-preview.mjs';
+const rounded=value=>Math.round(value*1000000)/1000000;
+function editableTemplate(value){
+ const t=normalizeTemplate(value);
+ return {...t,imageDistance:rounded((t.cutInches-2.5)/2-t.edgeInset),sides:Object.fromEntries(templateSides.map(side=>[side,{...t.sides[side],offset:-t.sides[side].offset}]))};
+}
+function serializeDraft(draft){
+ const number=value=>String(value).trim()===''?NaN:Number(value);
+ return normalizeTemplate({...draft,...Object.fromEntries(['cutInches','fontSize'].map(key=>[key,number(draft[key])])),edgeInset:rounded((number(draft.cutInches)-2.5)/2-number(draft.imageDistance)),sides:Object.fromEntries(templateSides.map(side=>[side,{...draft.sides[side],offset:-number(draft.sides[side].offset),shift:number(draft.sides[side].shift)}]))});
+}
+export function MagnetTemplate({initial,eventName,call,route,run,busy}){
+ const [draft,setDraft]=useState(()=>editableTemplate(initial)),[message,setMessage]=useState('');
+ const [failedPreview,setFailedPreview]=useState('');
+ const preview=useMemo(()=>{try{return templatePreview(serializeDraft(draft),{name:eventName??'',photo:'SAMPLE01'});}catch(e){return {error:e instanceof Error?e.message:String(e)};}},[draft,eventName]);
+ const change=(key,value)=>{setDraft(t=>({...t,[key]:value}));setMessage('Unsaved changes');};
+ const sideChange=(side,key,value)=>{setDraft(t=>({...t,sides:{...t.sides,[side]:{...t.sides[side],[key]:value}}}));setMessage('Unsaved changes');};
+ return <s-section heading="Magnet wrap template">
+  <s-paragraph>Keep the photo on the 2.5-inch front. These four text lines fold onto the back edges. Start with your approximate 3.25-inch cut size, then calibrate with a printed and pressed sample.</s-paragraph>
+  <s-box padding="base" border="base">
+   <s-heading>Live template preview</s-heading>
+   <s-paragraph>{eventName||'This gallery'} · Updates as you type. Save below to apply these defaults.</s-paragraph>
+   {preview.error?<s-paragraph>Preview paused: {preview.error} Finish editing the value to update it.</s-paragraph>:<s-box maxInlineSize="450px">
+    <s-image src={preview.url} alt={'Magnet template preview for '+(eventName||'this gallery')+' with a sample photo area'} aspectRatio="1/1" objectFit="contain" onError={()=>setFailedPreview(preview.url)} />
+    {failedPreview===preview.url&&<s-paragraph>The preview could not display in this browser. Your settings are still editable.</s-paragraph>}
+    <s-paragraph>{preview.enabled?'Dashed guide: 2.5-inch front photo. The outside area folds around the back.':'Photo-only printing is selected; wrap wording is hidden.'} Full cut: {preview.cut} inches. The sample image and guide are for preview only.</s-paragraph>
+   </s-box>}
+  </s-box>
+  <s-select label="Template printing" value={String(draft.enabled)} onChange={e=>change('enabled',e.currentTarget.value==='true')}><s-option value="false">Off — photo only</s-option><s-option value="true">On — photo with customized wrap</s-option></s-select>
+  <s-select label="Wrap background color" value={['#EBE5D9','#252B1D','#FFFFFF','#000000'].includes(draft.background.toUpperCase())?draft.background.toUpperCase():'custom'} onChange={e=>{if(e.currentTarget.value!=='custom')change('background',e.currentTarget.value);}}>
+   <s-option value="#EBE5D9">Ivory</s-option><s-option value="#252B1D">Deep olive</s-option><s-option value="#FFFFFF">White</s-option><s-option value="#000000">Black</s-option><s-option value="custom">Custom — enter hex below</s-option>
+  </s-select>
+  <s-paragraph>Save the event template to use this background on new print jobs. In an already-open print desk, choose Reload event template. For dark backgrounds, choose a light text color.</s-paragraph>
+  {[['company','Company name'],['couple','Couple names'],['date','Event date text'],['background','Wrap background hex (any color)'],['color','Text color (hex)']].map(([key,label])=><s-text-field key={key} label={label} value={draft[key]} onInput={e=>change(key,e.currentTarget.value)} />)}
+  {[['cutInches','Cut size in inches (3–3.75)'],['fontSize','Text size in points (5–12)'],['imageDistance','Text distance from image edge, inches']].map(([key,label])=><s-text-field key={key} label={label} value={String(draft[key])} onInput={e=>change(key,e.currentTarget.value)} />)}
+  <s-paragraph>Distance is measured from the photo edge to the center of the text. Larger values move lettering away from the photo; smaller values bring it closer. Positive side adjustments also move outward. Zero is allowed and centers the text on the photo edge, so lettering can overlap the photo. Check the print-desk preview before printing.</s-paragraph>
+  {templateSides.map(side=><s-box key={side} padding="base" border="base">
+   <s-select label={side[0].toUpperCase()+side.slice(1)+' text'} value={draft.sides[side].source} onChange={e=>sideChange(side,'source',e.currentTarget.value)}>
+    {[['blank','Blank'],['company','Company name'],['couple','Couple names'],['date','Event date text'],['event','Gallery event name'],['photo','Photo reference'],['custom','Custom text']].map(([value,label])=><s-option key={value} value={value}>{label}</s-option>)}
+   </s-select>
+   {draft.sides[side].source==='custom'&&<s-text-field label="Custom text" value={draft.sides[side].text} onInput={e=>sideChange(side,'text',e.currentTarget.value)} />}
+   <s-text-field label="Outward position adjustment in inches (−0.04 to 0.04)" value={String(draft.sides[side].offset)} onInput={e=>sideChange(side,'offset',e.currentTarget.value)} />
+   <s-text-field label={side==='top'||side==='bottom'?'Move wording left / right, inches (−0.5 to 0.5; positive = right)':'Move wording up / down, inches (−0.5 to 0.5; positive = down)'} value={String(draft.sides[side].shift)} onInput={e=>sideChange(side,'shift',e.currentTarget.value)} />
+   <s-button disabled={busy} onClick={()=>sideChange(side,'shift',0)}>Center wording on this edge</s-button>
+   <s-select label="Text orientation" value={String(draft.sides[side].rotate)} onChange={e=>sideChange(side,'rotate',Number(e.currentTarget.value))}><s-option value="0">Standard</s-option><s-option value="180">Rotate 180°</s-option></s-select>
+  </s-box>)}
+  <s-paragraph>A 3.25-inch design prints one magnet per 4 × 6 sheet. Preview and override individual lines in the print desk. Fold guides appear in the preview only.</s-paragraph>
+  <s-button disabled={busy} onClick={()=>run(async()=>{const template=serializeDraft(draft);await call(route,{action:'template',template});setDraft(editableTemplate(template));setMessage('Template saved for this event. Reopen a pending photo in the print desk to load it.');})}>Save event template</s-button>
+  {message&&<s-paragraph>{message}</s-paragraph>}
+ </s-section>;
+}
