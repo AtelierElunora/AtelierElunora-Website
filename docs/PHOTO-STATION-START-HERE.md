@@ -1,3 +1,11 @@
+## Live owner template preview
+
+Deploy/release the latest owner-app branch with Prepare-Owner-App.cmd. Open any gallery and its Magnet wrap template section: Live template preview shows that gallery’s current unsaved draft using a sample photo area, the actual Brown Carolina font embedded locally, selected wrap/text colors, text sources, size, distance, rotation and along-edge shifts. The dashed line is the 2.5-inch photo/fold guide and is not printed. The full-cut dimension is labeled; template-off mode shows photo-only output. Saving remains explicit.
+
+The preview updates locally as you type. No preview request, guest image upload, or additional storage is involved. Invalid/incomplete inputs pause the preview with an explanation without changing what you typed. The sample photo reference is SAMPLE01; Gallery event name uses the selected gallery’s actual name. Preview is a flat layout for calibration, not a photograph of a crimped magnet. Actual printed and pressed samples still determine final placement.
+
+This change requires only the owner-app deployment/release, with no theme or API changes. Automated component tests, SVG escape/geometry settings checks, owner bundle build and Shopify component validation cover the feature. Check the image display once in the released Shopify app, since host browser image policies are not exercised by the simulated component tests.
+
 ## Wrap alignment and print cleanup (v1.42)
 
 Publish **Atelier Elunora v1.42 — Wrap Alignment & Print Cleanup** (191759286560). Deploy/release the updated owner-app source with Prepare-Owner-App.cmd for event-wide positioning controls. The print desk controls become available when the theme is published. The API update is deployed separately; no database migration or new credentials are required.

@@ -1,8 +1,9 @@
 /** @jsxRuntime classic */
 /** @jsx h */
 import {h} from 'preact';
-import {useState} from 'preact/hooks';
+import {useMemo,useState} from 'preact/hooks';
 import {normalizeTemplate,templateSides} from '../../../../supabase/functions/gallery-api/magnet-template.mjs';
+import {templatePreview} from './template-preview.mjs';
 const rounded=value=>Math.round(value*1000000)/1000000;
 function editableTemplate(value){
  const t=normalizeTemplate(value);
@@ -12,12 +13,23 @@ function serializeDraft(draft){
  const number=value=>String(value).trim()===''?NaN:Number(value);
  return normalizeTemplate({...draft,...Object.fromEntries(['cutInches','fontSize'].map(key=>[key,number(draft[key])])),edgeInset:rounded((number(draft.cutInches)-2.5)/2-number(draft.imageDistance)),sides:Object.fromEntries(templateSides.map(side=>[side,{...draft.sides[side],offset:-number(draft.sides[side].offset),shift:number(draft.sides[side].shift)}]))});
 }
-export function MagnetTemplate({initial,call,route,run,busy}){
+export function MagnetTemplate({initial,eventName,call,route,run,busy}){
  const [draft,setDraft]=useState(()=>editableTemplate(initial)),[message,setMessage]=useState('');
+ const [failedPreview,setFailedPreview]=useState('');
+ const preview=useMemo(()=>{try{return templatePreview(serializeDraft(draft),{name:eventName??'',photo:'SAMPLE01'});}catch(e){return {error:e instanceof Error?e.message:String(e)};}},[draft,eventName]);
  const change=(key,value)=>{setDraft(t=>({...t,[key]:value}));setMessage('Unsaved changes');};
  const sideChange=(side,key,value)=>{setDraft(t=>({...t,sides:{...t.sides,[side]:{...t.sides[side],[key]:value}}}));setMessage('Unsaved changes');};
  return <s-section heading="Magnet wrap template">
   <s-paragraph>Keep the photo on the 2.5-inch front. These four text lines fold onto the back edges. Start with your approximate 3.25-inch cut size, then calibrate with a printed and pressed sample.</s-paragraph>
+  <s-box padding="base" border="base">
+   <s-heading>Live template preview</s-heading>
+   <s-paragraph>{eventName||'This gallery'} · Updates as you type. Save below to apply these defaults.</s-paragraph>
+   {preview.error?<s-paragraph>Preview paused: {preview.error} Finish editing the value to update it.</s-paragraph>:<s-box maxInlineSize="450px">
+    <s-image src={preview.url} alt={'Magnet template preview for '+(eventName||'this gallery')+' with a sample photo area'} aspectRatio="1/1" objectFit="contain" onError={()=>setFailedPreview(preview.url)} />
+    {failedPreview===preview.url&&<s-paragraph>The preview could not display in this browser. Your settings are still editable.</s-paragraph>}
+    <s-paragraph>{preview.enabled?'Dashed guide: 2.5-inch front photo. The outside area folds around the back.':'Photo-only printing is selected; wrap wording is hidden.'} Full cut: {preview.cut} inches. The sample image and guide are for preview only.</s-paragraph>
+   </s-box>}
+  </s-box>
   <s-select label="Template printing" value={String(draft.enabled)} onChange={e=>change('enabled',e.currentTarget.value==='true')}><s-option value="false">Off — photo only</s-option><s-option value="true">On — photo with customized wrap</s-option></s-select>
   <s-select label="Wrap background color" value={['#EBE5D9','#252B1D','#FFFFFF','#000000'].includes(draft.background.toUpperCase())?draft.background.toUpperCase():'custom'} onChange={e=>{if(e.currentTarget.value!=='custom')change('background',e.currentTarget.value);}}>
    <s-option value="#EBE5D9">Ivory</s-option><s-option value="#252B1D">Deep olive</s-option><s-option value="#FFFFFF">White</s-option><s-option value="#000000">Black</s-option><s-option value="custom">Custom — enter hex below</s-option>

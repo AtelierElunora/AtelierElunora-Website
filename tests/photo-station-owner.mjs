@@ -13,7 +13,7 @@ w.customElements.define('s-text-field',TextField);
 const scheduled=[];const originalTimeout=w.setTimeout.bind(w);w.setTimeout=(fn,ms,...args)=>ms===5000?(scheduled.push(fn),999):originalTimeout(fn,ms,...args);
 w.eval(outputFiles[0].text);
 const calls=[];const route='owner/station/11111111-1111-4111-8111-111111111111';
-const props={event:{id:route.split('/')[2]},busy:false,run:fn=>fn(),call:async(path,body)=>{
+const props={event:{id:route.split('/')[2],name:'Alex & Breanna celebration'},busy:false,run:fn=>fn(),call:async(path,body)=>{
  calls.push({path,body});assert.equal(path,route);
  if(body?.action==='template')return {template:body.template};
  if(body?.action==='create')return {id:'station-'+body.purpose,expiresAt:'2026-09-21T01:00:00Z',url:'https://www.atelierelunora.com/pages/photo-station#'+body.purpose+'=test-only'};
@@ -32,16 +32,20 @@ try{
  assert.deepEqual([...w.document.querySelectorAll('s-link')].map(e=>e.getAttribute('href').split('#')[1]),['capture=test-only','print=test-only']);
  const field=label=>[...w.document.querySelectorAll('s-text-field')].find(e=>e.getAttribute('label')===label);
  async function type(label,value){const el=field(label);assert.ok(el,label);el.value=value;el.dispatchEvent(new w.Event('input',{bubbles:true}));await new Promise(r=>setTimeout(r,30));}
+ const previewImage=()=>w.document.querySelector('s-image');
+ assert.ok(previewImage());assert.match(previewImage().getAttribute('alt'),/Alex & Breanna celebration/);
+ const enabled=[...w.document.querySelectorAll('s-select')].find(el=>el.getAttribute('label')==='Template printing');enabled.value='true';enabled.dispatchEvent(new w.Event('change',{bubbles:true}));await new Promise(r=>setTimeout(r,30));
+ const firstPreview=previewImage().getAttribute('src');assert.ok(firstPreview.startsWith('data:image/svg+xml;'));
  assert.equal(field('Text distance from image edge, inches').value,'0.255');
  await type('Wrap background hex (any color)','#123456');
  await type('Move wording left / right, inches (−0.5 to 0.5; positive = right)','0.12');
- await type('Couple names','Breanna & Alex');
+ await type('Couple names','Breanna & Alex');assert.notEqual(previewImage().getAttribute('src'),firstPreview);assert.match(decodeURIComponent(previewImage().getAttribute('src').split(',')[1]),/Breanna &amp; Alex/);assert.match(decodeURIComponent(previewImage().getAttribute('src').split(',')[1]),/#123456/);
  await type('Event date text','6/20/2027');
  await type('Text distance from image edge, inches','0.');
  assert.equal(field('Text distance from image edge, inches').value,'0.');
  await type('Text distance from image edge, inches','0.2');
  await type('Outward position adjustment in inches (−0.04 to 0.04)','-');
- assert.equal(field('Outward position adjustment in inches (−0.04 to 0.04)').value,'-');
+ assert.equal(field('Outward position adjustment in inches (−0.04 to 0.04)').value,'-');assert.match(w.document.body.textContent,/Preview paused/);
  await type('Outward position adjustment in inches (−0.04 to 0.04)','-0.01');
  assert.ok(scheduled.length);await scheduled.shift()();await new Promise(r=>setTimeout(r,30));
  assert.equal(field('Couple names').value,'Breanna & Alex');assert.equal(field('Event date text').value,'6/20/2027');

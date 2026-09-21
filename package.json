@@ -6,7 +6,7 @@
     "test": "node scripts/build-station.mjs --check && node tests/activity-log.mjs && node tests/magnet-template.mjs && node tests/photo-station.mjs && node tests/photo-station-db.mjs && node tests/letter-batches-db.mjs && node tests/photo-station-browser.mjs",
     "check:build": "node scripts/check-owner-build.mjs",
     "demo": "node scripts/preview-station.mjs",
-    "test:owner": "node tests/photo-station-owner.mjs",
+    "test:owner": "node tests/template-preview.mjs && node tests/photo-station-owner.mjs",
     "build:station": "node scripts/build-station.mjs"
   },
   "devDependencies": {
