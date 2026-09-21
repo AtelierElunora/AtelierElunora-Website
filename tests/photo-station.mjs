@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {stationRequest,hash} from '../supabase/functions/gallery-api/station.mjs';
-import {cropRect,sheetLayout,letterLayout,drawVerticalCutGuides} from '../theme/assets/atelier-station-core.js';
+import {cropRect,sheetLayout,letterCopyLayout,letterLayout,drawVerticalCutGuides} from '../theme/assets/atelier-station-core.js';
 const reply=(body,status=200)=>({body,status});
 assert.equal((await hash('test')).length,64);
 assert.deepEqual(cropRect(1200,900,100,50),{sx:300,sy:0,size:900});
@@ -53,3 +53,6 @@ for(const cuts of [Array(6).fill(3.6),[3.6,3.25,2.5,3.6,3.25,2.5],[3.6]]){
  for(const s of slots)for(const edge of [s.x,s.x+s.size])assert.ok(marks.some(([x])=>x===edge||x+2===edge));
 }
 console.log('PASS: vertical cut guides align with full-cut edges and stay outside artwork on full, partial and mixed-size sheets.');
+
+assert.deepEqual(letterCopyLayout(6,3.6).map(p=>p.length),[6]);assert.deepEqual(letterCopyLayout(6,3.75).map(p=>p.length),[4,2]);assert.deepEqual(letterCopyLayout(12,3.6).map(p=>p.length),[6,6]);
+for(const cut of [2.5,3.25,3.6,3.75])for(const page of letterCopyLayout(12,cut))for(const s of page)assert.ok(s.x>=0&&s.y>=0&&s.x+s.size<=2550&&s.y+s.size<=3300);

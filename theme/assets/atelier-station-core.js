@@ -52,3 +52,9 @@ export function drawVerticalCutGuides(ctx,slots){
  }
  ctx.restore();
 }
+
+export function letterCopyLayout(quantity,cutInches){
+ if(!Number.isInteger(quantity)||quantity<1||quantity>12||!Number.isFinite(cutInches)||cutInches<2.5||cutInches>3.75)throw Error('Use 1–12 magnets and a cut size of 2.5–3.75 inches.');
+ const rows=cutInches<=3.6?3:2,perPage=rows*2,size=Math.round(cutInches*300),gap=30,left=(2550-size*2-gap)/2,top=(3300-size*rows)/2;
+ return Array.from({length:Math.ceil(quantity/perPage)},(_,page)=>Array.from({length:Math.min(perPage,quantity-page*perPage)},(_,i)=>({x:left+(i%2)*(size+gap),y:top+Math.floor(i/2)*size,size})));
+}

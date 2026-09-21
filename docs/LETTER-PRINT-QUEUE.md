@@ -48,3 +48,11 @@ Letter sheets and their downloaded PNGs include thin gray dashed vertical guides
 ## Connection fix supersedes v1.38 publication
 
 Publish v1.39 — Station Connection Fix (191755125024) instead. It retains all batching and vertical guides and fixes stale Shopify helper caching by bundling the station into one versioned asset. Older owner-app UI updates still need their separate app deployment/release; see PHOTO-STATION-START-HERE.md.
+
+## Individual-photo copies on Letter (v1.41)
+
+Publish **Atelier Elunora v1.41 — Letter Copy Printing** (191758926112), which includes v1.40 zero-distance support and all prior fixes. The individual-photo editor now defaults to Letter; choose 4 × 6 explicitly for photo-printer paper. Prepare sheets packs up to six copies per Letter sheet when the full cut is at most 3.6 inches, or four for cuts above 3.6 through 3.75 inches. Six copies at 3.75 therefore use two sheets (4 + 2); designs are never shrunk. Vertical cut guides are included. Automatic batching of six different photos retains its existing behavior.
+
+Cancel the old print dialog, check/cancel any physical queued output, and return the reserved individual photo to pending before changing its layout. Choose Letter, set magnet quantity in the app, and prepare new sheets. In the browser dialog use Letter, pages per sheet 1, scale 100%, margins None, headers/footers Off, and copies 1. Printer-dialog Copies repeats the entire prepared sheet. Physical printable margins and cutter calibration still require testing.
+
+This copy-layout update needs only theme publication. The separate zero-distance owner UI update still requires deploying/releasing the updated owner app; backend zero-distance validation is already live in gallery-api v22. Regression tests confirm six image placements in one rendered Letter page, 4 × 6 compatibility, four-up fallback without scaling, and unchanged batch recovery.

@@ -1,4 +1,4 @@
-import {cropRect,sheetLayout,letterLayout,drawVerticalCutGuides,normalizeTemplate,templateSides,resolveTemplateText,drawMagnet} from '../theme/assets/atelier-station-core.js';
+import {cropRect,sheetLayout,letterCopyLayout,letterLayout,drawVerticalCutGuides,normalizeTemplate,templateSides,resolveTemplateText,drawMagnet} from '../theme/assets/atelier-station-core.js';
 const API='https://gefdlubvqymyxrguhtnc.supabase.co/functions/v1/gallery-api/station';
 const $=id=>document.getElementById(id),notice=message=>{$('notice').textContent=message;};
 const demo=new URLSearchParams(location.search).get('demo');
@@ -54,7 +54,7 @@ function sync(){
  $('hold').disabled=busy||selected?.status!=='pending'||closed;
  $('printed').hidden=selected?.status!=='printing';$('retry').hidden=!['printing','held'].includes(selected?.status);
  document.querySelectorAll('#template-editor input,#template-editor select,#template-editor button').forEach(el=>{el.disabled=busy||selected?.status!=='pending'||closed;});
- for(const id of ['x','y','zoom','reset-crop','quantity','cut'])$(id).disabled=busy||selected?.status!=='pending';
+ for(const id of ['x','y','zoom','reset-crop','quantity','cut','sheet-format'])$(id).disabled=busy||selected?.status!=='pending';
 }
 function stopCamera(){stream?.getTracks().forEach(t=>t.stop());stream=null;}
 async function camera(){
@@ -138,13 +138,14 @@ async function update(operation,printTemplate){const r=await api({action:'update
 $('prepare').onclick=()=>run(async()=>{
  const printTemplate=currentTemplate();
  if(printTemplate.enabled){const loaded=await document.fonts.load('12px "Brown Carolina"');if(!loaded.length)throw Error('Print font could not load. Check your connection and retry.');}
- const pages=sheetLayout(Number($('quantity').value),Number($('cut').value));
+ const letter=$('sheet-format').value==='letter';
+ const pages=(letter?letterCopyLayout:sheetLayout)(Number($('quantity').value),Number($('cut').value));
  const r=cropRect(picture.naturalWidth,picture.naturalHeight,Number($('x').value),Number($('y').value),Number($('zoom').value));
  // Render first; reserve atomically before exposing a printable sheet.
- const urls=pages.map(slots=>{const c=document.createElement('canvas');c.width=1800;c.height=1200;const ctx=c.getContext('2d');ctx.fillStyle='white';ctx.fillRect(0,0,c.width,c.height);for(const slot of slots){drawMagnet(ctx,picture,r,slot,printTemplate,templateContext());}return c.toDataURL('image/png');});
- await update('claim',printTemplate);clearSheets();
+ const urls=pages.map(slots=>{const c=document.createElement('canvas');c.width=letter?2550:1800;c.height=letter?3300:1200;const ctx=c.getContext('2d');ctx.fillStyle='white';ctx.fillRect(0,0,c.width,c.height);for(const slot of slots){drawMagnet(ctx,picture,r,slot,printTemplate,templateContext());}if(letter)drawVerticalCutGuides(ctx,slots);return c.toDataURL('image/png');});
+ await update('claim',printTemplate);clearSheets();if(letter)$('sheets').classList.add('letter-sheets');
  urls.forEach((url,i)=>{const img=document.createElement('img');img.src=url;img.alt='Print sheet '+(i+1);$('sheets').append(img);const a=document.createElement('a');a.href=url;a.download='AE-'+selected.id+'-sheet-'+(i+1)+'.png';a.textContent='Download sheet '+(i+1);$('downloads').append(a);});
- $('sheet-controls').hidden=false;notice('Sheets ready. Print at actual size, then verify physical output.');await queue();
+ $('sheet-controls').hidden=false;notice(pages.length+' '+(letter?'Letter':'4 × 6')+' sheet(s) ready for '+$('quantity').value+' magnets. Print at 100% / actual size, with margins set to None and headers/footers off.');await queue();
 });
 $('print').onclick=()=>{if(letterBatch){$('letter-print').click();return;}if(!busy&&!closed)window.print();};
 $('printed').onclick=()=>run(async()=>{if(!confirm('Have all magnets for this job physically printed correctly?'))return;await update('printed');clearSheets();selected=null;picture=null;$('editor').hidden=true;await queue();notice('Marked printed.');});
