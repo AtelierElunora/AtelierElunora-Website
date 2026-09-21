@@ -664,6 +664,23 @@
     "footer_tagline": "Where cherished memories become keepsakes"
   },
   "atelier_customer_gallery": {
+    "view_gallery": "View full gallery",
+    "buy_magnets": "Order magnets",
+    "browse_help": "Browse every photo in your gallery. Select photos to download the full-size originals; your magnet choices are kept separately.",
+    "select_all": "Select all",
+    "clear_selection": "Clear selection",
+    "download_selected": "Download selected photos",
+    "download_count": "photos selected",
+    "download_help": "Photos are saved in ZIP files. Large selections are split into parts to keep downloads manageable. Save each part, then prepare the next. Keep this page open while preparing.",
+    "preparing_download": "Preparing photos",
+    "save_zip": "Save ZIP",
+    "next_zip": "Prepare next ZIP",
+    "cancel_download": "Cancel download",
+    "download_complete": "All selected photos have been prepared. Save the ZIP file to finish.",
+    "original_unavailable": "Original unavailable",
+    "download_retry": "Download interrupted. Choose Download selected photos to retry the remaining photos.",
+    "zip_part": "Gallery photos - part",
+
     "eyebrow": "YOUR PRIVATE COLLECTION",
     "title": "Your gallery.",
     "intro": "Relive your celebration. Choose your favorite photographs and turn them into keepsakes.",
@@ -779,3 +796,4 @@
     "included": "Travel up to 40 driving miles from Strongsville is included in every event collection."
   }
 }
+
