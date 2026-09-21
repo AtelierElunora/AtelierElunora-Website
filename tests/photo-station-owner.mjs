@@ -12,12 +12,13 @@ class TextField extends w.HTMLElement{get value(){return this.getAttribute('valu
 w.customElements.define('s-text-field',TextField);
 const scheduled=[];const originalTimeout=w.setTimeout.bind(w);w.setTimeout=(fn,ms,...args)=>ms===5000?(scheduled.push(fn),999):originalTimeout(fn,ms,...args);
 w.eval(outputFiles[0].text);
-let queueOverride;
+let queueOverride,queueError;
 const calls=[];const route='owner/station/11111111-1111-4111-8111-111111111111';
 const props={event:{id:route.split('/')[2],name:'Alex & Breanna celebration'},busy:false,run:fn=>fn(),call:async(path,body)=>{
  calls.push({path,body});assert.equal(path,route);
  if(body?.action==='template')return {template:body.template};
  if(body?.action==='create')return {id:'station-'+body.purpose,expiresAt:'2026-09-21T01:00:00Z',url:'https://www.atelierelunora.com/pages/photo-station#'+body.purpose+'=test-only'};
+ if(queueError)throw Error(queueError);
  return queueOverride??{stations:[],jobs:[{id:'photo-12345678',status:'pending',created_at:'2026-09-20T01:00:00Z'}]};
 }};
 async function until(fn){for(let i=0;i<100;i++){if(fn())return;await new Promise(r=>setTimeout(r,20));}assert.ok(fn(),'owner panel did not settle');}
@@ -61,5 +62,29 @@ try{
  assert.match(w.document.body.textContent,/0 awaiting print confirmation/);assert.match(w.document.body.textContent,/No photos waiting to print/);
  assert.doesNotMatch(w.document.body.textContent,/Photo batch-ph/);
  assert.equal(field('Couple names').value,'Breanna & Alex');
+ // Dashboard status is above configuration; filtering never substitutes subset counts for totals.
+ const headings=[...w.document.querySelectorAll('s-heading')].map(e=>e.textContent);
+ assert.ok(headings.indexOf('Print progress')<headings.indexOf('Live template preview'));
+ queueOverride={stations:[{id:'expired',purpose:'capture',expires_at:'2000-01-01T00:00:00Z'},{id:'valid',purpose:'print',expires_at:'2099-01-01T00:00:00Z'}],jobs:[
+  {id:'pending-123',status:'pending',quantity:3,created_at:'2026-09-20T01:00:00Z'},
+  {id:'held-123',status:'held',quantity:2,created_at:'2026-09-20T01:00:00Z'}
+ ],counts:{pending:125,printing:0,held:1,printed:24}};
+ const refreshButton=()=>[...w.document.querySelectorAll('s-button')].find(b=>b.textContent==='Refresh status');
+ refreshButton().click();await until(()=>w.document.body.textContent.includes('125 pending photos'));
+ const filter=[...w.document.querySelectorAll('s-select')].find(e=>e.getAttribute('label')==='Show queue');
+ filter.value='held';filter.dispatchEvent(new w.Event('change',{bubbles:true}));
+ await until(()=>!w.document.body.textContent.includes('Photo pending-'));
+ assert.match(w.document.body.textContent,/Photo held-123 · On hold · 2 copies/);
+ assert.match(w.document.body.textContent,/125 pending photos/);
+ assert.match(w.document.body.textContent,/oldest 100 outstanding/);
+ assert.equal([...w.document.querySelectorAll('s-button')].filter(b=>b.textContent==='Revoke link').length,1);
+ // Failed polling keeps last successful counts with an explicit stale-data warning.
+ queueError='Network unavailable';refreshButton().click();
+ await until(()=>w.document.body.textContent.includes('Updates interrupted'));
+ assert.match(w.document.body.textContent,/125 pending photos/);
+ assert.match(w.document.body.textContent,/last successful refresh/);
+ queueError=null;refreshButton().click();
+ await until(()=>!w.document.body.textContent.includes('Updates interrupted'));
+ assert.equal(filter.value,'held');assert.equal(field('Couple names').value,'Breanna & Alex');
  console.log('PASS: owner Photo Station panel mounts using Preact, loads queue, creates a capture link, retains typing across queue polling, and saves decimal/negative inputs without blur.');
 }finally{w.unmountOwnerStation();w.happyDOM.abort();}

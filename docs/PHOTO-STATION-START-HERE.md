@@ -1,3 +1,15 @@
+## Live-event dashboard update
+
+Source update on `feature/live-event-dashboard`; not deployed. The owner event panel now puts print progress and queue review before template configuration. Four count cards show pending, awaiting confirmation, held and printed photo jobs. These are photo-job totals, not magnet-copy or sheet totals.
+
+The queue can be filtered by pending, awaiting confirmation or held status. Filters apply to the oldest 100 loaded outstanding jobs; the overview displays up to eight matches and explains when more jobs exist. The print desk remains the place to inspect additional jobs and take printing actions.
+
+Refresh status requests an immediate update without overlapping a running poll. Failed updates retain the last known figures and show an interruption warning. Last-successful-update time is visible; data older than 15 seconds is marked interrupted, including a stalled request. Polling still runs every five seconds. Template drafts and queue filters survive refreshes.
+
+Station links are labeled as authorized access, not device connectivity. Expired links disappear from the authorized list. This does not implement printer monitoring, automatic confirmation, hardware status, or the proposed native print helper.
+
+Deploy/release only the updated owner app using `Prepare-Owner-App.cmd` from the complete repository. No theme or database update is required. Automated owner component tests cover queue filtering, totals beyond the loaded window, refresh failure/recovery, expired-link visibility and preservation of template edits. Check the layout in the released Shopify app on your event computer.
+
 ## Owner print progress update
 
 The owner app now shows event-wide photo-job counts: pending, awaiting print confirmation, held, and printed. Each visible job also shows its copy quantity. These totals count photo jobs, not physical magnet copies or sheets. After checking the physical sheet, select **Printed — clear from queue** in the print desk; the owner app updates on its next five-second refresh. Closing the browser print dialog alone does not confirm success.
