@@ -13,6 +13,7 @@ struct PendingPhoto: Codable {
     let eventName: String
     let jpeg: Data
     var attempted = false
+    var isTest: Bool? = nil
 }
 
 struct StationAPI {
@@ -60,6 +61,8 @@ struct StationAPI {
     @Published var pending: PendingPhoto?
     @Published var busy = false
     @Published var preview: UIImage?
+    @Published var previewIsTest = false
+    var canCapture: Bool { !busy && pending == nil && storageReady }
     private var token: String?
     private var storageReady = false
     private let pendingURL: URL
@@ -74,6 +77,7 @@ struct StationAPI {
             if FileManager.default.fileExists(atPath: pendingURL.path) {
                 let recovered = try JSONDecoder().decode(PendingPhoto.self, from: Data(contentsOf: pendingURL))
                 pending = recovered; preview = UIImage(data: recovered.jpeg)
+                previewIsTest = recovered.isTest ?? true
                 eventName = recovered.eventName; token = recovered.token
                 notice = "Recovered a pending photo. Retry to confirm its receipt."
             }
@@ -97,7 +101,7 @@ struct StationAPI {
                 throw StationFailure(message: "This link is not a capture station.")
             }
             token = candidate; eventName = name; link = ""
-            notice = "Connected. Test submissions will enter this event's gallery and print queue."
+            notice = "Connected. Approved photos will enter this event's gallery and print queue."
         } catch { notice = error.localizedDescription }
     }
 
@@ -110,13 +114,37 @@ struct StationAPI {
             let text = "ATELIER ELUNORA\nTEST PHOTO\n\(Date().formatted())"
             text.draw(in: CGRect(x: 180, y: 380, width: 1440, height: 500), withAttributes: [.font: UIFont.systemFont(ofSize: 72), .foregroundColor: UIColor.darkGray])
         }
-        guard let token else { preview = image; notice = "Local preview only. Connect a test event to test submission."; return }
+        acceptPhoto(image, isTest: true)
+    }
+
+    func acceptPhoto(_ image: UIImage, isTest: Bool = false) {
+        guard canCapture else { return }
         do {
-            guard let jpeg = image.jpegData(compressionQuality: 0.9), jpeg.count <= 4_194_304 else {
-                throw StationFailure(message: "The photo exceeds the station's 4 MB limit.")
+            // Redrawing applies UIImage orientation and bounds memory/upload size.
+            guard image.size.width > 0, image.size.height > 0 else {
+                throw StationFailure(message: "The camera returned an empty photo. Please try again.")
             }
-            try save(PendingPhoto(requestId: UUID(), token: token, eventName: eventName, jpeg: jpeg))
-            preview = image; notice = "Review this test photo, then approve to submit."
+            let scale = min(1, 2400 / max(image.size.width, image.size.height))
+            let size = CGSize(width: max(1, floor(image.size.width * scale)), height: max(1, floor(image.size.height * scale)))
+            let format = UIGraphicsImageRendererFormat(); format.scale = 1; format.opaque = true
+            let normalized = UIGraphicsImageRenderer(size: size, format: format).image { context in
+                UIColor.white.setFill(); context.fill(CGRect(origin: .zero, size: size))
+                image.draw(in: CGRect(origin: .zero, size: size))
+            }
+            var encoded: Data?
+            for quality in [CGFloat(0.90), 0.80, 0.65, 0.50, 0.35] {
+                if let data = normalized.jpegData(compressionQuality: quality), data.count <= 4_194_304 {
+                    encoded = data; break
+                }
+            }
+            guard let jpeg = encoded else { throw StationFailure(message: "This photo is too large. Please try again.") }
+            if let token {
+                try save(PendingPhoto(requestId: UUID(), token: token, eventName: eventName, jpeg: jpeg, isTest: isTest))
+                notice = "Happy with your photo? Approve it to send it to your event."
+            } else {
+                notice = "Local preview only. Open Station setup and connect an event, then take a new photo to submit."
+            }
+            preview = UIImage(data: jpeg); previewIsTest = isTest
         } catch { notice = error.localizedDescription }
     }
 
@@ -124,7 +152,7 @@ struct StationAPI {
         guard !busy, pending?.attempted != true else { return }
         do {
             if FileManager.default.fileExists(atPath: pendingURL.path) { try FileManager.default.removeItem(at: pendingURL) }
-            pending = nil; preview = nil; notice = "Ready for another test photo."
+            pending = nil; preview = nil; notice = "Ready for another photo."
         } catch { notice = "Could not clear the saved photo. Please retry." }
     }
 
