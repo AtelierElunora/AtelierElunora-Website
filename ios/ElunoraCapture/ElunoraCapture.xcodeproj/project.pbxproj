@@ -1,8 +1,10 @@
 // !$*UTF8*$!
 { archiveVersion = 1; classes = {}; objectVersion = 56; objects = {
+000000000000000000000020 = { isa = PBXFileReference; lastKnownFileType = folder; path = BrandFonts; sourceTree = "<group>"; };
+000000000000000000000021 = { isa = PBXBuildFile; fileRef = 000000000000000000000020; };
 000000000000000000000001 = { isa = PBXProject; attributes = { LastUpgradeCheck = 1600; }; buildConfigurationList = 00000000000000000000000A; compatibilityVersion = "Xcode 14.0"; developmentRegion = en; knownRegions = (en, Base); mainGroup = 000000000000000000000002; productRefGroup = 000000000000000000000004; projectDirPath = ""; projectRoot = ""; targets = (000000000000000000000005); };
 000000000000000000000002 = { isa = PBXGroup; children = (000000000000000000000003, 000000000000000000000004); sourceTree = "<group>"; };
-000000000000000000000003 = { isa = PBXGroup; path = ElunoraCapture; sourceTree = "<group>"; children = (000000000000000000000010, 000000000000000000000011, 000000000000000000000012, 000000000000000000000013); };
+000000000000000000000003 = { isa = PBXGroup; path = ElunoraCapture; sourceTree = "<group>"; children = (000000000000000000000010, 000000000000000000000011, 000000000000000000000012, 000000000000000000000013, 000000000000000000000020); };
 000000000000000000000004 = { isa = PBXGroup; name = Products; sourceTree = "<group>"; children = (000000000000000000000006); };
 000000000000000000000006 = { isa = PBXFileReference; explicitFileType = wrapper.application; path = ElunoraCapture.app; sourceTree = BUILT_PRODUCTS_DIR; };
 000000000000000000000010 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };
@@ -15,7 +17,7 @@
 000000000000000000000005 = { isa = PBXNativeTarget; buildConfigurationList = 00000000000000000000000B; buildPhases = (000000000000000000000007,000000000000000000000008,000000000000000000000009); buildRules = (); dependencies = (); name = ElunoraCapture; productName = ElunoraCapture; productReference = 000000000000000000000006; productType = "com.apple.product-type.application"; };
 000000000000000000000007 = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000014,000000000000000000000015,000000000000000000000016); runOnlyForDeploymentPostprocessing = 0; };
 000000000000000000000008 = { isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
-000000000000000000000009 = { isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+000000000000000000000009 = { isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000021); runOnlyForDeploymentPostprocessing = 0; };
 00000000000000000000000A = { isa = XCConfigurationList; buildConfigurations = (00000000000000000000000C,00000000000000000000000D); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 00000000000000000000000B = { isa = XCConfigurationList; buildConfigurations = (00000000000000000000000E,00000000000000000000000F); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 00000000000000000000000C = { isa = XCBuildConfiguration; buildSettings = { CLANG_ENABLE_MODULES = YES; SDKROOT = iphoneos; IPHONEOS_DEPLOYMENT_TARGET = 17.0; SWIFT_VERSION = 5.0; SWIFT_OPTIMIZATION_LEVEL = "-Onone"; }; name = Debug; };
