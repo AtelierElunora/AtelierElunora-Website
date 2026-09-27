@@ -1,3 +1,4 @@
+import {stationOriginAllowed} from './station-origin.mjs';
 import {photoStationRolloutReady} from './station-rollout.mts';
 import {ownerStation,stationRequest} from './station.mjs';
 // Load the image engine only when a capture needs rendering, as owner uploads do.
@@ -13,8 +14,8 @@ export async function storefrontHandler(request:Request, factory=createClient){
  const headers=new Headers({'Cache-Control':'private, no-store','Pragma':'no-cache','Vary':'Origin','X-Content-Type-Options':'nosniff'});
  const reply=(data:unknown,status=200)=>Response.json(data,{status,headers});
  const origin=request.headers.get('origin')||'';
- if(!['https://www.atelierelunora.com','https://atelierelunora.com','https://v0j63n-ms.myshopify.com','https://admin.shopify.com','https://extensions.shopifycdn.com'].includes(origin))return reply({error:'Open the gallery on Atelier Elunora.'},403);
- headers.set('Access-Control-Allow-Origin',origin);
+ if(!stationOriginAllowed(request,Deno.env.get('NATIVE_CAPTURE_ENABLED')==='true'))return reply({error:'Open the gallery on Atelier Elunora.'},403);
+ if(origin)headers.set('Access-Control-Allow-Origin',origin);
  headers.set('Access-Control-Allow-Methods','GET, POST, OPTIONS');
  headers.set('Access-Control-Allow-Headers','Authorization, Content-Type, X-Elunora-Request');
  if(request.method==='OPTIONS')return new Response(null,{status:204,headers});
