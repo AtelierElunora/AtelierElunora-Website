@@ -1,0 +1,21 @@
+name: iPad capture build
+on:
+  push:
+    branches: [development/ipad-camera-prototype]
+    paths: ['ios/**', '.github/workflows/ios-capture.yml']
+  pull_request:
+    paths: ['ios/**', '.github/workflows/ios-capture.yml']
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test PTP codec
+        run: |
+          swiftc ios/ElunoraCapture/ElunoraCapture/CanonPTP.swift ios/ElunoraCapture/ProtocolTests/main.swift -o /tmp/elunora-ptp-tests
+          /tmp/elunora-ptp-tests
+      - name: Compile iPad app
+        run: xcodebuild -project ios/ElunoraCapture/ElunoraCapture.xcodeproj -scheme ElunoraCapture -sdk iphonesimulator -configuration Debug CODE_SIGNING_ALLOWED=NO build

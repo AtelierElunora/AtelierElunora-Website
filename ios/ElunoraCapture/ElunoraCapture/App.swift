@@ -50,6 +50,7 @@ struct CaptureView: View {
     @State private var requestingCamera = false
     @State private var cameraError: String?
     @State private var testMode = false
+    @State private var useCanon = false
 
     var body: some View {
         GeometryReader { geometry in
@@ -71,6 +72,14 @@ struct CaptureView: View {
                                 ProgressView("Sending your memory…").tint(Atelier.olive)
                             }
                             actions
+                            if useCanon {
+                                Text(cameras.status).font(.callout).multilineTextAlignment(.center)
+                                if cameras.liveViewRunning {
+                                    Button("Stop live view") { cameras.stopLiveView() }
+                                }
+                                Button("Use iPad camera") { cameras.stop(); useCanon = false }
+                                    .disabled(capture.busy)
+                            }
                             Text(capture.notice)
                                 .font(.callout).multilineTextAlignment(.center)
                                 .frame(maxWidth: 650).fixedSize(horizontal: false, vertical: true)
@@ -85,6 +94,13 @@ struct CaptureView: View {
             }
             .background(Atelier.cream.ignoresSafeArea())
             .foregroundStyle(Atelier.olive)
+        }
+        .onReceive(cameras.$receivedImage) { image in
+            guard let image, capture.canCapture else { return }
+            if capture.acceptPhoto(image) { cameras.consumeImage() }
+        }
+        .onChange(of: cameras.ready) { _, ready in
+            if !ready { useCanon = false }
         }
         .sheet(isPresented: $showingSetup) { setupSheet }
         .fullScreenCover(isPresented: $showingCamera) {
@@ -107,7 +123,7 @@ struct CaptureView: View {
     private var header: some View {
         VStack(spacing: 18) {
             HStack {
-                Label(testMode ? "TEST EXPERIENCE" : "IPAD CAMERA", systemImage: testMode ? "sparkles" : "camera")
+                Label(testMode ? "TEST EXPERIENCE" : (useCanon ? "CANON · EXPERIMENTAL" : "IPAD CAMERA"), systemImage: testMode ? "sparkles" : "camera")
                     .font(.caption2.weight(.semibold)).tracking(1.4)
                 Spacer()
                 Button { showingSetup = true } label: {
@@ -141,6 +157,10 @@ struct CaptureView: View {
                 Image(uiImage: image).resizable().scaledToFit()
                     .frame(maxWidth: .infinity).frame(maxHeight: maxHeight)
                     .padding(16).accessibilityLabel("Your photo preview")
+            } else if useCanon, let image = cameras.liveImage {
+                Image(uiImage: image).resizable().scaledToFit()
+                    .frame(maxWidth: .infinity).frame(maxHeight: maxHeight).padding(16)
+                    .accessibilityLabel("Experimental Canon live preview")
             } else {
                 VStack(spacing: 18) {
                     Image(systemName: "camera.aperture")
@@ -156,7 +176,7 @@ struct CaptureView: View {
             }
             HStack(spacing: 8) {
                 Image(systemName: capture.preview == nil ? "camera" : "photo")
-                Text(capture.preview == nil ? (testMode ? "Test-photo mode" : "iPad camera · Ready when you are") : (capture.previewIsTest ? "Test photo · Preview before sending" : "Your photo · Preview before sending"))
+                Text(capture.preview == nil ? (testMode ? "Test-photo mode" : (useCanon ? "Canon · Stop live view before taking a photo" : "iPad camera · Ready when you are")) : (capture.previewIsTest ? "Test photo · Preview before sending" : "Your photo · Preview before sending"))
                     .font(.footnote)
             }.padding(14).frame(maxWidth: .infinity).background(Atelier.cream)
         }
@@ -177,10 +197,10 @@ struct CaptureView: View {
     @ViewBuilder private var actionButtons: some View {
         if capture.pending == nil {
             Button {
-                if testMode { capture.makeTestPhoto() } else { Task { await openCamera() } }
+                if testMode { capture.makeTestPhoto() } else if useCanon { Task { await cameras.capture() } } else { Task { await openCamera() } }
             } label: {
-                Label(testMode ? "Create test photo" : "Take a photo", systemImage: "camera")
-            }.buttonStyle(AtelierButton()).disabled(!capture.canCapture || requestingCamera)
+                Label(testMode ? "Create test photo" : (useCanon ? "Take Canon photo" : "Take a photo"), systemImage: "camera")
+            }.buttonStyle(AtelierButton()).disabled(!capture.canCapture || requestingCamera || cameras.busy || (useCanon && !cameras.canOperate))
         } else {
             if capture.pending?.attempted != true {
                 Button { capture.retake() } label: {
@@ -229,17 +249,22 @@ struct CaptureView: View {
         NavigationStack {
             Form {
                 Section("Capture camera") {
-                    Label("iPad camera · Default", systemImage: "ipad")
+                    Toggle("Use connected Canon (experimental)", isOn: $useCanon)
+                        .disabled(!cameras.ready || cameras.busy || capture.pending != nil || capture.busy)
+                        .onChange(of: useCanon) { _, enabled in
+                            if enabled { testMode = false } else { cameras.stopLiveView() }
+                        }
+                    Label("iPad camera · Default and backup", systemImage: "ipad")
                     Text("Opens the front camera. Use the camera switch button to choose the rear camera.").font(.footnote)
                     Toggle("Use generated test photos", isOn: $testMode)
-                        .disabled(capture.busy || capture.pending != nil)
+                        .disabled(capture.busy || capture.pending != nil || useCanon)
                 }
                 Section("Event connection") {
                     SecureField("Paste capture station link", text: $capture.link)
                         .textInputAutocapitalization(.never).autocorrectionDisabled()
-                        .disabled(capture.busy || capture.pending != nil)
+                        .disabled(capture.busy || capture.pending != nil || cameras.busy)
                     Button("Connect event") { Task { await capture.connect() } }
-                        .disabled(capture.busy || capture.pending != nil)
+                        .disabled(capture.busy || capture.pending != nil || cameras.busy)
                     if !capture.eventName.isEmpty { Label(capture.eventName, systemImage: "checkmark.circle") }
                     Text("Approved photos enter this event’s gallery and print queue. Use a test event while checking the app.")
                         .font(.footnote)
@@ -253,10 +278,27 @@ struct CaptureView: View {
                     ForEach(Array(cameras.devices.enumerated()), id: \.offset) { _, name in
                         Label(name, systemImage: "camera")
                     }
-                    Button("Scan for cameras") { cameras.start() }
-                    Button("Stop scan") { cameras.stop() }
-                    Text("Camera discovery is available. Canon shutter control and live preview are still in development.")
-                        .font(.footnote)
+                    Button("Connect Canon") { cameras.start() }
+                    Button("Disconnect Canon / use iPad") { cameras.stop(); useCanon = false }
+                    Toggle("Experimental EOS commands", isOn: $cameras.experimentalEOS)
+                        .disabled(cameras.busy || cameras.liveViewRunning)
+                    Button("Receive next JPEG from physical shutter") { useCanon = true; testMode = false; cameras.receiveNextPhoto() }
+                        .disabled(!cameras.canOperate || !capture.canCapture)
+                    Button("Request autofocus") { Task { await cameras.autofocus() } }
+                        .disabled(!cameras.canOperate || !cameras.experimentalEOS || !capture.canCapture)
+                    Button(cameras.liveViewRunning ? "Stop live view" : "Start experimental live view") {
+                        if cameras.liveViewRunning { cameras.stopLiveView() }
+                        else { Task { await cameras.startLiveView() } }
+                    }.disabled(cameras.busy || !cameras.ready || !cameras.experimentalEOS || !capture.canCapture)
+                    Text("Use JPEG or RAW+JPEG, a memory card, and single-shot mode. Start with physical-shutter transfer. EOS control and live view require R100 testing. Stop live view before capture.").font(.footnote)
+                    if cameras.receivedImage != nil {
+                        Button("Retry loading received photo") {
+                            if let image = cameras.receivedImage, capture.acceptPhoto(image) { cameras.consumeImage() }
+                        }.disabled(!capture.canCapture)
+                    }
+                    DisclosureGroup("Connection diagnostics") {
+                        Text(cameras.diagnostics.joined(separator: "\n")).font(.caption.monospaced()).textSelection(.enabled)
+                    }
                 }
                 Section {
                     Text("Atelier Elunora · Capture prototype").font(.footnote)

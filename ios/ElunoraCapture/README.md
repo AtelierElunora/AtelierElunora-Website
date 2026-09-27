@@ -1,4 +1,14 @@
-## Latest update: iPad camera and brand fonts
+# Current status — experimental Canon controls
+
+The iPad camera remains the default. This update adds Canon session handling, a physical-shutter JPEG transfer test, standard PTP shutter control, experimental EOS shutter/autofocus and live view, diagnostics, and disconnect recovery. Received images use the existing review, compression, saved retry, gallery and print workflow.
+
+**R100 hardware behavior is unverified.** Live view and remote capture may need model-specific work after the camera arrives. Follow [CANON-TESTING.md](CANON-TESTING.md) for setup and staged tests. Keep your private BrandFonts files and existing signing settings when updating. Do not uninstall with an unsent photo.
+
+Native upload, printing and gallery delivery were confirmed by the owner before this update. No backend deployment is needed for this change. The older notes below are retained as project history, not current feature status.
+
+---
+
+## Previous update: iPad camera and brand fonts
 
 The main capture button now opens the iPad camera (front by default, with Apple's camera-switch control). Camera permission is requested before opening. Taking a photo returns to the branded review screen; approval reuses the existing event submission and durable retry path. Photos are redrawn upright, resized to at most 2400 pixels on the longest edge, and compressed below 4 MiB. Generated test photos remain available in Station setup. Canon capture and automatic Canon-failure detection are not implemented yet.
 

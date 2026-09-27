@@ -117,8 +117,8 @@ struct StationAPI {
         acceptPhoto(image, isTest: true)
     }
 
-    func acceptPhoto(_ image: UIImage, isTest: Bool = false) {
-        guard canCapture else { return }
+    @discardableResult func acceptPhoto(_ image: UIImage, isTest: Bool = false) -> Bool {
+        guard canCapture else { return false }
         do {
             // Redrawing applies UIImage orientation and bounds memory/upload size.
             guard image.size.width > 0, image.size.height > 0 else {
@@ -145,7 +145,8 @@ struct StationAPI {
                 notice = "Local preview only. Open Station setup and connect an event, then take a new photo to submit."
             }
             preview = UIImage(data: jpeg); previewIsTest = isTest
-        } catch { notice = error.localizedDescription }
+            return true
+        } catch { notice = error.localizedDescription; return false }
     }
 
     func retake() {
