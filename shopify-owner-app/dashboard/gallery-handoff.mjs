@@ -5,5 +5,5 @@ export function galleryLink(eventId, base, origin) {
  return url.href;
 }
 export function galleryMessage(name,email,url,expires) {
- return `Your ${name} photo gallery is ready.\n\nOpen ${url}\n\nSign in with ${email} using the code sent to your email. You can view the approved photos from the whole event. Access expires ${new Date(expires).toLocaleString()}.\n\nWith love,\nAtelier Elunora`;
+ return `Your ${name} photo gallery is ready.\n\nOpen ${url}\n\nSign in with ${email} using your password or an email code. To create a password on your first visit, choose Create or reset password and verify your email. You can view the approved photos from the whole event. Access expires ${new Date(expires).toLocaleString()}.\n\nWith love,\nAtelier Elunora`;
 }

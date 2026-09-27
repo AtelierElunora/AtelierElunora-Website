@@ -170,14 +170,14 @@
   finally{captchaLoading=false;syncCaptcha();}
  }
  captchaRetry.onclick=()=>mountCaptcha();
- async function requestCode(){
+ async function requestCode(path='login',extra={}){
   if(!captchaToken||Date.now()-captchaAt>=300000){resetCaptcha();throw Error(t.captchaWait);}
   const token=captchaToken;invalidateCaptcha();
   const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),20000);
   try{
-   const r=await fetch(base+'login',{method:'POST',mode:'cors',credentials:'omit',cache:'no-store',headers:{'X-Elunora-Request':'1','Content-Type':'application/json'},body:JSON.stringify({email:email.value,captchaToken:token}),signal:controller.signal});
+   const r=await fetch(base+path,{method:'POST',mode:'cors',credentials:'omit',cache:'no-store',headers:{'X-Elunora-Request':'1','Content-Type':'application/json'},body:JSON.stringify({email:email.value,captchaToken:token,...extra}),signal:controller.signal});
    const d=await r.json();if(!r.ok)throw Error(d.error||t.retry);
-   hideCaptcha();
+   hideCaptcha();return d;
   }catch(e){resetCaptcha();throw e;}finally{clearTimeout(timeout);}
  }
  syncCaptcha();mountCaptcha();
@@ -191,6 +191,26 @@
   };
   return;
  }
+
+ let loginMode='password';
+ const passwordLabel=node('label','Password'),password=node('input'),confirmLabel=node('label','Confirm password'),confirmPassword=node('input');
+ password.type=confirmPassword.type='password';password.id='ag-password';confirmPassword.id='ag-confirm-password';passwordLabel.htmlFor=password.id;confirmLabel.htmlFor=confirmPassword.id;
+ password.maxLength=confirmPassword.maxLength=128;confirmPassword.minLength=12;confirmPassword.autocomplete='new-password';email.autocomplete='username';
+ login.insertBefore(passwordLabel,captchaBox);login.insertBefore(password,captchaBox);login.insertBefore(confirmLabel,captchaBox);login.insertBefore(confirmPassword,captchaBox);
+ const authHelp=login.querySelector('p:last-child'),modes=node('div',null,'ag-auth-options'),usePassword=node('button','Use password'),useCode=node('button','Use an email code'),setupPassword=node('button','Create or reset password'),cancelSetup=node('button','Cancel and sign out');
+ for(const button of [usePassword,useCode,setupPassword,cancelSetup]){button.type='button';modes.append(button);}login.append(modes);
+ function setLoginMode(mode,reset=true){
+  loginMode=mode;const choosing=mode==='choose-password',withPassword=mode==='password'||choosing;
+  password.value=confirmPassword.value=code.value='';codeBox.hidden=true;send.hidden=false;email.readOnly=choosing;
+  passwordLabel.hidden=password.hidden=!withPassword;password.required=withPassword;password.minLength=choosing?12:1;password.autocomplete=choosing?'new-password':'current-password';passwordLabel.textContent=choosing?'New password':'Password';
+  confirmLabel.hidden=confirmPassword.hidden=!choosing;confirmPassword.required=choosing;
+  usePassword.hidden=mode==='password'||choosing;useCode.hidden=mode==='code'||choosing;setupPassword.hidden=mode==='setup'||choosing;cancelSetup.hidden=!choosing;
+  send.textContent=choosing?'Save password and continue':mode==='password'?'Sign in':t.send||'Send sign-in code';
+  authHelp.textContent=choosing?'Use 12–128 characters. A unique passphrase works well.':mode==='setup'?'Verify your email once, then choose a password for future visits.':mode==='password'?'Use the email shared with Atelier Elunora. First visit? Choose Create or reset password.':t.loginHelp||'Use the email shared with Atelier Elunora for your event.';
+  notice.textContent='';error.textContent='';if(reset){if(choosing)hideCaptcha();else resetCaptcha();}
+ }
+ usePassword.onclick=()=>setLoginMode('password');useCode.onclick=()=>setLoginMode('code');setupPassword.onclick=()=>setLoginMode('setup');
+ setLoginMode('password',false);if(session)notice.textContent='Opening your photos…';
 
  const account=node('section'),bar=node('div',null,'ag-bar'),identity=node('span'),logout=node('button',t.logout),choose=node('button',t.galleries);
  bar.append(identity,choose,logout);account.append(bar);account.hidden=true;ui.append(account);
@@ -216,7 +236,7 @@
  function remember(s){session=s;if(s)sessionStorage.setItem(key,JSON.stringify(s));else sessionStorage.removeItem(key);}
  function clearPhotos(){epoch++;for(const url of urls.values())URL.revokeObjectURL(url);urls.clear();loading.clear();observer?.disconnect();grid.replaceChildren();reviewList.replaceChildren();large.removeAttribute('src');if(dialog.open)dialog.close();}
  function clearGallery(){clearPhotos();event=null;photos=[];items=[];dirty=false;step=1;gallery.hidden=true;packStep.hidden=false;photoStep.hidden=true;review.hidden=true;events.replaceChildren();}
- function signedOut(){intro.hidden=false;remember(null);clearGallery();account.hidden=true;login.hidden=false;codeBox.hidden=true;send.hidden=false;email.readOnly=false;code.value='';notice.textContent='';identity.textContent='';resetCaptcha();}
+ function signedOut(){setLoginMode('password',false);intro.hidden=false;remember(null);clearGallery();account.hidden=true;login.hidden=false;codeBox.hidden=true;send.hidden=false;email.readOnly=false;code.value='';notice.textContent='';identity.textContent='';resetCaptcha();}
  async function raw(path,body,token=session?.access_token){
   return fetch(base+path,{method:body?'POST':'GET',mode:'cors',credentials:'omit',cache:'no-store',headers:{'X-Elunora-Request':'1',...(token?{Authorization:'Bearer '+token}:{}),...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined});
  }
@@ -305,10 +325,28 @@
  reset.onclick=()=>{if(!active||busy)return;active.x=active.y=50;active.zoom=1;x.value=y.value=50;dirty=true;updateCrop();sync();};
  close.onclick=()=>dialog.close();dialog.onclose=()=>{active=null;large.removeAttribute('src');};
  async function saveSelection(force=false){if(!dirty&&!force)return;const d=await api('events/'+event.id+'/selection',{items,revision});revision=d.revision;dirty=false;notice.textContent=t.saveSuccess;sync();}
- login.onsubmit=e=>{e.preventDefault();if(!codeBox.hidden){verify.click();return;}run(async()=>{await requestCode();codeBox.hidden=false;send.hidden=true;email.readOnly=true;notice.textContent=t.sent;setTimeout(()=>code.focus(),0);});};
- verify.onclick=()=>run(async()=>{if(!/^[0-9]{8}$/.test(code.value.trim()))throw Error(t.codeHelp);remember(await api('verify',{email:email.value,token:code.value.trim()}));code.value='';await showAccount();});
+ login.onsubmit=e=>{e.preventDefault();if(!codeBox.hidden){verify.click();return;}run(async()=>{
+  if(loginMode==='choose-password'){
+   if(password.value!==confirmPassword.value)throw Error('Passwords do not match.');
+   if(password.value.length<12||password.value.length>128)throw Error('Use a password between 12 and 128 characters.');
+   await renew();remember(await api('password',{password:password.value,refresh_token:session.refresh_token}));password.value=confirmPassword.value='';await showAccount();return;
+  }
+  if(loginMode==='password'){remember(await requestCode('password-login',{password:password.value}));password.value='';await showAccount();return;}
+  await requestCode();codeBox.hidden=false;send.hidden=true;email.readOnly=true;notice.textContent=t.sent;setTimeout(()=>code.focus(),0);
+ });};
+ verify.onclick=()=>run(async()=>{
+  if(!/^[0-9]{8}$/.test(code.value.trim()))throw Error(t.codeHelp);
+  remember(await api('verify',{email:email.value,token:code.value.trim()}));code.value='';
+  if(loginMode==='setup'){
+   const identity=await api('session');
+   if(identity.owner){try{await api('logout',{refresh_token:session.refresh_token});}finally{signedOut();}throw Error('For your owner account, create or reset your password in Owner Studio so you can verify your authenticator.');}
+   setLoginMode('choose-password');password.focus();return;
+  }
+  await showAccount();
+ });
  resend.onclick=()=>{if(busy)return;if(!captchaVisible){resetCaptcha();return;}run(async()=>{await requestCode();notice.textContent=t.sent;});};
- change.onclick=()=>{codeBox.hidden=true;send.hidden=false;email.readOnly=false;code.value='';notice.textContent='';resetCaptcha();email.focus();};
+ change.onclick=()=>{setLoginMode(loginMode);email.focus();};
+ cancelSetup.onclick=()=>run(async()=>{try{await api('logout',{refresh_token:session.refresh_token});}finally{signedOut();}});
  logout.onclick=()=>{if(leave())run(async()=>{try{await api('logout',{refresh_token:session.refresh_token});}finally{signedOut();notice.textContent=t.signedOut;}});};
  choose.onclick=()=>leave()&&run(list);reload.onclick=()=>event&&leave()&&run(()=>openEvent(event.id));
  packContinue.onclick=()=>setStep(2);changePack.onclick=()=>setStep(1);

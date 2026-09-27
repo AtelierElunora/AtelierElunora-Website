@@ -1,3 +1,4 @@
+import {sendInvitationEmail} from './invitation-email.mjs';
 import {stationOriginAllowed} from './station-origin.mjs';
 import {automaticRequest,ownerAutomatic} from './automatic.mjs';
 import {laterRequest,ownerLater} from './upload-later.mjs';
@@ -13,7 +14,7 @@ import {createClient} from '@supabase/supabase-js';
 import {runtime} from './runtime.mts';
 import {guestRoutes,ownerRoutes,jsonBody} from './gallery.mts';
 import {ownerState, ownerMfa, needsMfa} from './owner-mfa.mts';
-import {requestEmailCode} from './login.mts';
+import {requestEmailCode, signInWithPassword, setPassword} from './login.mts';
 
 export async function storefrontHandler(request:Request, factory=createClient){
  const headers=new Headers({'Cache-Control':'private, no-store','Pragma':'no-cache','Vary':'Origin','X-Content-Type-Options':'nosniff'});
@@ -69,11 +70,12 @@ export async function storefrontHandler(request:Request, factory=createClient){
    const service=factory(base,secret,{auth:{persistSession:false,autoRefreshToken:false}});
    return await stationRequest(await jsonBody(request,5700000),service,reply,makeServerPreview);
   }
-  if(['login','verify','refresh','logout'].includes(path)&&request.method==='POST'){
+  if(['login','verify','password-login','refresh','logout'].includes(path)&&request.method==='POST'){
    const b=await jsonBody(request,8192);
-   if(path==='login'||path==='verify'){
+   if(path==='login'||path==='verify'||path==='password-login'){
     if(typeof b.email!=='string'||b.email.length>254||!/^\S+@\S+\.\S+$/.test(b.email.trim()))return reply({error:'Enter a valid email.'},400);
     const email=b.email.trim().toLowerCase();
+    if(path==='password-login')return await signInWithPassword(client,email,b.password,b.captchaToken,reply);
     if(path==='login'){
      return await requestEmailCode(client,email,b.captchaToken,reply);
     }
@@ -109,6 +111,7 @@ export async function storefrontHandler(request:Request, factory=createClient){
    return !result.error;
   });
   if(needsMfa(security))return reply({error:'Verify your authenticator in the owner app to continue.',code:'MFA_REQUIRED'},403);
+  if(path==='password'&&request.method==='POST')return await setPassword(client,data.user,security,auth.slice(7),await jsonBody(request,8192),reply);
   if(path==='owner/commerce'&&request.method==='GET'){
    if(!security.owner||security.aal!=='aal2')return reply({error:'Owner authenticator verification required.'},403);
    const secret=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');if(!secret)return reply({error:'Online store unavailable.'},503);
@@ -165,7 +168,14 @@ export async function storefrontHandler(request:Request, factory=createClient){
   if(path==='owner'||path.startsWith('owner/')){
    const parts=path.split('/');
    const activity=security.owner?activityFor(request,parts):null;
-   const run=()=>ownerRoutes(request,parts,client,reply,headers);
+   if(['access','invitation-email'].includes(parts[3])&&(!security.owner||security.aal!=='aal2'))return reply({error:'Owner authenticator verification required.'},403);
+   const sendInvitation=async(eventId:string,email:string,resend:boolean)=>{
+    const secret=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    if(!secret)return {status:'unconfigured',message:'Access is saved, but invitation email is unavailable.'};
+    const service=factory(base,secret,{auth:{persistSession:false,autoRefreshToken:false}});
+    return await sendInvitationEmail(service,eventId,email,{key:Deno.env.get('RESEND_API_KEY')},resend);
+   };
+   const run=()=>ownerRoutes(request,parts,client,reply,headers,sendInvitation);
    if(!activity)return await run();
    const secret=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
    if(!secret)return reply({error:'Activity logging is temporarily unavailable. No action was started. Please retry.'},503);
