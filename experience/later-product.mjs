@@ -1,0 +1,19 @@
+export const laterVariants=new Set(['52214559670560','52298480025888','52298480058656','52297952559392','52298480091424','52298480124192','52298480156960','52298480189728','52298480222496','52298480255264','52298480288032','52297952887072','52297952919840','52297952952608','52298480320800','52298480353568','52298480386336']);
+const largeFrames=new Set(['52298480091424','52298480320800','52298480353568','52298480386336']);
+export async function addLaterToCart({variant,quantity,attempt},fetcher=fetch,root='/'){
+ if(!laterVariants.has(String(variant))||!Number.isInteger(quantity)||quantity<1||quantity>(largeFrames.has(String(variant))?4:6)||!/^[a-f0-9-]{36}$/.test(attempt))throw Error('Choose an available product and a quantity within the limit shown.');
+ if(!/^\/(?:[a-z]{2}(?:-[A-Za-z]{2})?\/)?$/.test(root))root='/';
+ const cart=root+'cart';
+ const check=async()=>{const r=await fetcher(cart+'.js',{credentials:'same-origin',cache:'no-store'});if(!r.ok)throw Error('Could not check your cart. Please retry.');const d=await r.json(),matches=d.items.filter(i=>i.properties?._Atelier_upload===attempt);if(!matches.length)return false;if(matches.length!==1||String(matches[0].variant_id)!==String(variant)||matches[0].quantity!==quantity)throw Error('This item is already in your cart with different options. Review your cart before adding it again.');return true;};
+ if(await check())return cart;
+ try{const r=await fetcher(cart+'/add.js',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:[{id:variant,quantity,properties:{'Photo submission':'Upload later',_Atelier_upload:attempt}}]})});if(!r.ok)throw Error('Cart update failed.');}catch{if(await check())return cart;throw Error('Could not add this item. Please retry.');}
+ if(!await check())throw Error('Could not confirm the cart update. Please retry.');return cart;
+}
+if(typeof customElements!=='undefined'&&!customElements.get('atelier-upload-later'))customElements.define('atelier-upload-later',class extends HTMLElement{
+ connectedCallback(){this.controller?.abort();this.controller=new AbortController();const signal=this.controller.signal;this.variant=this.dataset.variant;this.available=this.dataset.available==='true';this.button=this.querySelector('button');this.message=this.querySelector('[role=status]');this.attempt=crypto.randomUUID();this.generation=0;this.update();
+ document.addEventListener('shopify:product:select',async e=>{const section=this.closest('.shopify-section');if(section&&!section.contains(e.target))return;const generation=++this.generation;this.pending=true;this.update();try{const result=await e.promise;if(generation!==this.generation)return;const v=result?.detail?.resource;this.variant=String(v?.id||'').split('/').at(-1);this.available=v?.available===true;this.attempt=crypto.randomUUID();}catch{this.available=false;}finally{if(generation===this.generation){this.pending=false;this.update();}}},{signal});
+ this.button.addEventListener('click',async()=>{if(this.pending||this.busy||!this.available)return;this.busy=true;this.update();try{const quantity=Number(this.querySelector('[name=quantity]').value);const cart=await addLaterToCart({variant:this.variant,quantity,attempt:this.attempt},fetch,this.dataset.root);location.assign(cart);}catch(e){this.message.textContent=e.message;}finally{this.busy=false;this.update();}},{signal});
+ }
+ disconnectedCallback(){this.controller?.abort();}
+ update(){const input=this.querySelector('[name=quantity]');input.max=largeFrames.has(this.variant)?'4':'6';if(Number(input.value)>Number(input.max))input.value=input.max;this.button.disabled=this.pending||this.busy||!this.available||!laterVariants.has(this.variant);this.button.textContent=this.busy?'Adding to cart…':this.pending?'Updating options…':this.available?'Add to cart — upload later':'Currently unavailable';}
+});

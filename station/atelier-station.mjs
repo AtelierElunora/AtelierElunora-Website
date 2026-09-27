@@ -1,22 +1,34 @@
-import {cropRect,sheetLayout,letterCopyLayout,letterLayout,drawVerticalCutGuides,normalizeTemplate,templateSides,resolveTemplateText,drawMagnet} from '../theme/assets/atelier-station-core.js';
+import {installWorkbench} from './print-workbench.mjs';
+import {cropRect,sheetLayout,letterCopyLayout,letterLayout,ds820CopyLayout,ds820Layout,drawVerticalCutGuides,normalizeTemplate,templateSides,resolveTemplateText,drawMagnet} from '../theme/assets/atelier-station-core.js';
 const API='https://gefdlubvqymyxrguhtnc.supabase.co/functions/v1/gallery-api/station';
 const $=id=>document.getElementById(id),notice=message=>{$('notice').textContent=message;};
-const demo=new URLSearchParams(location.search).get('demo');
-const fragment=new URLSearchParams(location.hash.slice(1));
+const embeddedAddress=document.documentElement.dataset.stationUrl;
+const stationAddress=new URL(embeddedAddress||location.href);
+delete document.documentElement.dataset.stationUrl;
+const demo=new URLSearchParams(stationAddress.search).get('demo');
+const fragment=new URLSearchParams(stationAddress.hash.slice(1));
 let purpose=fragment.has('capture')?'capture':fragment.has('print')?'print':null;
 let token=purpose?fragment.get(purpose):null;
-if(token){sessionStorage.setItem('ae-station',JSON.stringify({purpose,token}));history.replaceState(null,'',location.pathname+location.search);}
-else{try{({purpose,token}=JSON.parse(sessionStorage.getItem('ae-station')||'{}'));}catch{}}
+const embedded=new URLSearchParams(stationAddress.search).get('embedded')==='1';
+if(token){if(!embedded)sessionStorage.setItem('ae-station',JSON.stringify({purpose,token}));if(!embeddedAddress)history.replaceState(null,'',location.pathname+location.search);}
+else if(!embedded){try{({purpose,token}=JSON.parse(sessionStorage.getItem('ae-station')||'{}'));}catch{}}
 if(demo==='capture'||demo==='print'){purpose=demo;token='demo';$('demo-label').hidden=false;}
 let stream,face='user',jpeg=null,requestId=null,attempted=false,busy=false,closed=false,selected=null,picture=null,timer,loadGeneration=0;
 let eventName='',template=normalizeTemplate();
-let printReviewPending=false;
+let printReviewPending=false,workbench;
 let autoLetter=false,letterBatch=null,letterReady=false,letterRequest=null;
+let demoRun=null;
 let demoJobs=[{id:'DEMO-001',status:'pending',quantity:2,x:50,y:50,zoom:1,version:1,created_at:new Date().toISOString()}];
 if(demo==='print'&&new URLSearchParams(location.search).has('batch'))demoJobs=Array.from({length:12},(_,i)=>({id:'DEMO-'+String(i+1).padStart(3,'0'),status:'pending',quantity:1,x:50,y:50,zoom:1,version:1,created_at:new Date().toISOString()}));
 async function api(body){
  if(closed)throw Error('This station is closed.');
  if(token==='demo'){
+  if(body.action==='print-run'){
+   if(body.operation==='claim'&&!demoRun){const jobs=demoJobs.filter(j=>j.status==='pending');if(!jobs.length)return {run:null};jobs.forEach(j=>Object.assign(j,{status:'printing',print_run_id:body.requestId,version:j.version+1,template:normalizeTemplate({enabled:true,cutInches:3.6})}));demoRun={id:body.requestId,status:'active',profile:body.profile,jobs};}
+   if(['printed','release'].includes(body.operation)&&demoRun){demoRun.jobs.forEach(j=>Object.assign(j,{status:body.operation==='printed'?'printed':'pending',print_run_id:null,version:j.version+1}));demoRun=null;}
+   return {run:demoRun};
+  }
+  if(body.action==='crop-save'){for(const v of body.items){const j=demoJobs.find(j=>j.id===v.id);if(!j||j.version!==v.version||j.status!=='pending')throw Error('Refresh the queue.');}for(const v of body.items){const j=demoJobs.find(j=>j.id===v.id);j.originalCrop??={x:j.x,y:j.y,zoom:j.zoom};Object.assign(j,v,{version:j.version+1});}return {updated:body.items.length};}
   if(body.action==='info')return {name:'Sample celebration',purpose};
   if(body.action==='template')return {template:normalizeTemplate({enabled:true,sides:{top:{source:'company'},bottom:{source:'event'}}})};
   if(body.action==='submit')return {received:true,photoId:'DEMO'};
@@ -26,12 +38,12 @@ async function api(body){
    if(existing.length)return {id:existing[0].letter_batch_id,jobs:existing,created:false};
    const jobs=demoJobs.filter(j=>j.status==='pending'&&j.quantity===1).slice(0,6);
    if(!jobs.length||(!body.partial&&jobs.length<6))return {waiting:true,count:jobs.length};
-   jobs.forEach((j,i)=>Object.assign(j,{status:'printing',letter_batch_id:body.requestId,letter_slot:i,version:j.version+1,template:normalizeTemplate({enabled:true,cutInches:3.6,sides:{top:{source:'company'},bottom:{source:'event'}}})}));
+   jobs.forEach((j,i)=>Object.assign(j,{status:'printing',sheet_profile:body.profile??'letter',letter_batch_id:body.requestId,letter_slot:i,version:j.version+1,template:normalizeTemplate({enabled:true,cutInches:3.6,sides:{top:{source:'company'},bottom:{source:'event'}}})}));
    return {id:body.requestId,jobs,created:true};
   }
   if(body.action==='batch-finish'){const jobs=demoJobs.filter(j=>j.letter_batch_id===body.id&&j.status==='printing');jobs.forEach(j=>Object.assign(j,{status:body.operation==='printed'?'printed':'pending',version:j.version+1,...(body.operation==='release'?{letter_batch_id:null,letter_slot:null}:{})}));return {updated:jobs.length};}
   if(body.action==='job-status')return {job:demoJobs.find(j=>j.id===body.id)??null};
-  if(body.action==='queue')return {jobs:demoJobs.filter(j=>j.status===($('queue-filter').value||'pending'))};
+  if(body.action==='queue')return {jobs:demoJobs.filter(j=>j.status===(body.status||'pending'))};
   if(body.action==='update'){
    const j=demoJobs.find(j=>j.id===body.id);if(!j||j.version!==body.version)throw Error('Refresh the queue.');
    Object.assign(j,{version:j.version+1,status:({claim:'printing',printed:'printed',retry:'pending',hold:'held'})[body.operation]},body.operation==='claim'?{quantity:body.quantity,x:body.x,y:body.y,zoom:body.zoom,template:body.template}:{});return {job:{...j}};
@@ -44,6 +56,7 @@ async function api(body){
 async function run(fn){if(busy||closed)return;busy=true;sync();try{await fn();}catch(e){notice(e.message);}finally{busy=false;sync();}}
 function sync(){
  document.querySelectorAll('button').forEach(b=>{b.disabled=busy||closed||b.dataset.batchJob==='true';});
+ $('letter-partial').textContent='Print one partial sheet';
  $('letter-toggle').textContent=autoLetter?'Pause automatic sheets':'Start automatic six-photo sheets';
  $('letter-toggle').disabled=busy||closed||Boolean(selected);
  $('letter-partial').disabled=busy||closed||Boolean(selected)||Boolean(letterBatch);
@@ -57,6 +70,7 @@ function sync(){
  $('printed').hidden=selected?.status!=='printing';$('retry').hidden=!['printing','held'].includes(selected?.status);
  document.querySelectorAll('#template-editor input,#template-editor select,#template-editor button').forEach(el=>{el.disabled=busy||selected?.status!=='pending'||closed;});
  for(const id of ['x','y','zoom','reset-crop','quantity','cut','sheet-format'])$(id).disabled=busy||selected?.status!=='pending';
+ workbench?.sync();
 }
 function stopCamera(){stream?.getTracks().forEach(t=>t.stop());stream=null;}
 async function camera(){
@@ -120,9 +134,9 @@ $('template-reset').onclick=()=>run(async()=>{populateTemplate((await api({actio
 
 async function loadImage(url){const image=new Image();image.crossOrigin='anonymous';await new Promise((resolve,reject)=>{image.onload=resolve;image.onerror=()=>reject(Error('Photo could not load. Open the job again to refresh its link.'));image.src=url;});return image;}
 function sampleImage(){const c=document.createElement('canvas');c.width=1200;c.height=900;const x=c.getContext('2d');x.fillStyle='#d6d2bc';x.fillRect(0,0,1200,900);x.fillStyle='#4a4b36';x.fillRect(150,100,900,650);x.fillStyle='#fff';x.font='50px Georgia';x.fillText('DEMO · crop and print test',270,400);return c.toDataURL('image/jpeg');}
-function clearSheets(){printReviewPending=false;$('print-result').hidden=true;$('downloads').hidden=false;$('print').hidden=false;$('sheets').classList.remove('letter-sheets');$('sheets').replaceChildren();$('downloads').replaceChildren();$('sheet-controls').hidden=true;}
+function clearSheets(){printReviewPending=false;$('print-result').hidden=true;$('downloads').hidden=false;$('print').hidden=false;$('sheets').classList.remove('letter-sheets','ds820-sheets');$('sheets').replaceChildren();$('downloads').replaceChildren();$('sheet-controls').hidden=true;}
 async function openJob(job){
- if(autoLetter||letterBatch||job.letter_batch_id)throw Error('Pause automatic sheets and finish the active sheet before opening individual photos.');
+ if(workbench?.active()||autoLetter||letterBatch||job.letter_batch_id||job.print_run_id)throw Error('Pause automatic sheets and finish the active sheet before opening individual photos.');
  clearSheets();selected={...job};picture=null;$('editor').hidden=false;$('job-title').textContent='Photo '+job.id.slice(0,8)+' · '+job.status;
  $('zoom').value=job.zoom??1;$('zoom-value').textContent=Number($('zoom').value).toFixed(2)+'×';$('quantity').value=job.quantity;$('x').value=job.x;$('y').value=job.y;$('print-note').textContent=job.status==='printing'?'This job is reserved for printing. Check physical output before confirming or returning it to pending.':'';sync();
  const generation=++loadGeneration;
@@ -135,7 +149,7 @@ async function queue(){
  const r=await api({action:'queue',status:$('queue-filter').value});if(closed)return;
  $('jobs').replaceChildren();
  if(!r.jobs.length){const p=document.createElement('p');p.textContent='No photos in this queue.';$('jobs').append(p);}
- r.jobs.forEach(job=>{const b=document.createElement('button');b.textContent=job.id.slice(0,8)+' · '+job.status+' · '+new Date(job.created_at).toLocaleTimeString();b.dataset.jobId=job.id;b.dataset.batchJob=String(Boolean(job.letter_batch_id));if(job.letter_batch_id)b.textContent+=' · reserved in letter sheet';b.onclick=()=>run(()=>openJob(job));b.disabled=busy||autoLetter||Boolean(letterBatch)||Boolean(job.letter_batch_id);$('jobs').append(b);});
+ r.jobs.forEach(job=>{const b=document.createElement('button');b.textContent=job.id.slice(0,8)+' · '+job.status+' · '+new Date(job.created_at).toLocaleTimeString();b.dataset.jobId=job.id;b.dataset.batchJob=String(Boolean(job.letter_batch_id||job.print_run_id));if(job.letter_batch_id)b.textContent+=' · reserved in print sheet';b.onclick=()=>run(()=>openJob(job));b.disabled=busy||autoLetter||Boolean(letterBatch)||Boolean(job.letter_batch_id);$('jobs').append(b);});
  if(r.jobs.length===100){const p=document.createElement('p');p.textContent='Showing the oldest 100 jobs in this status. Completing jobs reveals the next ones.';$('jobs').append(p);}
  if(selected){const currentId=selected.id;const fresh=(await api({action:'job-status',id:currentId})).job;if(closed||selected?.id!==currentId)return;if(!fresh||fresh.status==='printed'){removeQueueJobs([currentId]);closePhoto();sync();notice('Completed photo cleared from this print desk.');}else if(fresh.version!==selected.version){closePhoto();sync();notice('This job changed in another window. Open it again before printing.');}}
 }
@@ -143,26 +157,27 @@ async function update(operation,printTemplate){const r=await api({action:'update
 $('prepare').onclick=()=>run(async()=>{
  const printTemplate=currentTemplate();
  if(printTemplate.enabled){const loaded=await document.fonts.load('12px "Brown Carolina"');if(!loaded.length)throw Error('Print font could not load. Check your connection and retry.');}
- const letter=$('sheet-format').value==='letter';
- const pages=(letter?letterCopyLayout:sheetLayout)(Number($('quantity').value),Number($('cut').value));
+ const letter=$('sheet-format').value==='letter',ds820=$('sheet-format').value==='8x12';
+ const pages=(ds820?ds820CopyLayout:letter?letterCopyLayout:sheetLayout)(Number($('quantity').value),Number($('cut').value));
  const r=cropRect(picture.naturalWidth,picture.naturalHeight,Number($('x').value),Number($('y').value),Number($('zoom').value));
  // Render first; reserve atomically before exposing a printable sheet.
- const urls=pages.map(slots=>{const c=document.createElement('canvas');c.width=letter?2550:1800;c.height=letter?3300:1200;const ctx=c.getContext('2d');ctx.fillStyle='white';ctx.fillRect(0,0,c.width,c.height);for(const slot of slots){drawMagnet(ctx,picture,r,slot,printTemplate,templateContext());}if(letter)drawVerticalCutGuides(ctx,slots);return c.toDataURL('image/png');});
- await update('claim',printTemplate);clearSheets();if(letter)$('sheets').classList.add('letter-sheets');
+ const urls=pages.map(slots=>{const c=document.createElement('canvas');c.width=ds820?2400:letter?2550:1800;c.height=ds820?3600:letter?3300:1200;const ctx=c.getContext('2d');ctx.fillStyle='white';ctx.fillRect(0,0,c.width,c.height);for(const slot of slots){drawMagnet(ctx,picture,r,slot,printTemplate,templateContext());}if(letter||ds820)drawVerticalCutGuides(ctx,slots);return c.toDataURL('image/png');});
+ await update('claim',printTemplate);clearSheets();if(letter)$('sheets').classList.add('letter-sheets');if(ds820)$('sheets').classList.add('ds820-sheets');
  urls.forEach((url,i)=>{const img=document.createElement('img');img.src=url;img.alt='Print sheet '+(i+1);$('sheets').append(img);const a=document.createElement('a');a.href=url;a.download='AE-'+selected.id+'-sheet-'+(i+1)+'.png';a.textContent='Download sheet '+(i+1);$('downloads').append(a);});
- $('sheet-controls').hidden=false;notice(pages.length+' '+(letter?'Letter':'4 × 6')+' sheet(s) ready for '+$('quantity').value+' magnets. Print at 100% / actual size, with margins set to None and headers/footers off.');await queue();
+ $('sheet-controls').hidden=false;notice(pages.length+' '+(ds820?'8 × 12':letter?'Letter':'4 × 6')+' sheet(s) ready for '+$('quantity').value+' magnets. Print at 100% / actual size, with margins set to None and headers/footers off.');await queue();
 });
-$('print').onclick=()=>{if(letterBatch){$('letter-print').click();return;}if(!busy&&!closed)requestPrint();};
+$('print').onclick=()=>{if(workbench?.hasRun()){run(workbench.print);return;}if(letterBatch){$('letter-print').click();return;}if(!busy&&!closed)requestPrint();};
 $('printed').onclick=()=>run(async()=>{if(!confirm('Have all magnets for this job physically printed correctly?'))return;await update('printed');removeQueueJobs([selected.id]);closePhoto();await queue();notice('Marked printed.');});
 $('retry').onclick=()=>run(async()=>{if(!confirm('Check the printer first to avoid duplicate prints. Return this job to pending?'))return;await update('retry');clearSheets();selected=null;picture=null;$('editor').hidden=true;await queue();notice('Returned to pending.');});
 $('hold').onclick=()=>run(async()=>{await update('hold');selected=null;picture=null;$('editor').hidden=true;await queue();});
 $('refresh').onclick=()=>run(async()=>{await queue();await checkLetter();});$('queue-filter').onchange=()=>run(queue);
-function end(){autoLetter=false;letterBatch=null;letterReady=false;closed=true;clearTimeout(timer);loadGeneration++;stopCamera();sessionStorage.removeItem('ae-station');jpeg=null;token=null;picture=null;selected=null;$('review').removeAttribute('src');$('capture').hidden=true;$('printing').hidden=true;clearSheets();notice('Station closed on this device. Revoke its link in the owner app to disable it everywhere.');sync();}
+function end(){workbench?.dispose();autoLetter=false;letterBatch=null;letterReady=false;closed=true;clearTimeout(timer);loadGeneration++;stopCamera();sessionStorage.removeItem('ae-station');jpeg=null;token=null;picture=null;selected=null;$('review').removeAttribute('src');$('capture').hidden=true;$('printing').hidden=true;clearSheets();notice('Station closed on this device. Revoke its link in the owner app to disable it everywhere.');sync();}
 $('close').onclick=()=>{if(!busy&&(!jpeg||confirm('An unconfirmed photo is on screen. Closing may lose it. Close this device?')))end();};
 window.addEventListener('beforeunload',e=>{if(jpeg){e.preventDefault();e.returnValue='';}});
 window.addEventListener('pagehide',stopCamera);
 document.addEventListener('visibilitychange',()=>{if(document.hidden)stopCamera();else if(purpose==='capture'&&!jpeg&&!closed){$('start').hidden=false;$('take').hidden=true;$('switch').hidden=true;notice('Tap Enable camera to resume.');}});
 async function poll(){if(closed)return;try{if(!busy&&!document.hidden){busy=true;sync();try{await queue();await checkLetter();}finally{busy=false;sync();}}}catch(e){autoLetter=false;sync();notice('Queue refresh failed; automatic sheets paused: '+e.message);}finally{if(!closed)timer=setTimeout(poll,5000);}}
+workbench=installWorkbench({api,run,notice,loadImage,sampleImage,isDemo:()=>token==='demo',state:()=>({busy,closed,selected:Boolean(selected),letterBatch:Boolean(letterBatch),autoLetter}),clearSheets,requestPrint,refresh:queue,eventName:()=>eventName});
 (async()=>{try{if(!token||!['capture','print'].includes(purpose))throw Error('Open an event-specific station link created in your owner app.');const info=await api({action:'info'});eventName=info.name;$('event-name').textContent=info.name;$('title').textContent=purpose==='capture'?'Make a memory':'Event print desk';$(purpose==='capture'?'capture':'printing').hidden=false;notice(purpose==='capture'?'Tap Enable camera to begin.':'Print desk connected.');if(purpose==='print'){document.fonts.load('12px "Brown Carolina"').then(drawTemplatePreview).catch(()=>{});await poll();}}catch(e){notice(e.message);}sync();})();
 
 // A browser print request is not a receipt from the physical printer.
@@ -172,21 +187,22 @@ async function renderLetter(){
  letterReady=false;clearSheets();
  const batch=letterBatch;
  const templates=batch.jobs.map(j=>normalizeTemplate(j.template));
- const slots=letterLayout(templates.map(t=>t.enabled?t.cutInches:t.photoCutInches));
+ const ds820=batch.jobs[0]?.sheet_profile==='8x12';
+ const slots=(ds820?ds820Layout:letterLayout)(templates.map(t=>t.enabled?t.cutInches:t.photoCutInches));
  if(templates.some(t=>t.enabled)&&!(await document.fonts.load('12px "Brown Carolina"')).length)throw Error('Print font could not load. Retry preparing this sheet.');
  const images=await Promise.all(batch.jobs.map(async j=>loadImage(token==='demo'?sampleImage():(await api({action:'image',id:j.id})).url)));
  if(closed||letterBatch!==batch)return;
- const canvas=document.createElement('canvas');canvas.width=2550;canvas.height=3300;const ctx=canvas.getContext('2d');ctx.fillStyle='white';ctx.fillRect(0,0,2550,3300);
+ const canvas=document.createElement('canvas');canvas.width=ds820?2400:2550;canvas.height=ds820?3600:3300;const ctx=canvas.getContext('2d');ctx.fillStyle='white';ctx.fillRect(0,0,canvas.width,canvas.height);
  batch.jobs.forEach((j,i)=>{const im=images[i];drawMagnet(ctx,im,cropRect(im.naturalWidth,im.naturalHeight,j.x,j.y,j.zoom??1),slots[i],templates[i],{name:eventName,photo:j.id.slice(0,8)});});
  drawVerticalCutGuides(ctx,slots);
  const url=canvas.toDataURL('image/png');
  // Wait for decoding before opening print, otherwise some browsers print a blank sheet.
  await loadImage(url);
  if(closed||letterBatch!==batch)return;
- const img=document.createElement('img');img.src=url;img.alt='Letter sheet with '+batch.jobs.length+' magnets';
- $('sheets').classList.add('letter-sheets');$('sheets').append(img);
+ const img=document.createElement('img');img.src=url;img.alt=(ds820?'8 × 12':'Letter')+' sheet with '+batch.jobs.length+' magnets';
+ $('sheets').classList.add(ds820?'ds820-sheets':'letter-sheets');$('sheets').append(img);
  const a=document.createElement('a');a.href=url;a.download='AE-letter-'+batch.id+'.png';a.textContent='Download letter sheet';$('downloads').append(a);$('sheet-controls').hidden=false;
- letterReady=true;showLetter(batch.jobs.length+' photos reserved. Dashed vertical guides mark the outer cut edges; cut along the side nearest the design. Print Letter at 100% / actual size, then confirm the physical sheet.');
+ letterReady=true;showLetter(batch.jobs.length+' photos reserved. Dashed vertical guides mark the outer cut edges; cut along the side nearest the design. Print the reserved paper size at 100% / actual size, then confirm the physical sheet.');
 }
 async function recoverLetter(){
  const r=await api({action:'batch-status'});
@@ -198,7 +214,7 @@ async function recoverLetter(){
 async function claimLetter(partial=false){
  letterRequest??=crypto.randomUUID();
  try{
-  const r=await api({action:'batch-claim',requestId:letterRequest,partial});
+  const r=await api({action:'batch-claim',requestId:letterRequest,partial,profile:$('batch-format')?.value??'letter'});
   letterRequest=null;
   if(closed)return;
   if(r.waiting){showLetter(r.count+' of 6 eligible photos ready. '+(autoLetter?'Waiting for a full sheet.':'Automatic sheets paused.'));return;}
@@ -212,6 +228,7 @@ async function claimLetter(partial=false){
 }
 async function checkLetter(){
  if(selected)return;
+ if(await workbench?.poll())return;
  if(await recoverLetter())return;
  if(autoLetter)await claimLetter();
 }
@@ -219,8 +236,8 @@ $('letter-toggle').onclick=()=>run(async()=>{
  if(autoLetter){autoLetter=false;showLetter('Automatic sheets paused.');return;}
  if(selected)throw Error('Close the photo editor before starting automatic sheets.');
  if(await recoverLetter())throw Error('Finish the reserved sheet before starting automatic sheets.');
- const t=normalizeTemplate((await api({action:'template'})).template);letterLayout([t.enabled?t.cutInches:t.photoCutInches]);
- if(!confirm('Use Letter paper and a tested cut size of 3.6 inches or smaller. Photos use their saved crop and the event template, one magnet each. The print dialog opens when six are ready. Continue?'))return;
+ const t=normalizeTemplate((await api({action:'template'})).template);($('batch-format')?.value==='8x12'?ds820Layout:letterLayout)([t.enabled?t.cutInches:t.photoCutInches]);
+ if(!confirm('Match the selected paper size and use a tested cut size (Letter: up to 3.6 inches; 8 × 12: up to 3.75 inches). Photos use their saved crop and the event template, one magnet each. The print dialog opens when six are ready. Continue?'))return;
  autoLetter=true;await claimLetter();
 });
 $('letter-partial').onclick=()=>run(async()=>{if(selected||letterBatch)return;autoLetter=false;if(!confirm('Print the next available photos, up to six, even if the sheet is not full?'))return;await claimLetter(true);});
@@ -244,10 +261,14 @@ $('editor-close').onclick=()=>run(async()=>{if(selected?.status==='printing')thr
 function removeQueueJobs(ids){for(const b of $('jobs').querySelectorAll('button'))if(ids.includes(b.dataset.jobId))b.remove();}
 function closePhoto(){clearSheets();selected=null;picture=null;loadGeneration++;$('editor').hidden=true;for(const id of ['crop','template-preview']){const c=$(id);c.getContext('2d').clearRect(0,0,c.width,c.height);}}
 function showPrintResult(){
- if(closed||!$('sheets').children.length||(!letterBatch&&selected?.status!=='printing'))return;
- printReviewPending=true;$('downloads').hidden=true;$('print').hidden=true;$('print-result').hidden=false;sync();
+ if(closed||!$('sheets').children.length||(!workbench?.hasRun()&&!letterBatch&&selected?.status!=='printing'))return;
+ printReviewPending=true;$('downloads').hidden=false;$('print').hidden=false;$('print-result').hidden=false;sync();
 }
-function requestPrint(){showPrintResult();window.print();}
+function requestPrint(){
+ showPrintResult();
+ notice('Print dialog requested. If no dialog opens, download the prepared sheet below and print it from your computer, or open the dashboard in Chrome, Edge or Safari. Use the selected paper size and 100% / actual size. Only confirm printed after checking the paper.');
+ try{window.focus();window.print();}catch{notice('This browser could not open printing. Download the prepared sheet below and print it from your computer at 100% / actual size. Your job remains awaiting confirmation.');}
+}
 window.addEventListener('afterprint',showPrintResult);
-$('sheet-done').onclick=()=>{if(busy||closed)return;if(letterBatch)$('letter-confirm').click();else $('printed').click();};
+$('sheet-done').onclick=()=>{if(busy||closed)return;if(workbench?.hasRun()){run(()=>workbench.finish('printed'));return;}if(letterBatch)$('letter-confirm').click();else $('printed').click();};
 $('sheet-retry').onclick=()=>{if(busy||closed)return;printReviewPending=false;$('print-result').hidden=true;$('downloads').hidden=false;$('print').hidden=false;notice('Kept for retry. Check the printer queue before printing again.');sync();};

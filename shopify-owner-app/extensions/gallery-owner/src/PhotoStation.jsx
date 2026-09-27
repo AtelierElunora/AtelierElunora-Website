@@ -39,7 +39,7 @@ export function PhotoStation({event,call,run,busy}){
   {state&&<s-stack gap="base">
    <s-heading>Print progress</s-heading>
    <s-paragraph>{count('pending')} pending photos | {count('printing')} awaiting print confirmation | {count('held')} held{state.counts&&<s-text> | {state.counts.printed} printed photos</s-text>}</s-paragraph>
-   <s-paragraph>Totals count photo jobs, not individual magnet copies. In the print desk, choose Printed — clear from queue after checking the sheet. Confirmed photos leave this list and the printed total updates within 5 seconds.</s-paragraph>
+   <s-paragraph>Totals count photo jobs, not individual magnet copies. In the print desk, choose Printed — clear from queue after checking the sheet. Operator-confirmed and computer-reported completions leave this list. The printed total updates within 5 seconds; computer completion is not a physical quality check.</s-paragraph>
    {!state.counts&&<s-paragraph>Showing loaded queue counts. The event-wide printed total is currently unavailable.</s-paragraph>}
    {state.jobs.length===0&&<s-paragraph>No photos waiting to print.</s-paragraph>}
    {state.jobs.length>8&&<s-paragraph>Showing the oldest 8 outstanding photos.</s-paragraph>}
@@ -48,3 +48,4 @@ export function PhotoStation({event,call,run,busy}){
   </s-stack>}
  </s-section>;
 }
+

@@ -1,5 +1,7 @@
 # Production source reconciliation — September 27, 2026
 
+**Follow-up:** The owner-dashboard and print-helper archives were subsequently supplied and verified. [Recovered authoring sources](RECOVERED-AUTHORING-SOURCES.md) supersedes the missing-source/build-pipeline notes below; the deployed theme/backend snapshot remains unchanged.
+
 This update copies running code into GitHub. It does not deploy a theme, change a database, release an app, alter product settings, or trigger a print job.
 
 ## Authoritative sources

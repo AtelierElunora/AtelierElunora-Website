@@ -1,0 +1,12 @@
+{
+  "dependencies": {
+    "@napi-rs/canvas": "0.1.80",
+    "pdf-lib": "1.17.1"
+  },
+  "name": "atelier-elunora-print-helper",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node main.mjs --run"
+  }
+}

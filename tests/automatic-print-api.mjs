@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {automaticRequest} from '../supabase/functions/gallery-api/automatic.mjs';
+import {stationRequest} from '../supabase/functions/gallery-api/station.mjs';
+const reply=(body,status=200)=>({body,status}),token='a'.repeat(64);let writes=0;
+const service={rpc:async()=>({data:{id:'station',event_id:'event',helper_only:true}}),from(table){return {select(){return this;},eq(){return this;},maybeSingle(){return this;},single(){return this;},update(){writes++;return this;},then(resolve){resolve({data:table==='gallery_print_helpers'?{id:'helper',paired:true,mode:'paused'}:null});}};}};
+assert.equal((await automaticRequest({},service,reply)).status,403);
+const profile={id:'ds820-8x12',adapter:'cups',printer:'DNP',media:'8x12',fingerprint:'b'.repeat(64),calibrated:true,jobMonitoring:true};
+assert.equal((await automaticRequest({token,action:'configure',profile},service,reply)).status,409);assert.equal(writes,0);
+assert.equal((await automaticRequest({token,action:'configure',profile:{...profile,adapter:'windows'}},service,reply)).status,409);assert.equal(writes,0);
+assert.equal((await automaticRequest({token,action:'configure',profile:{...profile,adapter:'simulation'}},service,reply)).status,409);assert.equal(writes,0);
+assert.equal((await automaticRequest({token,action:'configure',profile:{...profile,calibrated:false}},service,reply,{nativeEnabled:true})).status,400);
+assert.equal((await automaticRequest({token,action:'configure',profile},service,reply,{nativeEnabled:true})).status,200);assert.equal(writes,1);
+assert.equal((await stationRequest({token,purpose:'print',action:'info'},service,reply)).status,403);
+assert.equal((await automaticRequest({token,action:'image',runId:crypto.randomUUID(),sheetId:crypto.randomUUID(),jobId:crypto.randomUUID()},service,reply)).status,403);
+console.log('PASS: helper credential boundary, native calibration gate, public-token rejection and reservation-only image access.');

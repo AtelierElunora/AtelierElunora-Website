@@ -47,3 +47,5 @@ export function accessState(access) {
   if (access.revoked) return 'Revoked';
   return Date.parse(access.expires_at) <= Date.now() ? 'Expired' : 'Active';
 }
+
+export function orderContact(request,payments=[]){const emails=[...new Set(linkedPayments(request,payments).map(p=>p.customer_email).filter(Boolean))];return emails.join(', ')||request.email||'Guest upload — awaiting checkout contact';}

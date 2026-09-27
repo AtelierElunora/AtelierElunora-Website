@@ -53,3 +53,4 @@ export function MagnetTemplate({initial,eventName,call,route,run,busy}){
   {message&&<s-paragraph>{message}</s-paragraph>}
  </s-section>;
 }
+

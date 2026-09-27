@@ -1,0 +1,262 @@
+{
+  "date": "2026-09-27",
+  "archives": [
+    {
+      "name": "Atelier-Owner-Dashboard-Source-2026-09-27.zip",
+      "sha256": "2caa7a600db4fe622568aa18a7d39d3f8dc409a647058de905c4f24c7b551729"
+    },
+    {
+      "name": "Atelier-Print-Helper-4x6-Test-v4.zip",
+      "sha256": "5c9e9e1cd9685d0b77fa8933c9ba4b74104783ef3f54b15c9014c303e7b9e562"
+    }
+  ],
+  "files": [
+    {
+      "path": "shopify-owner-app/dashboard/AutomaticPrinting.jsx",
+      "sha256": "0f392ac0134ef78c1b41961a9c8ac1acc04d7d33c77e830b5e2e2c6607fb7da0"
+    },
+    {
+      "path": "shopify-owner-app/dashboard/Commerce.jsx",
+      "sha256": "00200d7c907d5bd34d7c2577350f02ffb8b48fc172d0832e426e2dfdcb43920c"
+    },
+    {
+      "path": "shopify-owner-app/dashboard/EventPrintDesk.jsx",
+      "sha256": "f51b7afbb79d8608ac4dab5bc8b36529823a7835a0e1317c44fc73491f5b9094"
+    },
+    {
+      "path": "shopify-owner-app/dashboard/LaterOrders.jsx",
+      "sha256": "5db23a7f25d5e1e0d3ca2e7178f6793e1bde6f8abc5ccb402f7704b5d58ac926"
+    },
+    {
+      "path": "shopify-owner-app/dashboard/app.jsx",
+      "sha256": "c3ba2469267d81c052626c9879d2c2d1f955eeaf2cfa99198f96047679cd6919"
+    },
+    {
+      "path": "shopify-owner-app/dashboard/client.mjs",
+      "sha256": "efad99d191f2d210cce1f1b927fc61e50cca5c2140f242a0387ed38c1f749b6b"
+    },
+    {
+      "path": "shopify-owner-app/dashboard/commerce.mjs",
+      "sha256": "2a142595393a38e47cc38129df754970f2813f7ea368965cd48dfb0a4366e012"
+    },
+    {
+      "path": "shopify-owner-app/dashboard/demo.mjs",
+      "sha256": "d4f28fb98787ab8430e6b5f27e8131954b3efc91b787cd706fba94a1e871544f"
+    },
+    {
+      "path": "shopify-owner-app/dashboard/gallery-handoff.mjs",
+      "sha256": "acbd94c1b7853f7cd9d4c8a5875005105fdb3126a2883a94723418006be7cd32"
+    },
+    {
+      "path": "shopify-owner-app/dashboard/ui.jsx",
+      "sha256": "af8f34657b965e3f3f32367e3f267360ddeb14c7ee45366647c5cb996309203b"
+    },
+    {
+      "path": "shopify-owner-app/extensions/gallery-owner/src/AppHome.jsx",
+      "sha256": "f3bd7366a603d8d4ebe4607cf6caf3b6a8dfe92fb9ac5b22450590a963313e7d"
+    },
+    {
+      "path": "shopify-owner-app/extensions/gallery-owner/src/GuestExperience.jsx",
+      "sha256": "3b64c66d87c6a31a1d04a8ec1d904c5c0921c2917dc4692807de1b1209b47c0d"
+    },
+    {
+      "path": "shopify-owner-app/extensions/gallery-owner/src/MagnetTemplate.jsx",
+      "sha256": "ee09669a570ab9d88dbabd0573e957420e71a27fc64ffa71b933cb89c0920c5b"
+    },
+    {
+      "path": "shopify-owner-app/extensions/gallery-owner/src/PhotoStation.jsx",
+      "sha256": "25070d548d0104c33460e757d6d803f66004c3f33fa354950479698f54649d92"
+    },
+    {
+      "path": "shopify-owner-app/extensions/gallery-owner/src/preview-font.mjs",
+      "sha256": "8218f05355c4f3b1107fdd36584bd5076f047cec08f2f367570dd27685cc5ceb"
+    },
+    {
+      "path": "shopify-owner-app/extensions/gallery-owner/src/shared-owner.jsx",
+      "sha256": "83da45426bf551c139011236558550511e7c26fb653865c82c0ec791c92ec8e6"
+    },
+    {
+      "path": "shopify-owner-app/extensions/gallery-owner/src/shopify.d.ts",
+      "sha256": "a9b177b3238bb5422e04d7b6afa828915f7edf5a3b152540979fe06df5a98f99"
+    },
+    {
+      "path": "shopify-owner-app/extensions/gallery-owner/src/template-preview.mjs",
+      "sha256": "392af9ad56a79cd071072464477db947946a348222dbca38add158afd63dd83a"
+    },
+    {
+      "path": "shopify-owner-app/extensions/gallery-owner/src/upload-queue.mjs",
+      "sha256": "9f994fbdc5cee83c8c6fcfc1748b62729691178903b4f6cbb923a91078933b9a"
+    },
+    {
+      "path": "shopify-owner-app/extensions/gallery-owner/src/workflows.mjs",
+      "sha256": "a456dfac5a20ad713e58704681edf5ec5495e17fd837edcd4ed68c08927db017"
+    },
+    {
+      "path": "station/atelier-station.mjs",
+      "sha256": "1b8eaa8826baf8b415e5a1d0de1ef9149707a68da1636641854064a111a85dbd"
+    },
+    {
+      "path": "station/print-workbench.mjs",
+      "sha256": "ae0e7301ffeed650edfd5ebea9be1dd292a4cc082b4c305cd207755da7eb4d6c"
+    },
+    {
+      "path": "experience/guest-drafts.mjs",
+      "sha256": "6c8637804f791ed4bacbdb0e010215ebe91aa1aa185af2fc081ab0bebea2723e"
+    },
+    {
+      "path": "experience/guest.mjs",
+      "sha256": "028bfdb261559fc39d1e934fe9d1d3bde9f0583abe515b4344ab4784fc7b8244"
+    },
+    {
+      "path": "experience/later-editor.mjs",
+      "sha256": "2f30f70f684d8f34b5efd0788b4cb90b397efeff3b2b33d31052cb1c201a3535"
+    },
+    {
+      "path": "experience/later-product.mjs",
+      "sha256": "164d2d549e5afdd4338396956f6c7ebdb094643e5491783a76828c4da7f8c239"
+    },
+    {
+      "path": "experience/product-upload.mjs",
+      "sha256": "5ae0cc694882b1ab435ed36f1e9d6c37a5fe5481c7d6355b9e75781aa55a203c"
+    },
+    {
+      "path": "print-helper/Enable Dashboard Launch.cmd",
+      "sha256": "9e5d5ea4424abac3c3b41669bf6584e6aed6117409b0faf8bbfc5bf15560c7fd"
+    },
+    {
+      "path": "print-helper/Enable Dashboard Launch.command",
+      "sha256": "b170d023c1e1696a15bfc128ef9a51a527639d9e954420f37514379bf591506a"
+    },
+    {
+      "path": "print-helper/README.md",
+      "sha256": "d5bd36f9292baa4ef3c40984ac55e3a4d60ee6654644908b953d5c0e3fd58e7c"
+    },
+    {
+      "path": "print-helper/START-HERE-v4.txt",
+      "sha256": "0302051aaab7b886ca0d6dc8e16037f3e2544c374fef9c8a0c2c0d2b9523a992"
+    },
+    {
+      "path": "print-helper/Start Atelier Print Helper.cmd",
+      "sha256": "276d9149cc9f20ff9285480144f1704c126eabd0e3ab990debba3866c56756fc"
+    },
+    {
+      "path": "print-helper/Start Atelier Print Helper.command",
+      "sha256": "64c579e07a2f316995bfb5b5e61f0610c0257e9f9e28af46cd1b1dbbb72299b7"
+    },
+    {
+      "path": "print-helper/Start Letter Pilot.cmd",
+      "sha256": "f39b1d0593521215dafc4cdf7dbca163dcfd869d466e46241d158996fc09279c"
+    },
+    {
+      "path": "print-helper/Start New Sample Test.cmd",
+      "sha256": "7e759541453a04c43c8c4c49432b1308699287520f327cd659da6f287d5b7c58"
+    },
+    {
+      "path": "print-helper/WINDOWS.md",
+      "sha256": "3d24b00e2418e10e7d138609f994e577ce92114f7a28a97fe1db79d2dd91781e"
+    },
+    {
+      "path": "print-helper/automatic-engine.mjs",
+      "sha256": "ab0536cae1ccef2a519896c1510be09259c1b62029f9cb667436061ca745650d"
+    },
+    {
+      "path": "print-helper/automatic-main.mjs",
+      "sha256": "2b07eea7935fe43d9f5bc8af125b5a44063359869e30d941315df3e6ca810c04"
+    },
+    {
+      "path": "print-helper/control.html",
+      "sha256": "54aab94a3877d68cb4f434b23a5e7e852c442598344e3be03485d6daf2718950"
+    },
+    {
+      "path": "print-helper/control.mjs",
+      "sha256": "c3e245fd8ba68aa1757c2e56a646c2181dc464a83f496eb661977742aeff9e8f"
+    },
+    {
+      "path": "print-helper/cups.mjs",
+      "sha256": "f96c052c9abd727fd0d666f02ce78be709df789ee463112472a00cd933d890e3"
+    },
+    {
+      "path": "print-helper/engine.mjs",
+      "sha256": "4a18ec7341c68e1d390a76444905911534d5248af463cc173364ff3f0bd0a8db"
+    },
+    {
+      "path": "print-helper/install-launcher.mjs",
+      "sha256": "375964d59a283da1d3289c83400b52879052523054b2c7f5f5b788b9865cf99c"
+    },
+    {
+      "path": "print-helper/keychain.mjs",
+      "sha256": "76a3f9f1b631fc305c5f5f88cb2e38f4b7b0e68024f425cb4fe7f5613beebba5"
+    },
+    {
+      "path": "print-helper/launch.mjs",
+      "sha256": "fe04e231f6eeec8db4ab5fbcda547b2d544b73bef771a3ad118e75038e321f64"
+    },
+    {
+      "path": "print-helper/letter-pilot.mjs",
+      "sha256": "e037cc09daa1bee900c379174e3ea97a1b4c70f238e5724ae7649e8a6e6a3495"
+    },
+    {
+      "path": "print-helper/main.mjs",
+      "sha256": "bcb135ce365ca60f3d6f454fc15b2487e83a22e9e361c0a0721fa91944821bab"
+    },
+    {
+      "path": "print-helper/package-lock.json",
+      "sha256": "00aead646d16f936a2f56f475086b99017ee46b290b61beadcdba11fe4709de9"
+    },
+    {
+      "path": "print-helper/package.json",
+      "sha256": "bea7dc681ee4dcd7787f897a6894f7d97e96ecff2b0185a9d67c9d8853661cad"
+    },
+    {
+      "path": "print-helper/physical-confirmation.mjs",
+      "sha256": "977e7b2a69fb09770c042e013b615df3e972b0c5b7411f275a409a75889321ba"
+    },
+    {
+      "path": "print-helper/pilot-confirmation.mjs",
+      "sha256": "b2287371cb2f3ea8552b78f4494ba530d57c7cb5f4d7e1de9be956fb8890cb8d"
+    },
+    {
+      "path": "print-helper/pilot-runs.mjs",
+      "sha256": "6ceb87d4229501dec8291bbf1a437fb78f81032c5ebe26f04f8a085617d9cde0"
+    },
+    {
+      "path": "print-helper/platform.mjs",
+      "sha256": "0df2f8b96f79830d9614ffa09dc102bc7ed79f3e231142fe56f868d3b08f240d"
+    },
+    {
+      "path": "print-helper/profiles.mjs",
+      "sha256": "5c9447eb3b9eb89a0d4615f79a6d3426f3053da0f53272596aace41aac53245c"
+    },
+    {
+      "path": "print-helper/render.mjs",
+      "sha256": "b169bf48c946d5e35a4d668977f646b88369ea892cc6fa65080b134150129c53"
+    },
+    {
+      "path": "print-helper/setup.mjs",
+      "sha256": "9b9e2632d23308988a7a2ce679e74edcfcdab64c2ea29be1cd553ca50293cc0e"
+    },
+    {
+      "path": "print-helper/simulation.mjs",
+      "sha256": "4ef46187c9f7ace94bfd2c07bf5d7b001f60745cf7b6930200c904a4ae07eb17"
+    },
+    {
+      "path": "print-helper/windows/Bridge.cs",
+      "sha256": "3f5da2b70f31eb9632e4419a2474d5f29c0bf4979614e1631ca4776afa36d83e"
+    },
+    {
+      "path": "print-helper/windows/NativePrinter.cs",
+      "sha256": "36a3a142c1a45390085a7802560eccaa446968926401f27223989c87edd1d6d8"
+    },
+    {
+      "path": "print-helper/windows.mjs",
+      "sha256": "e6c13d461dbbadd0b1e995a86f20084e8270dc886b3f71e383f1f0ef5c7e5dee"
+    },
+    {
+      "path": "print-helper/worker-lifecycle.mjs",
+      "sha256": "9697f6f1afe24812ec3a362113e316d99b392e67c24e8c0fad0d01f5a15254ef"
+    }
+  ],
+  "production_assets_unchanged": true,
+  "build_comparison": "Four bundles match live source ignoring only final CR/LF characters.",
+  "helper_limit": "Core helper code matches the dashboard archive. The actual locally installed executable and physical printer output were not inspected."
+}

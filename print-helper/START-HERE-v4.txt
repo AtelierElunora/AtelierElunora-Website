@@ -1,0 +1,17 @@
+Atelier Elunora — Production Print Helper
+
+Run Enable Dashboard Launch.cmd on Windows or Enable Dashboard Launch.command on Mac inside print-helper. Keep the extracted folder in a permanent location. Then use Launch Print Helper in the event Print desk. Mac registration still requires a Mac test. You can also launch the helper manually. Open http://127.0.0.1:4318 in your browser and keep the helper running.
+
+Open your owner dashboard, choose an event, then Print desk and Pair a print helper. Paste the code into the local helper. Pairing does not start printing.
+
+Select the printer and paper. Save, print a calibration sheet and verify it. Connect the validated printer to the dashboard, then choose Start automatic printing in the dashboard.
+
+4x6 test holds one magnet per sheet, with a cut up to 3.6 inches. Letter holds four magnets per sheet, with photo cuts up to 3.6 inches. The 8x12 layout holds six. Wrap text requires your licensed font selected in the helper. Keep printed documents enabled on Windows.
+
+For the HP OfficeJet Pro 8020 Copy 1 test: choose 4 x 6 test in Paper layout, show printer paper options, then choose 127: 4x6in./10x15cm. Load 4x6 paper, save settings and print/confirm a new calibration. Connect to the dashboard again. Full sheet means one photo in this profile. No physical 4x6 test has been performed yet. Use the dashboard connection for this profile, not the earlier manual-link helper.
+
+When the printer reports completion, printing continues automatically. When it reports only sent to printer, inspect the sheet and use Printed successfully—continue in the dashboard. No command-window answer is needed. Unknown or canceled jobs remain held for manual resolution.
+
+If pairing says a run is unfinished after you resolved it in the dashboard: pause the helper, then click Clear resolved print run beside the pairing controls. Check Printer activity for the result. The button checks the existing connection, archives only a server-resolved run, preserves history and sends no print jobs. If it refuses, resolve the run in the event Print desk first. An unavailable connection never clears the record.
+
+Physical tests used the HP OfficeJet Pro 8020 Copy 1 with Letter and 3.6-inch sample magnets. Other printers and Mac output need physical testing.

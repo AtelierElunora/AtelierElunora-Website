@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {launchHelper} from '../print-helper/launch.mjs';
+let starts=0,opens=0,checks=0;
+await launchHelper({probe:async()=>true,start:async()=>starts++,open:async()=>opens++});
+assert.equal(starts,0);assert.equal(opens,1);
+await launchHelper({probe:async()=>++checks>2,start:async()=>starts++,open:async()=>opens++,wait:async()=>{}});
+assert.equal(starts,1);assert.equal(opens,2);
+await assert.rejects(launchHelper({probe:async()=>false,start:async()=>starts++,open:async()=>opens++,wait:async()=>{}}),/did not become ready/);
+assert.equal(opens,2);
+console.log('PASS: dashboard launch reuses a running helper, waits for startup and does not open a failed helper. No print operations are invoked.');
