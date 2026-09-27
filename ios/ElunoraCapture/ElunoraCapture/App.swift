@@ -52,6 +52,6 @@ struct CaptureView: View {
                 }.padding(28).frame(maxWidth: 900)
             }.navigationTitle("Atelier Elunora")
         }
-        .onChange(of: scenePhase) { phase in if phase == .background { cameras.stop() } }
+        .onChange(of: scenePhase) { _, phase in if phase == .background { cameras.stop() } }
     }
 }
