@@ -1,12 +1,12 @@
 {
-  "status": "not-deployed",
+  "status": "preview",
   "baselineCommit": "617e2def6fbbe2addc090c72cc5bce8cc8e624a6",
-  "feature": "Email and password sign-in",
+  "feature": "Password sign-in and branded gallery invitations",
   "changes": [
     {
       "path": "theme/assets/atelier-owner-studio.js",
       "productionSha256": "5a8cf8b0cf9dd3b80dcc38b324385aa014574138300e48d8feda2e8316533131",
-      "sha256": "5a0898efcf333be4f141af6c8d5061e9814529a8ff755887708ac0514959f61b"
+      "sha256": "efbbe9b91b5f62c3c53b10f1a272ab6ae44364c65de6fff433d79a3b95a861d4"
     },
     {
       "path": "theme/sections/atelier-client-gallery.liquid",
@@ -14,14 +14,34 @@
       "sha256": "92522d43ba6c61171b1fde1317f02898bd0df5d7c5aaca2a2a267dd925e0daa0"
     },
     {
+      "path": "supabase/functions/gallery-api/activity.mjs",
+      "productionSha256": "bdbf1a76804020d1151defc3b26a6605e2d4ab51591345ba78f1f071dd5dacc3",
+      "sha256": "ea23634f1837e5dec3c753f5aeff2a1a60ed19cbe30a0eb0fdd4bf36c4bc732e"
+    },
+    {
+      "path": "supabase/functions/gallery-api/gallery.mts",
+      "productionSha256": "95fb2bf736d19e06a72a2adf0c55dcf3bb4e07886e90e4b9405bef5f3640ab75",
+      "sha256": "31ac7a1008f49b4f378e5cc3aaaf7b66b87a96adba0480bacc45d58043c929a4"
+    },
+    {
       "path": "supabase/functions/gallery-api/handler.mts",
       "productionSha256": "954a3f509d413e83cdd51b55cab644fa6198609581fe1feabf001adefdf86d32",
-      "sha256": "96a189f3d4eb6a62c99361c13891a4dd3046b2ff51e6d5c229c54e275a68e35f"
+      "sha256": "d4f91859ecc2904405166d233cc8ff341af98596fb6d9ededbd76c271b6c9cd7"
     },
     {
       "path": "supabase/functions/gallery-api/login.mts",
       "productionSha256": "8d281462810c570058716a26d91de27ad8d1e958dd1f450bc82e964271e23239",
       "sha256": "7753040333c6667ecc396f947c1ceb552c25d4dcd297bbab7dc266bd73a00ffb"
+    }
+  ],
+  "additions": [
+    {
+      "path": "supabase/functions/gallery-api/invitation-email.mjs",
+      "sha256": "24da06802bb0a72d4088bf33d36d0d48054f02e1b034e444b04f966451e5cace"
+    },
+    {
+      "path": "supabase/migrations/20260927121048_gallery_invitation_emails.sql",
+      "sha256": "83c92afa6e985d2b0d21979d7ebdf689329d95ba821f97c5651fa16129dc40a9"
     }
   ]
 }

@@ -9,10 +9,17 @@ const root=fileURLToPath(new URL('../',import.meta.url));
 const manifest=JSON.parse(await readFile(root+'docs/production-source-manifest.json','utf8'));
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
 const candidateMode=process.argv.includes('--candidate');
-const overrides=new Map();
+const overrides=new Map(),additions=[];
 if(candidateMode){
  const candidate=JSON.parse(await readFile(root+'docs/source-candidate.json','utf8'));
- assert.equal(candidate.status,'not-deployed');
+ assert.ok(['not-deployed','preview'].includes(candidate.status));
+ for(const added of candidate.additions||[]){
+  assert.ok(!manifest.files.some(f=>f.path===added.path)&&!additions.some(f=>f.path===added.path));
+  assert.ok(added.path.startsWith('supabase/functions/')||added.path.startsWith('supabase/migrations/'));
+  assert.ok(!added.path.includes('..'));
+  assert.equal(hash(await readFile(resolve(root,added.path))),added.sha256,`Candidate addition differs: ${added.path}`);
+  additions.push(added);
+ }
  for(const change of candidate.changes){
   assert.ok(!overrides.has(change.path),`Duplicate candidate path: ${change.path}`);
   const baseline=manifest.files.find(f=>f.path===change.path);
@@ -30,8 +37,10 @@ for(const file of manifest.files){
 }
 for(const fn of manifest.functions){
  const directory=resolve(root,'supabase/functions',fn.slug);
- assert.deepEqual((await readdir(directory)).sort(),fn.files.map(f=>f.name).sort(),`Function file set differs: ${fn.slug}`);
- for(const f of fn.files){
+ const prefix='supabase/functions/'+fn.slug+'/';
+ const files=[...fn.files,...additions.filter(f=>f.path.startsWith(prefix)).map(f=>({name:f.path.slice(prefix.length)}))];
+ assert.deepEqual((await readdir(directory)).sort(),files.map(f=>f.name).sort(),`Function file set differs: ${fn.slug}`);
+ for(const f of files){
   if(!/\.(?:mjs|mts|js|ts)$/.test(f.name))continue;
   const code=await readFile(resolve(directory,f.name),'utf8');
   await transform(code,{loader:/\.(?:mts|ts)$/.test(f.name)?'ts':'js',target:'esnext'});
@@ -48,7 +57,8 @@ for(const f of manifest.files.filter(f=>f.path.startsWith('theme/'))){
   JSON.parse(json);
  }
 }
-assert.equal((await readdir(root+'supabase/migrations')).filter(f=>f.endsWith('.sql')).length,manifest.migrations.length);
-console.log(`PASS: ${checked} ${candidateMode?'candidate/baseline':'recovered'} source hashes, exact deployed function file sets, local imports, theme/backend JavaScript syntax, theme JSON, and ${manifest.migrations.length} migration files.`);
-if(candidateMode)console.log(`Includes ${overrides.size} explicitly recorded, not-deployed changes. Production baseline is retained separately.`);
+const expectedMigrations=[...manifest.migrations.map(m=>m.version+'_'+m.name+'.sql'),...additions.filter(f=>f.path.startsWith('supabase/migrations/')).map(f=>f.path.split('/').at(-1))].sort();
+assert.deepEqual((await readdir(root+'supabase/migrations')).filter(f=>f.endsWith('.sql')).sort(),expectedMigrations);
+console.log(`PASS: ${checked} ${candidateMode?'candidate/baseline':'recovered'} source hashes, exact deployed function file sets, local imports, theme/backend JavaScript syntax, theme JSON, and ${expectedMigrations.length} migration files.`);
+if(candidateMode)console.log(`Includes ${overrides.size} changed files and ${additions.length} additions in the candidate. Production baseline is retained separately.`);
 console.log('This verifies the captured source, not physical camera/printing behavior or a full disaster-recovery restore.');

@@ -1,3 +1,4 @@
+import {sendInvitationEmail} from './invitation-email.mjs';
 import {stationOriginAllowed} from './station-origin.mjs';
 import {automaticRequest,ownerAutomatic} from './automatic.mjs';
 import {laterRequest,ownerLater} from './upload-later.mjs';
@@ -167,7 +168,14 @@ export async function storefrontHandler(request:Request, factory=createClient){
   if(path==='owner'||path.startsWith('owner/')){
    const parts=path.split('/');
    const activity=security.owner?activityFor(request,parts):null;
-   const run=()=>ownerRoutes(request,parts,client,reply,headers);
+   if(['access','invitation-email'].includes(parts[3])&&(!security.owner||security.aal!=='aal2'))return reply({error:'Owner authenticator verification required.'},403);
+   const sendInvitation=async(eventId:string,email:string,resend:boolean)=>{
+    const secret=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    if(!secret)return {status:'unconfigured',message:'Access is saved, but invitation email is unavailable.'};
+    const service=factory(base,secret,{auth:{persistSession:false,autoRefreshToken:false}});
+    return await sendInvitationEmail(service,eventId,email,{key:Deno.env.get('RESEND_API_KEY')},resend);
+   };
+   const run=()=>ownerRoutes(request,parts,client,reply,headers,sendInvitation);
    if(!activity)return await run();
    const secret=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
    if(!secret)return reply({error:'Activity logging is temporarily unavailable. No action was started. Please retry.'},503);

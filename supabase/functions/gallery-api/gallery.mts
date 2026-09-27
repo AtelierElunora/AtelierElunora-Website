@@ -33,7 +33,7 @@ const uuid=(v:unknown):v is string=>typeof v==='string'&&/^[0-9a-f]{8}-[0-9a-f]{
 const mimeExtensions:Record<string,string>={'image/jpeg':'jpg','image/png':'png','image/webp':'webp'};
 function actualMime(b:Uint8Array){if(b[0]===255&&b[1]===216&&b[2]===255)return 'image/jpeg';if(Buffer.from(b.subarray(0,8)).equals(Buffer.from([137,80,78,71,13,10,26,10])))return 'image/png';if(Buffer.from(b.subarray(0,4)).toString()==='RIFF'&&Buffer.from(b.subarray(8,12)).toString()==='WEBP')return 'image/webp';return '';}
 
-export async function ownerRoutes(request:Request,parts:string[],client:SupabaseClient,reply:Reply,headers:Headers){
+export async function ownerRoutes(request:Request,parts:string[],client:SupabaseClient,reply:Reply,headers:Headers,sendInvitation?:(eventId:string,email:string,resend:boolean)=>Promise<unknown>){
  if(!await isOwner(client))return reply({error:'Owner access required.'},403);
  if(parts[1]==='activity'&&parts.length===2&&request.method==='GET'){
   const {data,error}=await client.from('gallery_activity_log').select('id,occurred_at,source,operation_id,actor_user_id,event_id,action,outcome,subject_reference,details').order('occurred_at',{ascending:false}).limit(100);
@@ -74,13 +74,14 @@ export async function ownerRoutes(request:Request,parts:string[],client:Supabase
   return purgeEvent(event,body,service,reply);
  }
  if(parts.length===3&&request.method==='GET'){
-  const [photos,invitations,grants]=await Promise.all([
+  const [photos,invitations,grants,emails]=await Promise.all([
    client.from('gallery_photos').select('id,filename,ready,hidden,original_bytes,preview_bytes').eq('event_id',event.id).order('position'),
    client.from('gallery_invitations').select('email,expires_at,revoked').eq('event_id',event.id).order('email'),
-   client.from('gallery_access').select('user_id,expires_at,revoked').eq('event_id',event.id)
+   client.from('gallery_access').select('user_id,expires_at,revoked').eq('event_id',event.id),
+   client.from('gallery_invitation_emails').select('email,status,accepted_at,last_attempt_at').eq('event_id',event.id)
   ]);
   if(photos.error||invitations.error||grants.error)return reply({error:'Unable to load event management.'},503);
-  return reply({event,photos:photos.data,invitations:invitations.data,grants:grants.data});
+  return reply({event,photos:photos.data,invitations:invitations.data,grants:grants.data,invitationEmails:emails.data||[],invitationEmailStatusUnavailable:!!emails.error});
  }
  if(parts.length===3&&request.method==='POST'){
   const b=await jsonBody(request);
@@ -103,11 +104,20 @@ export async function ownerRoutes(request:Request,parts:string[],client:Supabase
   const {data,error}=await client.rpc('gallery_remove_guest_access',{target_event:event.id,guest_email:hasEmail?b.email.trim().toLowerCase():null,guest_user_id:hasUser?b.userId:null});
   return error?reply({error:'Could not remove access. Verify your owner session and retry.'},error.code==='42501'?403:409):reply(data);
  }
+ if(parts[3]==='invitation-email'&&parts.length===4&&request.method==='POST'){
+  const b=await jsonBody(request,4096);
+  if(typeof b.email!=='string'||b.email.length>254||!/^\S+@\S+\.\S+$/.test(b.email.trim()))return reply({error:'Enter a valid invited email.'},400);
+  if(!sendInvitation)return reply({error:'Invitation email is unavailable.'},503);
+  return reply({email:await sendInvitation(event.id,b.email.trim().toLowerCase(),true)});
+ }
  if(parts[3]==='access'&&parts.length===4&&request.method==='POST'){
   const b=await jsonBody(request);
   if(typeof b.email!=='string'||b.email.length>254||!/^\S+@\S+\.\S+$/.test(b.email.trim())||typeof b.revoked!=='boolean'||!Number.isFinite(Date.parse(b.expiresAt)))return reply({error:'Enter a valid guest email and expiry date.'},400);
+  if(b.sendEmail===true&&(b.revoked||!event.active||Date.parse(b.expiresAt)<=Date.now()))return reply({error:'Open guest access and choose a future expiry before sending an invitation.'},409);
   const {error}=await client.from('gallery_invitations').upsert({event_id:event.id,email:b.email.trim().toLowerCase(),expires_at:b.expiresAt,revoked:b.revoked});
-  return error?reply({error:'Could not save guest access.'},409):reply({saved:true});
+  if(error)return reply({error:'Could not save guest access.'},409);
+  const email=b.sendEmail===true?await sendInvitation?.(event.id,b.email.trim().toLowerCase(),false):undefined;
+  return reply({saved:true,...(b.sendEmail===true?{email:email||{status:'unconfigured',message:'Access is saved, but invitation email is unavailable.'}}:{})});
  }
  if(parts[3]==='grants'&&parts.length===4&&request.method==='POST'){
   const b=await jsonBody(request);if(!uuid(b.userId)||typeof b.revoked!=='boolean')return reply({error:'Invalid access change.'},400);

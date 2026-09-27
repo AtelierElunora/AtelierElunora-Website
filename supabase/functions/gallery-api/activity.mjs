@@ -5,7 +5,7 @@ export function activityFor(request,parts) {
  if(parts[1]!=='events'||!/^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i.test(parts[2]||''))return null;
  if(parts.length===3)return {action:'event.update',event_id:parts[2]};
  if(parts.length!==4)return null;
- const actions={'access':'invitation.save','grants':'grant.update','remove-access':'guest.remove_all_access','permanent-delete':'event.permanent_delete'};
+ const actions={'access':'invitation.save','invitation-email':'invitation.email','grants':'grant.update','remove-access':'guest.remove_all_access','permanent-delete':'event.permanent_delete'};
  return actions[parts[3]]?{action:actions[parts[3]],event_id:parts[2]}:null;
 }
 export async function auditedOwnerAction({service,actor,activity,run,reply,id=crypto.randomUUID()}) {
@@ -26,6 +26,9 @@ export async function auditedOwnerAction({service,actor,activity,run,reply,id=cr
  if(response.ok&&activity.action==='event.permanent_delete') {
   try {if((await response.clone().json()).deleted!==true)outcome='incomplete';}
   catch {outcome='incomplete';}
+ }
+ if(response.ok&&activity.action==='invitation.email'){
+  try{if(!['accepted','already_accepted'].includes((await response.clone().json()).email?.status))outcome='incomplete';}catch{outcome='incomplete';}
  }
  // A committed action must not be reported as failed just because its follow-up log failed.
  // The durable started record and transactional database records remain available.
