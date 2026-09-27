@@ -116,6 +116,8 @@ struct CaptureView: View {
                 }.accessibilityHint("Open event connection and camera controls")
             }
             VStack(spacing: 8) {
+                Image("AEMonogram").resizable().scaledToFit()
+                    .frame(width: 76, height: 76).accessibilityHidden(true)
                 Text("ATELIER ELUNORA")
                     .font(.custom("BrownCarolinaSans", size: 32, relativeTo: .title)).tracking(3)
                     .multilineTextAlignment(.center)
