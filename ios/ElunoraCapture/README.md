@@ -1,3 +1,5 @@
+> Deployment update, September 26, 2026: native station support is now deployed to gallery-api version 53. It was patched onto live version 51 to preserve newer production features. Native access is enabled by default in that deployment and can be disabled with NATIVE_CAPTURE_ENABLED=false. The historical deployment notes below describe the initial prototype; do not deploy this branch's older full backend over production. The onChange deprecation warning is also fixed. Physical iPad test-photo rendering has been confirmed by the owner; live upload and Canon capture still require device testing.
+
 # Elunora Capture — iPad prototype 0.1
 
 First development milestone for the iPad (9th generation) + Canon EOS R100.
