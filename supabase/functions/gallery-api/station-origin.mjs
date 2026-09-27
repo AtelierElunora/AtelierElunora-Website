@@ -4,6 +4,6 @@ const storefronts = new Set(['https://www.atelierelunora.com','https://atelierel
 export function stationOriginAllowed(request, nativeEnabled = false) {
   if (request.headers.has('origin')) return storefronts.has(request.headers.get('origin'));
   return nativeEnabled && request.method === 'POST'
-    && new URL(request.url).pathname === '/functions/v1/gallery-api/station'
+    && ['/functions/v1/gallery-api/station','/gallery-api/station'].includes(new URL(request.url).pathname)
     && request.headers.get('x-elunora-request') === '1';
 }
