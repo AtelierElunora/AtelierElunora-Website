@@ -1,9 +1,10 @@
 # Experimental Canon control — hardware test plan
 
 This adds real ImageCaptureCore session/open/catalog/download code and PTP command
-paths, not a simulated Canon camera. It has not been built with Xcode or tested
-against an R100 in the Linux development environment. Treat all Canon functionality
-as experimental until the tests below pass. iPad capture remains the startup default.
+paths, not a simulated Canon camera. Protocol tests and an unsigned Xcode simulator
+build passed in GitHub Actions on September 27, 2026 (commit 277e18d). It has not been
+tested against an R100. Treat all Canon functionality as experimental until the
+hardware tests below pass. iPad capture remains the startup default.
 
 ## Implemented
 
