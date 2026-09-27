@@ -9,7 +9,7 @@
 <key>CFBundleShortVersionString</key><string>0.1.0</string>
 <key>CFBundleVersion</key><string>1</string>
 <key>LSRequiresIPhoneOS</key><true/>
-<key>NSCameraUsageDescription</key><string>Find and connect the photo booth's external Canon camera.</string>
+<key>NSCameraUsageDescription</key><string>Take keepsake photos using the iPad camera and connect the booth’s external Canon camera.</string>
 <key>NSPhotoLibraryUsageDescription</key><string>Access photos provided by the connected booth camera.</string>
 <key>UILaunchScreen</key><dict/>
 <key>UISupportedInterfaceOrientations~ipad</key><array><string>UIInterfaceOrientationPortrait</string><string>UIInterfaceOrientationPortraitUpsideDown</string><string>UIInterfaceOrientationLandscapeLeft</string><string>UIInterfaceOrientationLandscapeRight</string></array>
