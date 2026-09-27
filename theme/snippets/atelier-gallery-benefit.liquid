@@ -1,0 +1,27 @@
+{% doc %}
+Highlights included event gallery access and optional post-event purchases.
+{% enddoc %}
+<section class="ae-gallery-benefit" aria-label="{{ 'gallery_benefit.title' | t | escape }}">
+  <p class="ae-gallery-benefit__eyebrow">{{ 'gallery_benefit.eyebrow' | t }}</p>
+  <h2>{{ 'gallery_benefit.title' | t }}</h2>
+  <p class="ae-gallery-benefit__intro">{{ 'gallery_benefit.intro' | t }}</p>
+  <div class="ae-gallery-benefit__grid">
+    <article><span aria-hidden="true">01</span><h3>{{ 'gallery_benefit.night_title' | t }}</h3><p>{{ 'gallery_benefit.night_body' | t }}</p></article>
+    <article><span aria-hidden="true">02</span><h3>{{ 'gallery_benefit.gallery_title' | t }}</h3><p>{{ 'gallery_benefit.gallery_body' | t }}</p></article>
+    <article><span aria-hidden="true">03</span><h3>{{ 'gallery_benefit.order_title' | t }}</h3><p>{{ 'gallery_benefit.order_body' | t }}</p></article>
+  </div>
+  <p class="ae-gallery-benefit__note">{{ 'gallery_benefit.note' | t }}</p>
+</section>
+{% stylesheet %}
+.ae-gallery-benefit{box-sizing:border-box;background:#ebe5d9;color:#252b1d;max-width:1240px;margin:32px auto;padding:48px 32px;border-block:1px solid #b19a7366}
+.ae-gallery-benefit .ae-gallery-benefit__eyebrow{font-size:12px;letter-spacing:.12em;text-transform:uppercase;margin:0 0 12px}
+.ae-gallery-benefit h2{font-size:clamp(27px,3vw,38px);line-height:1.2;margin:0 0 18px;text-wrap:balance}
+.ae-gallery-benefit .ae-gallery-benefit__intro{font-size:18px;line-height:1.6;max-width:65ch;margin:0 0 32px}
+.ae-gallery-benefit__grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:28px}
+.ae-gallery-benefit__grid article{border-top:1px solid #b19a73;padding-top:20px}
+.ae-gallery-benefit__grid span{display:block;font-size:14px;margin-bottom:14px;color:#766345}
+.ae-gallery-benefit h3{font-size:21px;line-height:1.3;margin:0 0 12px}
+.ae-gallery-benefit p{font-size:16px;line-height:1.6}
+.ae-gallery-benefit .ae-gallery-benefit__note{font-size:14px;margin:26px 0 0;padding-top:18px;border-top:1px solid #b19a7366}
+@media(max-width:749px){.ae-gallery-benefit{padding:32px 20px;margin:24px auto}.ae-gallery-benefit__grid{grid-template-columns:1fr;gap:18px}.ae-gallery-benefit .ae-gallery-benefit__intro{font-size:16px}}
+{% endstylesheet %}

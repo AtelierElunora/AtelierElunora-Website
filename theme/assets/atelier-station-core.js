@@ -8,6 +8,16 @@ export function sheetLayout(quantity,cutInches=2.5){
  return Array.from({length:Math.ceil(quantity/perPage)},(_,page)=>{const count=Math.min(perPage,quantity-page*perPage),left=(1800-count*size-(count-1)*gap)/2;return Array.from({length:count},(_,i)=>({x:left+i*(size+gap),y:(1200-size)/2,size}));});
 }
 
+export function ds820Layout(cuts){
+ if(!Array.isArray(cuts)||cuts.length<1||cuts.length>6||cuts.some(c=>!Number.isFinite(c)||c<2.5||c>3.75))throw Error('8 × 12 sheets support up to six cuts of 2.5–3.75 inches.');
+ const size=Math.round(Math.max(...cuts)*300),gap=30,cols=2,rows=3,left=(2400-cols*size-gap)/2,top=(3600-rows*size-2*gap)/2;
+ return cuts.map((cut,i)=>{const actual=Math.round(cut*300);return {x:left+(i%2)*(size+gap)+(size-actual)/2,y:top+Math.floor(i/2)*(size+gap)+(size-actual)/2,size:actual};});
+}
+export function ds820CopyLayout(quantity,cutInches=2.5){
+ if(!Number.isInteger(quantity)||quantity<1||quantity>12)throw Error('Use 1–12 magnets.');
+ return Array.from({length:Math.ceil(quantity/6)},(_,i)=>ds820Layout(Array(Math.min(6,quantity-i*6)).fill(cutInches)));
+}
+
 export const templateSides=['top','right','bottom','left'];
 export function normalizeTemplate(input={}){
  if(!input||typeof input!=='object'||Array.isArray(input))throw Error('Invalid magnet template.');

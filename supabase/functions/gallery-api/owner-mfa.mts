@@ -21,13 +21,16 @@ export async function ownerState(client: SupabaseClient, user: User, token: stri
 export type OwnerState = Awaited<ReturnType<typeof ownerState>>;
 export const needsMfa = (state: OwnerState) => state.owner && state.required && state.aal !== 'aal2';
 
-export async function ownerMfa(path: string, method: string, body: Record<string, unknown>, client: SupabaseClient, user: User, state: OwnerState, reply: Reply) {
+export async function ownerMfa(path: string, method: string, body: Record<string, unknown>, client: SupabaseClient, user: User, state: OwnerState, reply: Reply, finishEnrollment?: () => Promise<boolean>) {
   if (!state.owner) return reply({error: 'Owner access required.'}, 403);
   if (path === 'mfa/status' && method === 'GET') return reply(state);
   if (method !== 'POST') return reply({error: 'Method not allowed.'}, 405);
   const failed = (error: {status?: number} | null, message: string) => reply({error: error?.status === 429 ? 'Please wait before trying another authenticator code.' : message}, error?.status === 429 ? 429 : 400);
   if (path === 'mfa/enroll') {
-    if ((state.required || state.factors.length > 0) && state.aal !== 'aal2') return reply({error: 'Verify your existing authenticator before adding another.', code: 'MFA_REQUIRED'}, 403);
+    // Administrator-approved first enrollment never disables the AAL2 data gate.
+    // App metadata is administrator-controlled; user metadata must not authorize this.
+    const initialEnrollment = state.factors.length === 0 && Date.parse(user.app_metadata?.owner_mfa_enrollment_until || '') > Date.now();
+    if ((state.required || state.factors.length > 0) && state.aal !== 'aal2' && !initialEnrollment) return reply({error: state.factors.length ? 'Verify your existing authenticator before adding another.' : 'First-time authenticator setup needs administrator approval.', code: 'MFA_REQUIRED'}, 403);
     const {data, error} = await client.auth.mfa.enroll({factorType: 'totp', issuer: 'Atelier Elunora Gallery', friendlyName: 'Gallery authenticator ' + crypto.randomUUID().slice(0, 8)});
     if (error || !data) return failed(error, 'Could not start authenticator setup. Please retry or contact the gallery administrator.');
     // The setup secret is only returned to this authenticated owner over TLS,
@@ -41,6 +44,7 @@ export async function ownerMfa(path: string, method: string, body: Record<string
     if (error || !data) return failed(error, 'That authenticator code is incorrect or expired. Try the next code.');
     const verified = await client.auth.getUser(data.access_token);
     if (verified.error || verified.data.user?.id !== user.id || authenticatedAal(data.access_token) !== 'aal2') return reply({error: 'Could not verify this owner session.'}, 401);
+    if (user.app_metadata?.owner_mfa_enrollment_until && (!finishEnrollment || !await finishEnrollment())) return reply({error: 'Could not finish authenticator setup. Please retry.'}, 503);
     return reply({access_token: data.access_token, refresh_token: data.refresh_token,
       expires_at: Math.floor(Date.now() / 1000) + data.expires_in, email: verified.data.user.email});
   }
@@ -54,3 +58,4 @@ export async function ownerMfa(path: string, method: string, body: Record<string
   }
   return reply({error: 'Not found.'}, 404);
 }
+

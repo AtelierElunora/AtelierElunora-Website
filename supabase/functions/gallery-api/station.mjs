@@ -3,6 +3,7 @@ import {normalizeTemplate} from './magnet-template.mjs';
 export const uuid=v=>typeof v==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
 export const hash=async value=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',typeof value==='string'?new TextEncoder().encode(value):value)),b=>b.toString(16).padStart(2,'0')).join('');
 const fail=(reply,error)=>reply({error:({'PT403':'Station expired, closed or unavailable. Ask the attendant.','PT409':'This request changed. Refresh the print queue or retry the same photo.','PT429':'Please wait a few seconds. This station may have reached its capture limit.'})[error?.code]||'Unable to complete this request. Retry or ask the attendant.'},({'PT403':403,'PT409':409,'PT429':429})[error?.code]||503);
+export const printJob=j=>j?{...j,originalCrop:{x:j.x,y:j.y,zoom:j.zoom},...(j.print_crop??{})}:j;
 export async function ownerStation(request,parts,client,service,actor,body,reply){
  const eventId=parts[2]; if(!uuid(eventId)||parts.length!==3)return reply({error:'Not found.'},404);
  const {data:event,error}=await client.from('gallery_events').select('id,name,deleted_at,purge_started_at').eq('id',eventId).maybeSingle();
@@ -44,9 +45,10 @@ export async function stationRequest(body,service,reply,render){
  const checked=await service.rpc('gallery_station_check',{p_hash:digest,p_purpose:purpose});
  if(checked.error||!checked.data)return fail(reply,checked.error||{code:'PT403'});
  const station=checked.data;
+ if(station.helper_only)return reply({error:'Use the paired helper endpoint for this credential.'},403);
  const event=await service.from('gallery_events').select('name').eq('id',station.event_id).single();
  if(event.error)return fail(reply,event.error);
- if(body.action==='info')return reply({name:event.data.name,purpose,expiresAt:station.expires_at});
+ if(body.action==='info')return reply({name:event.data.name,eventId:station.event_id,purpose,expiresAt:station.expires_at});
  if(purpose==='capture'){
   if(body.action!=='submit'||!uuid(body.requestId)||typeof body.jpeg!=='string'||body.jpeg.length>5592408||! /^[A-Za-z0-9+/]+={0,2}$/.test(body.jpeg))return reply({error:'Use a JPEG photo up to 4 MB.'},400);
   const bytes=Uint8Array.from(atob(body.jpeg),c=>c.charCodeAt(0));
@@ -61,17 +63,39 @@ export async function stationRequest(body,service,reply,render){
   const done=await service.rpc('gallery_capture_finish',{p_hash:digest,p_request:body.requestId,p_original_bytes:bytes.length,p_preview_bytes:preview.length});
   return done.error?fail(reply,done.error):reply({received:true,photoId:done.data});
  }
+ if(body.action==='helper-complete'){
+  if((!uuid(body.batchId)&&!uuid(body.jobId))||typeof body.spoolerJob!=='string'||! /^[A-Za-z0-9_.-]+-[0-9]+$/.test(body.spoolerJob))return reply({error:'Invalid printer completion.'},400);
+  const r=await service.rpc('gallery_helper_complete',{p_hash:digest,p_batch:body.batchId??null,p_job:body.jobId??null,p_version:body.version??null,p_spooler:body.spoolerJob});
+  return r.error?fail(reply,r.error):reply({completed:r.data});
+ }
+ if(body.action==='crop-save'){
+  if(!Array.isArray(body.items)||body.items.length<1||body.items.length>200||body.items.some(j=>!uuid(j.id)||!Number.isSafeInteger(j.version)||!Number.isFinite(j.x)||!Number.isFinite(j.y)||!Number.isFinite(j.zoom)||j.x<0||j.x>100||j.y<0||j.y>100||j.zoom<1||j.zoom>3))return reply({error:'Invalid crop selection.'},400);
+  const r=await service.rpc('gallery_print_crop_save',{p_hash:digest,p_items:body.items});
+  return r.error?fail(reply,r.error):reply(r.data);
+ }
+ if(body.action==='print-run'){
+  if(!['status','claim','printed','release','authorize'].includes(body.operation)||(body.operation!=='status'&&!uuid(body.requestId))||!['letter','8x12'].includes(body.profile??'letter'))return reply({error:'Invalid print run.'},400);
+  const r=await service.rpc('gallery_print_run',{p_hash:digest,p_action:body.operation,p_request:body.requestId??null,p_profile:body.profile??'letter'});
+  if(r.error?.code==='PT422')return reply({error:'The cut size does not fit this paper. Letter supports up to 3.6 inches; 8 × 12 supports up to 3.75 inches.'},422);
+  if(r.error)return fail(reply,r.error);
+  return reply({...r.data,run:r.data.run?{...r.data.run,jobs:r.data.run.jobs.map(printJob)}:null});
+ }
+ if(body.action==='helper-authorize'){
+  const r=await service.rpc('gallery_helper_authorize',{p_hash:digest,p_batch:body.batchId??null,p_job:body.jobId??null,p_version:body.version??null});
+  return r.error?fail(reply,r.error):reply({authorized:true});
+ }
  if(body.action==='batch-status'){
-  const r=await service.from('gallery_print_jobs').select('id,status,quantity,x,y,zoom,version,created_at,template,letter_batch_id,letter_slot').eq('event_id',station.event_id).eq('status','printing').not('letter_batch_id','is',null).order('letter_slot').limit(6);
-  return r.error?fail(reply,r.error):reply({batch:r.data.length?{id:r.data[0].letter_batch_id,jobs:r.data,created:false}:null});
+  const r=await service.from('gallery_print_jobs').select('id,status,quantity,x,y,zoom,version,created_at,template,letter_batch_id,letter_slot,sheet_profile,print_crop,print_run_id').eq('event_id',station.event_id).eq('status','printing').not('letter_batch_id','is',null).order('letter_slot').limit(6);
+  return r.error?fail(reply,r.error):reply({batch:r.data.length?{id:r.data[0].letter_batch_id,jobs:r.data.map(printJob),created:false}:null});
  }
  if(body.action==='batch-claim'&&uuid(body.requestId)&&typeof body.partial==='boolean'){
   const saved=await service.from('gallery_magnet_templates').select('template').eq('event_id',station.event_id).maybeSingle();
   if(saved.error)return fail(reply,saved.error);
   let template;try{template=normalizeTemplate(saved.data?.template??{});}catch{return reply({error:'Correct the saved event template before using automatic printing.'},400);}
-  const r=await service.rpc('gallery_letter_claim',{p_hash:digest,p_request:body.requestId,p_template:template,p_partial:body.partial});
-  if(r.error?.code==='PT422')return reply({error:'Six-up letter printing needs a cut size of 3.6 inches or less. Update the event template or use single-photo printing; 3.75 inches will not fit.'},422);
-  return r.error?fail(reply,r.error):reply(r.data);
+  const profile=body.profile??'letter';if(!['letter','8x12'].includes(profile))return reply({error:'Invalid paper profile.'},400);
+  const r=await service.rpc('gallery_sheet_claim',{p_hash:digest,p_request:body.requestId,p_template:template,p_partial:body.partial,p_profile:profile});
+  if(r.error?.code==='PT422')return reply({error:'The cut size does not fit this sheet. Letter supports up to 3.6 inches; 8 × 12 supports up to 3.75 inches.'},422);
+  return r.error?fail(reply,r.error):reply({...r.data,...(r.data.jobs?{jobs:r.data.jobs.map(printJob)}:{})});
  }
  if(body.action==='batch-finish'&&uuid(body.id)&&['printed','release'].includes(body.operation)){
   const r=await service.rpc('gallery_letter_finish',{p_hash:digest,p_batch:body.id,p_action:body.operation});
@@ -83,17 +107,17 @@ export async function stationRequest(body,service,reply,render){
  }
  if(body.action==='job-status'&&uuid(body.id)){
   const r=await service.from('gallery_print_jobs').select('id,status,version').eq('event_id',station.event_id).eq('id',body.id).maybeSingle();
-  return r.error?fail(reply,r.error):reply({job:r.data});
+  return r.error?fail(reply,r.error):reply({job:printJob(r.data)});
  }
  if(body.action==='queue'){
   if(!['pending','printing','held'].includes(body.status))return reply({error:'Invalid queue status.'},400);
-  const r=await service.from('gallery_print_jobs').select('id,status,quantity,x,y,zoom,version,created_at,template,letter_batch_id,letter_slot').eq('event_id',station.event_id).eq('status',body.status).order('created_at').order('id').limit(100);
-  return r.error?fail(reply,r.error):reply({jobs:r.data});
+  const r=await service.from('gallery_print_jobs').select('id,status,quantity,x,y,zoom,version,created_at,template,letter_batch_id,letter_slot,source_request_id,sheet_profile,print_crop,print_run_id').eq('event_id',station.event_id).eq('status',body.status).order('created_at').order('id').limit(100);
+  return r.error?fail(reply,r.error):reply({jobs:r.data.map(printJob)});
  }
  if(body.action==='image'&&uuid(body.id)){
-  const p=await service.from('gallery_print_jobs').select('id').eq('event_id',station.event_id).eq('id',body.id).maybeSingle();
+  const p=await service.from('gallery_print_jobs').select('id,source_photo_id').eq('event_id',station.event_id).eq('id',body.id).maybeSingle();
   if(p.error||!p.data)return reply({error:'Photo unavailable.'},404);
-  const photo=await service.from('gallery_photos').select('original_key,ready,hidden').eq('id',body.id).eq('event_id',station.event_id).single();
+  const photo=await service.from('gallery_photos').select('original_key,ready,hidden').eq('id',p.data.source_photo_id||body.id).eq('event_id',station.event_id).single();
   if(photo.error||!photo.data.ready||photo.data.hidden)return reply({error:'Photo hidden or unavailable.'},404);
   const signed=await service.storage.from('gallery-originals').createSignedUrl(photo.data.original_key,60);
   return signed.error?fail(reply,signed.error):reply({url:signed.data.signedUrl});

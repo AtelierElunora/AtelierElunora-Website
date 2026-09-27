@@ -23,7 +23,7 @@
     {%- endif -%}
     {%- if block_settings.page.content != blank -%}
       <div class="rte">
-        {{ block_settings.page.content }}
+        {% render 'atelier-event-content', content: block_settings.page.content %}
       </div>
     {%- endif -%}
   {%- else -%}
@@ -148,3 +148,4 @@
   ]
 }
 {% endschema %}
+

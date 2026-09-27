@@ -92,11 +92,11 @@
 
 {% if fallback_text != blank and visible_text == blank %}
   <div {{ attributes | strip_newlines | strip }}>
-    {{ fallback_text }}
+    {% render 'atelier-event-content', content: fallback_text %}
   </div>
 {% elsif plain_text != blank %}
   <{{ element }} {{ attributes | strip_newlines | strip }}>
-    {{ block.settings.text }}
+    {% render 'atelier-event-content', content: block.settings.text %}
   </{{ element }}>
 {% endif %}
 
@@ -232,3 +232,4 @@
     color: var(--color);
   }
 {% endstylesheet %}
+

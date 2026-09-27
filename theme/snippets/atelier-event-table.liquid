@@ -1,0 +1,12 @@
+{%- doc -%}
+  Renders current event prices and retainers from the event product variants.
+{%- enddoc -%}
+<table data-ae-event-pricing>
+  <thead><tr><th scope="col">Total guest count</th><th scope="col">Event price</th><th scope="col">30% retainer</th></tr></thead>
+  <tbody>
+    <tr><th scope="row">Up to 150 guests</th><td>{% render 'atelier-event-price', tier: 150 %}</td><td>{% render 'atelier-event-price', tier: 150, retainer: true %}</td></tr>
+    <tr><th scope="row">151–200 guests</th><td>{% render 'atelier-event-price', tier: 200 %}</td><td>{% render 'atelier-event-price', tier: 200, retainer: true %}</td></tr>
+    <tr><th scope="row">201–250 guests</th><td>{% render 'atelier-event-price', tier: 250 %}</td><td>{% render 'atelier-event-price', tier: 250, retainer: true %}</td></tr>
+    <tr><th scope="row">251–300 guests</th><td>From {% render 'atelier-event-price', tier: 300 %} — custom quote</td><td>30% of confirmed quote</td></tr>
+  </tbody>
+</table>

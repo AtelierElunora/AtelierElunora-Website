@@ -1,8 +1,11 @@
 import {build} from 'esbuild';
 import {readFile,writeFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
+if(!process.argv.includes('--legacy-output'))throw Error('The live station asset was recovered from production and is newer than station/atelier-station.mjs. Run npm run verify:production. To inspect the historical build, pass --legacy-output; it writes only to ignored dist/.');
 const entry=fileURLToPath(new URL('../station/atelier-station.mjs',import.meta.url));
-const output=new URL('../theme/assets/atelier-station.js',import.meta.url);
+const {mkdir}=await import('node:fs/promises');
+await mkdir(new URL('../dist/',import.meta.url),{recursive:true});
+const output=new URL('../dist/atelier-station-legacy.js',import.meta.url);
 const result=await build({entryPoints:[entry],bundle:true,format:'iife',target:'es2020',minify:true,legalComments:'none',write:false});
 const content=result.outputFiles[0].text;
 if(process.argv.includes('--check')){

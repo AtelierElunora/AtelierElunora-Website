@@ -1,0 +1,28 @@
+{%- doc -%}
+  Reads the current event variant price, independent of variant order or label.
+  @param {number} tier - Guest-count ceiling: 150, 200, 250, or 300.
+  @param {boolean} [retainer] - Output the 30 percent retainer.
+{%- enddoc -%}
+{%- liquid
+  assign event_product = all_products['wedding-event-photo-magnet-experience']
+  case tier
+    when 150
+      assign variant_id = 52203846697248
+    when 200
+      assign variant_id = 52214558556448
+    when 250
+      assign variant_id = 52214558589216
+    when 300
+      assign variant_id = 52384258621728
+  endcase
+  assign event_variant = event_product.variants | where: 'id', variant_id | first
+-%}
+{%- if event_variant != blank -%}
+  {%- if retainer -%}
+    {{- event_variant.price | times: 0.3 | round | money -}}
+  {%- else -%}
+    {{- event_variant.price | money -}}
+  {%- endif -%}
+{%- else -%}
+  {{- 'event_dynamic.quote' | t -}}
+{%- endif -%}

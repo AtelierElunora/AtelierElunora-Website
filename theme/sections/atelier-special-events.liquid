@@ -1,0 +1,63 @@
+<div class="aes">
+  {% assign event_starting_price = section.settings.starting_price | times: 100 | money_without_trailing_zeros %}
+  <header class="aes-hero">
+    <div><p class="aes-kicker">{{ 'special_events.eyebrow' | t }}</p><h1>{{ 'special_events.title' | t }}</h1><p class="aes-intro">{{ 'special_events.intro' | t }}</p><a class="aes-button" href="#special-event-quote">{{ 'special_events.cta' | t }}</a></div>
+    <aside class="aes-price-card"><p class="aes-price">{{ 'special_events.starting' | t: price: event_starting_price }}</p><p>{{ 'special_events.scope' | t }}</p><p class="aes-small">{{ 'special_events.price_note' | t }}</p></aside>
+  </header>
+  <section class="aes-section"><h2>{{ 'special_events.included' | t }}</h2><p>{{ 'special_events.included_intro' | t }}</p><ul class="aes-inclusions"><li>{{ 'special_events.item_1' | t }}</li><li>{{ 'special_events.item_2' | t }}</li><li>{{ 'special_events.item_3' | t }}</li><li>{{ 'special_events.item_4' | t }}</li><li>{{ 'special_events.item_5' | t }}</li></ul><p class="aes-small">{{ 'special_events.gallery_note' | t }}</p><details><summary>{{ 'special_events.unlimited_title' | t }}</summary><p>{{ 'special_events.unlimited_body' | t }}</p><p>{{ 'special_events.station_note' | t }}</p></details></section>
+  <section class="aes-section"><h2>{{ 'special_events.steps_title' | t }}</h2><ol class="aes-steps"><li><span aria-hidden="true">01</span><h3>{{ 'special_events.step_1_title' | t }}</h3><p>{{ 'special_events.step_1_body' | t }}</p></li><li><span aria-hidden="true">02</span><h3>{{ 'special_events.step_2_title' | t }}</h3><p>{{ 'special_events.step_2_body' | t }}</p></li><li><span aria-hidden="true">03</span><h3>{{ 'special_events.step_3_title' | t }}</h3><p>{{ 'special_events.step_3_body' | t }}</p></li></ol></section>
+  <section id="special-event-quote" class="aes-section aes-quote" aria-labelledby="aes-form-title">
+    <div><p class="aes-kicker">{{ 'special_events.nav' | t }}</p><h2 id="aes-form-title">{{ 'special_events.form_title' | t }}</h2><p>{{ 'special_events.form_intro' | t }}</p><p class="aes-small">{{ 'special_events.notice' | t }}</p><a href="mailto:support@atelierelunora.com">{{ 'special_events.email_help' | t }}</a></div>
+    {% form 'contact', id: 'SpecialEventQuote', class: 'aes-form' %}
+      {% if form.posted_successfully? %}<div class="aes-status" role="status" tabindex="-1">{{ 'special_events.success' | t }}</div>{% else %}
+      {% if form.errors %}<div class="aes-errors" role="alert" tabindex="-1"><p>{{ 'special_events.error' | t }}</p>{{ form.errors | default_errors }}</div>{% endif %}
+      <input type="hidden" name="contact[Inquiry type]" value="Special event quote request">
+      <div class="aes-fields">
+        <div><label for="aes-name">{{ 'special_events.name' | t }}</label><input id="aes-name" name="contact[name]" autocomplete="name" value="{{ form.name | default: customer.name | escape }}" required></div>
+        <div><label for="aes-email">{{ 'special_events.email' | t }}</label><input id="aes-email" type="email" name="contact[email]" autocomplete="email" value="{{ form.email | default: customer.email | escape }}" required{% if form.errors contains 'email' %} aria-invalid="true"{% endif %}></div>
+        <div><label for="aes-phone">{{ 'special_events.phone' | t }}</label><input id="aes-phone" type="tel" name="contact[phone]" autocomplete="tel" value="{{ form.phone | escape }}"></div>
+        <div><label for="aes-type">{{ 'special_events.type' | t }}</label><select id="aes-type" name="contact[Event type]" required><option value="">{{ 'special_events.choose' | t }}</option><option>{{ 'special_events.birthday' | t }}</option><option>{{ 'special_events.shower' | t }}</option><option>{{ 'special_events.graduation' | t }}</option><option>{{ 'special_events.anniversary' | t }}</option><option>{{ 'special_events.corporate' | t }}</option><option>{{ 'special_events.school' | t }}</option><option>{{ 'special_events.other' | t }}</option></select></div>
+        <div><label for="aes-date">{{ 'special_events.date' | t }}</label><input id="aes-date" type="date" name="contact[Event date]" required aria-describedby="aes-date-help"><small id="aes-date-help">{{ 'special_events.date_note' | t }}</small></div>
+        <div><label for="aes-guests">{{ 'special_events.guests' | t }}</label><input id="aes-guests" type="number" name="contact[Guest count]" min="1" step="1" required></div>
+        <div class="aes-full"><label for="aes-venue">{{ 'special_events.venue' | t }}</label><input id="aes-venue" name="contact[Venue and location]" required aria-describedby="aes-venue-help"><small id="aes-venue-help">{{ 'special_events.venue_note' | t }}</small></div>
+        <div><label for="aes-hours">{{ 'special_events.hours' | t }}</label><select id="aes-hours" name="contact[Service hours]" required><option value="">{{ 'special_events.choose' | t }}</option><option>{{ 'special_events.two' | t }}</option><option>{{ 'special_events.three' | t }}</option><option>{{ 'special_events.four' | t }}</option><option>{{ 'special_events.more' | t }}</option><option>{{ 'special_events.unsure' | t }}</option></select></div>
+        <div><label for="aes-start">{{ 'special_events.start' | t }}</label><input id="aes-start" type="time" name="contact[Service start time]"></div>
+        <div class="aes-full"><label for="aes-details">{{ 'special_events.details' | t }}</label><textarea id="aes-details" name="contact[body]" rows="5" aria-describedby="aes-details-help">{{ form.body | escape }}</textarea><small id="aes-details-help">{{ 'special_events.details_note' | t }}</small></div>
+      </div><button class="aes-button" type="submit">{{ 'special_events.submit' | t }}</button>
+      {% endif %}
+    {% endform %}
+  </section>
+  <p class="aes-wedding-link"><a href="/pages/packages">{{ 'special_events.weddings' | t }}</a></p>
+</div>
+{% stylesheet %}
+.aes{max-width:1240px;margin:auto;padding:56px 32px 72px;color:#252b1d}
+.aes h1{font-size:clamp(36px,4.3vw,60px);line-height:1.12;max-width:15ch;margin:0 0 24px;text-wrap:balance}
+.aes h2{font-size:clamp(27px,3vw,38px);line-height:1.2;margin:0 0 24px;text-wrap:balance}
+.aes h3{font-size:21px;line-height:1.3;margin:0 0 12px}
+.aes p,.aes li{font-size:16px;line-height:1.65}.aes p{margin:0 0 20px}
+.aes .aes-kicker{font-size:11px;letter-spacing:.12em;text-transform:uppercase}
+.aes .aes-intro{font-size:19px;max-width:45ch}.aes .aes-small,.aes small{font-size:14px;line-height:1.6}
+.aes-hero{display:grid;grid-template-columns:1.2fr 1fr;gap:64px;align-items:center}
+.aes-price-card{padding:40px;background:#e9e5d9;border:1px solid #b19a7377}
+.aes .aes-price{font-size:32px;line-height:1.25;text-wrap:balance}
+.aes .aes-button{display:inline-flex;justify-content:center;align-items:center;min-height:48px;background:#252b1d;color:#f4f2ef;border:1px solid #252b1d;padding:14px 22px;text-decoration:none;font:inherit;font-size:15px;line-height:1.5;text-align:center;cursor:pointer}
+.aes .aes-button:hover{background:#4a4b36}.aes a{color:inherit;text-underline-offset:5px}
+.aes :is(a,button,input,select,textarea,summary):focus-visible{outline:2px solid #766345;outline-offset:4px}
+.aes-section{padding:56px 0;border-bottom:1px solid #b19a7366;scroll-margin-top:110px}
+.aes-inclusions{display:grid;grid-template-columns:1fr 1fr;gap:16px 40px;list-style:none;padding:0;margin:28px 0}
+.aes-inclusions li{border-bottom:1px solid #b19a7344;padding:0 0 16px}
+.aes details{border-top:1px solid #b19a7366;padding-top:20px}.aes summary{cursor:pointer;font-size:16px}.aes details p{margin-top:18px}
+.aes-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:36px;list-style:none;padding:0;margin:32px 0 0}
+.aes-steps span{display:block;font-size:40px;color:#766345;margin-bottom:20px}
+.aes-quote{display:grid;grid-template-columns:1fr 1.5fr;gap:56px}.aes-fields{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+.aes label{display:block;font-size:14px;line-height:1.5;margin-bottom:8px}.aes small{display:block;margin-top:8px}
+.aes :is(input,select,textarea){box-sizing:border-box;width:100%;max-width:100%;min-width:0;min-height:48px;border:1px solid #928d7d;border-radius:0;background:#fffdf8;color:#252b1d;padding:12px;font:inherit;font-size:16px;line-height:1.4}
+.aes textarea{resize:vertical}.aes-full{grid-column:1/-1}.aes-form .aes-button{margin-top:24px}.aes-fields>div{min-width:0}
+.aes-status,.aes-errors{padding:24px;border:1px solid #766345;background:#f4f2ef;margin-bottom:24px}.aes-errors{border-color:#973528}
+.aes-wedding-link{padding-top:32px;text-align:center}
+@media(max-width:900px){.aes-hero{gap:32px}.aes-quote{grid-template-columns:1fr;gap:28px}}
+@media(max-width:749px){.aes{padding:32px 20px 48px}.aes-hero,.aes-steps,.aes-inclusions,.aes-fields{grid-template-columns:1fr}.aes-price-card{padding:28px}.aes-section{padding:40px 0}.aes-steps{gap:24px}.aes-steps span{font-size:30px;margin-bottom:12px}.aes .aes-button{width:100%}}
+{% endstylesheet %}
+{% schema %}
+{"name":"Special event quotes","settings":[{"type":"number","id":"starting_price","label":"Starting price (USD)","default":795}]}
+{% endschema %}

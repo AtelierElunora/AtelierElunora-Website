@@ -10,7 +10,7 @@
   "
 >
   <rte-formatter>
-    {{ page.content }}
+    {% render 'atelier-event-content', content: page.content %}
   </rte-formatter>
 </div>
 
@@ -38,3 +38,4 @@
   ]
 }
 {% endschema %}
+

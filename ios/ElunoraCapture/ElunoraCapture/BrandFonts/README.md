@@ -1,0 +1,1 @@
+Place BrownCarolinaSans.otf and EdwardianScript.otf from the private brand font pack here before building. Xcode copies this folder into the app; CoreText registers the fonts at launch. Font binaries are intentionally excluded from this public repository.

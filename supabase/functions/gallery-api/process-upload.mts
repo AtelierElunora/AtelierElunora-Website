@@ -26,3 +26,4 @@ export async function processUpload(client:SupabaseClient,photo:Photo,reply:Repl
  const updated=await client.from('gallery_photos').update({ready:true,hidden:false,original_bytes:original.data.size,preview_bytes:preview.length}).eq('id',photo.id).eq('ready',false);
  return updated.error?reply({error:'Preview saved, but finalization failed. Retry finalizing.'},409):reply({ready:true});
 }
+

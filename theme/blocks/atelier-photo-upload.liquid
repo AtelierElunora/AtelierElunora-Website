@@ -1,0 +1,23 @@
+{% liquid
+  assign upload_product = closest.product | default: product
+  assign upload_variant = upload_product.selected_or_first_available_variant
+%}
+{% if upload_product.id == 10553621381408 or upload_product.id == 10604306530592 %}
+<style>.atelier-legacy-uploader{display:none!important}</style>
+<atelier-product-upload data-variant="{{ upload_variant.id }}" data-available="{{ upload_variant.available }}" {{ block.shopify_attributes }}>
+  <a class="button" href="{{ routes.root_url }}pages/client-gallery?view=photo-magnets&amp;upload_variant={{ upload_variant.id }}">{{ block.settings.label | escape }}</a>
+  <p>{{ block.settings.help_text | escape }}</p>
+  <p data-upload-status role="status"></p>
+  <noscript>Please enable JavaScript to choose your pack and upload photos.</noscript>
+</atelier-product-upload>
+<script src="{{ 'atelier-product-upload.js' | asset_url }}" defer></script>
+{% endif %}
+{% stylesheet %}
+  atelier-product-upload{display:block;width:100%;margin-block:16px}
+  atelier-product-upload .button{width:100%;background:#4A4B36;color:#F4F2EF;font:inherit;text-align:center}
+  atelier-product-upload .button[aria-disabled="true"]{opacity:.55;cursor:not-allowed}
+  atelier-product-upload p{font:inherit;font-size:.875em;line-height:1.6;margin-block:12px;color:inherit}
+{% endstylesheet %}
+{% schema %}
+{"name":"Atelier photo upload","settings":[{"type":"text","id":"label","label":"Button label","default":"Upload your photos"},{"type":"text","id":"help_text","label":"Help text","default":"Choose your pack, upload your photos, and make them yours."}],"presets":[{"name":"Atelier photo upload","category":"Product"}]}
+{% endschema %}

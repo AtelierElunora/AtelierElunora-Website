@@ -32,3 +32,4 @@ export async function auditedOwnerAction({service,actor,activity,run,reply,id=cr
  if(!await write(outcome,{http_status:response.status}))console.error('Gallery activity outcome unavailable',id);
  return response;
 }
+

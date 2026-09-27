@@ -1,0 +1,21 @@
+{% layout none %}
+<!doctype html>
+<html lang="{{ request.locale.iso_code }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="referrer" content="no-referrer">
+  <style>
+@font-face{font-family:'Brown Carolina Sans';src:url('{{ 'brown-carolina-sans.woff' | asset_url }}') format('woff');font-style:normal;font-weight:400;font-display:swap}
+@font-face{font-family:'ITC Edwardian Script';src:url('{{ 'itc-edwardian-regular.woff2' | asset_url }}') format('woff2');font-style:normal;font-weight:400;font-display:swap}
+</style>
+  <title>Owner studio — {{ shop.name | escape }}</title>
+  {{ 'atelier-owner-studio.css' | asset_url | stylesheet_tag }}
+</head>
+<body>
+  <div id="atelier-owner-studio" data-gallery-url="/pages/client-gallery" data-demo-image1="{{ 'atelier-studio-demo-1.jpg' | asset_url }}" data-demo-image2="{{ 'atelier-studio-demo-2.jpg' | asset_url }}" data-demo-image3="{{ 'atelier-studio-demo-3.jpg' | asset_url }}"></div>
+  <noscript>Enable JavaScript to open your owner studio.</noscript>
+  <script src="{{ 'atelier-owner-studio.js' | asset_url }}" defer></script>
+</body>
+</html>

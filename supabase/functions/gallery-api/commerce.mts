@@ -1,15 +1,23 @@
+import {PRODUCT_PACKS} from './product-packs.mjs';
 // Only dedicated gallery variants may enter this checkout. No photos or storage URLs leave the gallery.
 export const SHOP='v0j63n-ms.myshopify.com';
 export const PACKS=[
- {count:6,cents:2500,variant:'gid://shopify/ProductVariant/52368201875744'},
- {count:12,cents:4500,variant:'gid://shopify/ProductVariant/52368201908512'},
- {count:24,cents:8000,variant:'gid://shopify/ProductVariant/52368201941280'},
- {count:48,cents:12500,variant:'gid://shopify/ProductVariant/52368201974048'}
+ {count:3,cents:1499,variant:'gid://shopify/ProductVariant/52451454353696'},
+ {count:6,cents:2499,variant:'gid://shopify/ProductVariant/52368201875744'},
+ {count:12,cents:3899,variant:'gid://shopify/ProductVariant/52368201908512'},
+ {count:24,cents:6899,variant:'gid://shopify/ProductVariant/52368201941280'},
+ {count:48,cents:11899,variant:'gid://shopify/ProductVariant/52368201974048'}
 ];
 export const quoteQuery='query GalleryPack($id:ID!){node(id:$id){... on ProductVariant{id availableForSale price{amount currencyCode}}}}';
 export const cartQuery='mutation GalleryCart($input:CartInput!){cartCreate(input:$input){cart{checkoutUrl lines(first:2){nodes{quantity merchandise{... on ProductVariant{id}}}}} userErrors{field message}}}';
-export function packFor(items:{quantity:number}[],count:number){
- const pack=PACKS.find(p=>p.count===count);
+export function packsForVariant(variant:unknown){
+ if(variant===undefined||variant===null||variant==='')return PACKS;
+ if(typeof variant!=='string'||!/^\d+$/.test(variant))throw Error('This product is not connected to the photo uploader.');
+ const family=[PACKS,PRODUCT_PACKS].find(list=>list.some(p=>p.variant.endsWith('/'+variant)));
+ if(!family)throw Error('This product is not connected to the photo uploader.');return family;
+}
+export function packFor(items:{quantity:number}[],count:number,variant?:unknown){
+ const pack=packsForVariant(variant).find(p=>p.count===count&&(!variant||p.variant.endsWith('/'+variant)));
  if(!pack||!items.length||items.some(i=>!Number.isSafeInteger(i.quantity)||i.quantity<1||i.quantity>12)||items.reduce((n,i)=>n+i.quantity,0)!==count)throw Error('Choose exactly the number of magnets in your pack.');
  return pack;
 }
@@ -35,3 +43,4 @@ export async function createCheckout(pack:typeof PACKS[number],reference:string,
  if(result?.userErrors?.length||!result?.cart?.checkoutUrl||lines?.length!==1||lines[0].quantity!==1||lines[0].merchandise.id!==pack.variant)throw Error('Could not prepare checkout. Your selection is saved; please retry.');
  return safeCheckoutUrl(result.cart.checkoutUrl);
 }
+

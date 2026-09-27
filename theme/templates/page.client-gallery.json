@@ -12,7 +12,7 @@
     "client_gallery": {
       "type": "atelier-client-gallery",
       "settings": {
-        "ninemags": true
+        "ninemags": false
       }
     }
   },

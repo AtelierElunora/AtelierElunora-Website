@@ -16,3 +16,4 @@ export async function requestEmailCode(client: LoginClient, email: string, token
   if (error && error.status && error.status >= 500) return reply({error: 'Email delivery is temporarily unavailable.'}, 503);
   return reply({message: 'If this email has gallery access, an eight-digit code will arrive shortly.'});
 }
+

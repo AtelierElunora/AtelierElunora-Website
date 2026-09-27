@@ -23,3 +23,4 @@ export async function guestPreview(client:SupabaseClient,eventId:string,photoId:
  const out=new Headers(headers);out.set('Content-Type','image/jpeg');out.set('Cache-Control','private, no-store');
  return new Response(result.data,{headers:out});
 }
+

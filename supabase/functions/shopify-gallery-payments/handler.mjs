@@ -1,5 +1,6 @@
 const SHOP='v0j63n-ms.myshopify.com';
-const variants=new Set(['52368201875744','52368201908512','52368201941280','52368201974048']);
+const variants=new Set(['52451454353696','52368201875744','52368201908512','52368201941280','52368201974048']);
+const laterVariants=new Set(["52214559670560","52298480025888","52298480058656","52297952559392","52298480091424","52298480124192","52298480156960","52298480189728","52298480222496","52298480255264","52298480288032","52297952887072","52297952919840","52297952952608","52298480320800","52298480353568","52298480386336"]);
 const topics=new Set(['orders/paid','orders/updated','orders/cancelled','refunds/create']);
 const encoder=new TextEncoder();
 function id(value,gid){if(typeof gid==='string'&&/^gid:\/\/shopify\/\w+\/\d{1,25}$/.test(gid))return gid.split('/').at(-1);if(typeof value==='number'&&!Number.isSafeInteger(value))throw Error('Unsafe numeric identifier');const s=String(value??'');if(!/^\d{1,25}$/.test(s))throw Error('Missing identifier');return s;}
@@ -10,15 +11,17 @@ export function normalize(topic,b){
  const lines=[];
  for(const l of b.line_items){
   const v=l.variant_id==null?'':id(l.variant_id),properties=Array.isArray(l.properties)?l.properties:[],refs=properties.filter(x=>x.name==='Gallery selection');
-  if(!variants.has(v)&&!refs.length)continue;
+  const later=laterVariants.has(v)&&properties.filter(x=>x.name==='Photo submission'&&x.value==='Upload later').length===1;
+  if(!variants.has(v)&&!refs.length&&!later)continue;
   const counts=properties.filter(x=>x.name==='Magnet count');
   const reference=refs.length===1&&typeof refs[0].value==='string'?refs[0].value.slice(0,200):'';
   const quantity=l.current_quantity??l.quantity;
   if(!Number.isSafeInteger(quantity)||quantity<0||quantity>10000)throw Error('Invalid quantity');
   const count=counts.length===1&&/^\d{1,4}$/.test(String(counts[0].value))?Number(counts[0].value):0;
-  lines.push({line_id:id(l.id,l.admin_graphql_api_id),variant_id:v,reference,count,quantity,unit_cents:cents(l.price)});
+  lines.push({line_id:id(l.id,l.admin_graphql_api_id),variant_id:v,reference,count,quantity,unit_cents:cents(l.price),...(later?{upload_later:true}:{})});
  }
- return {order_id:id(b.id,b.admin_graphql_api_id),name:b.name.slice(0,100),financial_status:b.financial_status,cancelled:!!b.cancelled_at,is_test:b.test,currency:b.currency,total_cents:cents(b.current_total_price??b.total_price),updated_at:b.updated_at,lines};
+ const contact=[b.email,b.contact_email].find(v=>typeof v==='string'&&v.trim().length<=254&&/^\S+@\S+\.\S+$/.test(v.trim()));
+ return {order_id:id(b.id,b.admin_graphql_api_id),customer_email:contact?contact.trim().toLowerCase():null,name:b.name.slice(0,100),financial_status:b.financial_status,cancelled:!!b.cancelled_at,is_test:b.test,currency:b.currency,total_cents:cents(b.current_total_price??b.total_price),updated_at:b.updated_at,lines};
 }
 async function validHmac(bytes,signature,secret){
  if(!/^[A-Za-z0-9+/]{43}=$/.test(signature||''))return false;

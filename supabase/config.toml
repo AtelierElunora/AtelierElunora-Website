@@ -1,0 +1,21 @@
+# Captured production function settings, 2026-09-27. No secrets are stored here.
+project_id = "gefdlubvqymyxrguhtnc"
+
+[functions.gallery-api]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/gallery-api/index.ts"
+import_map = "./functions/gallery-api/deno.json"
+
+[functions.shopify-gallery-payments]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/shopify-gallery-payments/index.ts"
+import_map = "./functions/shopify-gallery-payments/deno.json"
+
+# Existing deployed diagnostic endpoint; not a replacement for gallery-api.
+[functions.gallery-api-photo-station-check]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/gallery-api-photo-station-check/index.ts"
+import_map = "./functions/gallery-api-photo-station-check/deno.json"

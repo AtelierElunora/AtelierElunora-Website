@@ -1,0 +1,22 @@
+{% liquid
+  assign upload_product = closest.product | default: product
+  assign upload_variant = upload_product.selected_or_first_available_variant
+%}
+{% if upload_product.id == 10553434898720 or upload_product.id == 10577522688288 or upload_product.id == 10577522753824 %}
+<style>.atelier-legacy-uploader{display:none!important}</style>
+<atelier-upload-later data-variant="{{ upload_variant.id }}" data-available="{{ upload_variant.available }}" data-root="{{ routes.root_url }}" {{ block.shopify_attributes }}>
+  <p>{{ block.settings.help_text | escape }}</p>
+  <label for="later-quantity-{{ block.id }}">Quantity</label>
+  <input id="later-quantity-{{ block.id }}" name="quantity" type="number" min="1" max="6" value="1">
+  <button class="button" type="button">Add to cart — upload later</button>
+  <p role="status" aria-live="polite"></p>
+  <noscript>Please enable JavaScript to add this product to your cart.</noscript>
+</atelier-upload-later>
+<script src="{{ 'atelier-upload-later.js' | asset_url }}" defer></script>
+{% endif %}
+{% stylesheet %}
+atelier-upload-later{display:block;margin-block:16px}atelier-upload-later .button{display:block;width:100%;margin-top:16px;background:#4a4b36;color:#f4f2ef;font:inherit}atelier-upload-later input{display:block;width:80px;min-height:44px}atelier-upload-later p{font:inherit;line-height:1.6}
+{% endstylesheet %}
+{% schema %}
+{"name":"Atelier upload later","settings":[{"type":"text","id":"help_text","label":"Help text","default":"Order now and choose your photos when you are ready. After payment, we’ll email you a private link to upload and crop your photos."}],"presets":[{"name":"Atelier upload later","category":"Product"}]}
+{% endschema %}

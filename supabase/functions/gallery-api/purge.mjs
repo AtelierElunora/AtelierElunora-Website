@@ -29,3 +29,4 @@ export async function purgeEvent(event, body, service, reply, now = Date.now()) 
  if(finished.error) return reply({error:'Files removed, but event cleanup is incomplete. Retry permanent deletion.'},503);
  return reply({deleted:true,fileCount:0,bytes:0});
 }
+

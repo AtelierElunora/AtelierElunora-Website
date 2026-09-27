@@ -1,4 +1,3 @@
-import {guestOriginal} from './guest-original.mjs';
 import {guestPreview} from './guest-preview.mts';
 import {createClient} from '@supabase/supabase-js';
 import {purgeEvent} from './purge.mjs';
@@ -7,9 +6,9 @@ import type {User} from '@supabase/supabase-js';
 import type {SupabaseClient} from '@supabase/supabase-js';
 import {Buffer} from 'node:buffer';
 import {samplePhoto} from './samples.mjs';
-import {runtime} from './runtime.mts';
+import {runtime,checkoutOpen} from './runtime.mts';
 import {randomUUID} from 'node:crypto';
-import {PACKS,packFor,checkPrice,createCheckout} from './commerce.mts';
+import {PACKS,packsForVariant,packFor,checkPrice,createCheckout} from './commerce.mts';
 import {prepareNineMags} from './ninemags.mts';
 
 type Reply=(body:unknown,status?:number)=>Response;
@@ -187,15 +186,15 @@ export async function guestRoutes(request:Request,parts:string[],client:Supabase
  if(!uuid(parts[1]))return reply({error:'Gallery unavailable.'},404);
  const {data:event}=await client.from('gallery_events').select('id,name,event_date,is_sample').eq('id',parts[1]).eq('active',true).maybeSingle();
  if(!event)return reply({error:'This gallery is unavailable. Access may have expired or been removed.'},404);
- if(parts[2]==='pricing'&&parts.length===3&&request.method==='GET')return reply({currency:'USD',packs:PACKS.map(({count,cents,variant})=>({count,cents,variant:variant.split('/').at(-1)})),enabled:runtime.checkoutEnabled&&!event.is_sample});
+ if(parts[2]==='pricing'&&parts.length===3&&request.method==='GET')return reply({currency:'USD',packs:packsForVariant(new URL(request.url).searchParams.get('variant')).map(({count,cents,variant})=>({count,cents,variant:variant.split('/').at(-1)})),enabled:checkoutOpen(event)});
  if(parts[2]==='checkout'&&parts.length===3&&request.method==='POST'){
-  if(!runtime.checkoutEnabled||event.is_sample)return reply({error:'Online checkout is not open for this gallery yet. You can still save or submit your selection.'},409);
+  if(!checkoutOpen(event))return reply({error:'Online checkout is not open for this gallery yet. You can still save or submit your selection.'},409);
   const b=await jsonBody(request);
   if(!Number.isSafeInteger(b.revision)||b.revision<1||!Number.isSafeInteger(b.cents))return reply({error:'Save and review your selection first.'},400);
   const {data:selection}=await client.from('gallery_selections').select('items,revision').eq('event_id',event.id).eq('user_id',user.id).maybeSingle();
   if(!selection||selection.revision!==b.revision)return reply({error:'Your selection changed. Reload it before checkout.'},409);
   try{
-   const pack=packFor(selection.items,b.count);
+   const pack=packFor(selection.items,b.count,b.variant);
    const visible=await client.from('gallery_photos').select('id').eq('event_id',event.id).eq('ready',true).eq('hidden',false).in('id',selection.items.map((i:{photoId:string})=>i.photoId));
    if(visible.error||visible.data?.length!==selection.items.length)return reply({error:'A selected photo is no longer available. Reload your gallery.'},409);
    await checkPrice(pack,b.cents);
@@ -207,6 +206,7 @@ export async function guestRoutes(request:Request,parts:string[],client:Supabase
     if(inserted.error?.code==='23505')({data:snapshot}=await client.from('gallery_requests').select('id,status').eq('event_id',event.id).eq('user_id',user.id).eq('selection_revision',b.revision).maybeSingle());
    }
    if(!snapshot||snapshot.status!=='submitted')return reply({error:'This selection is already being handled. Contact Atelier Elunora before ordering again.'},409);
+   if(b.cart===true)return reply({reference:snapshot.id,variant:pack.variant.split('/').at(-1),count:pack.count});
    if(b.ninemags===true)return reply(await prepareNineMags(client,user.id,event.id,snapshot.id,pack));
    const checkoutUrl=await createCheckout(pack,snapshot.id);
    // A cart is not proof of payment. Shopify remains the payment/order source of truth.
@@ -215,19 +215,12 @@ export async function guestRoutes(request:Request,parts:string[],client:Supabase
  }
  if(parts.length===2&&request.method==='GET'){
   const [photos,grant,invite]=await Promise.all([
-   client.from('gallery_photos').select('id,filename,original_key').eq('event_id',event.id).eq('ready',true).eq('hidden',false).order('position').order('id'),
+   client.from('gallery_photos').select('id,filename').eq('event_id',event.id).eq('ready',true).eq('hidden',false).order('position').order('id'),
    client.from('gallery_access').select('expires_at').eq('event_id',event.id).eq('user_id',user.id).eq('revoked',false).gt('expires_at',new Date().toISOString()).maybeSingle(),
    client.from('gallery_invitations').select('expires_at').eq('event_id',event.id).eq('email',user.email?.toLowerCase()||'').eq('revoked',false).gt('expires_at',new Date().toISOString()).maybeSingle()
   ]);
   const dates=[grant.data?.expires_at,invite.data?.expires_at].filter(Boolean).sort();
-  return photos.error?reply({error:'Unable to load photos.'},503):reply({event,photos:photos.data.map(({original_key,...photo})=>({...photo,hasOriginal:!!original_key})),expiresAt:dates.at(-1)||null});
- }
- if(parts[2]==='photos'&&parts.length===5&&parts[4]==='original'&&uuid(parts[3])&&request.method==='GET'){
-  return guestOriginal(client,event.id,parts[3],reply,headers,()=>{
-   const secret=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-   if(!secret)throw Error('Download service unavailable');
-   return createClient(runtime.url,secret,{auth:{persistSession:false,autoRefreshToken:false}}).storage;
-  });
+  return photos.error?reply({error:'Unable to load photos.'},503):reply({event,photos:photos.data,expiresAt:dates.at(-1)||null});
  }
  if(parts[2]==='photos'&&parts.length===4&&request.method==='GET'){
   const {data:p}=await client.from('gallery_photos').select('sample_asset,preview_key').eq('event_id',event.id).eq('id',parts[3]).eq('ready',true).eq('hidden',false).maybeSingle();

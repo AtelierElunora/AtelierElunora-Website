@@ -232,7 +232,7 @@
                 "ninemags_accent_color": "",
                 "ninemags_button_border_radius": 0,
                 "ninemags_button_app_border_radius": 0,
-                "ninemags_btn_class": "",
+                "ninemags_btn_class": "atelier-legacy-uploader",
                 "ninemags_btn_remove_default_class": false,
                 "ninemags_btn_css": "color: #F4F2EF !important;\n-webkit-text-fill-color: #F4F2EF !important;",
                 "ninemags_cart_redirect": true,
@@ -337,12 +337,25 @@
                 "padding-inline-end": 0
               },
               "blocks": {}
+            },
+            "atelier_photo_upload_launch": {
+              "type": "atelier-photo-upload",
+              "settings": {
+                "label": "Upload your photos",
+                "help_text": "Upload your photos, adjust the crop, and continue to checkout."
+              }
+            },
+            "atelier_upload_later": {
+              "type": "atelier-upload-later",
+              "settings": {}
             }
           },
           "block_order": [
             "group_icgrde",
             "divider_VJhene",
             "variant_picker_R3rGDr",
+            "atelier_photo_upload_launch",
+            "atelier_upload_later",
             "ninemags_ninemags_button_YhnBeR",
             "buy_buttons_Rftckp",
             "text_aEtTtq"

@@ -1,0 +1,1 @@
+alter table public.gallery_experiences add column qr_token text check (qr_token is null or qr_token ~ '^[a-f0-9]{64}$'); comment on column public.gallery_experiences.qr_token is 'Owner-retrievable event QR capability; service-role only. Legacy links stay valid with null until restored or explicitly replaced.';

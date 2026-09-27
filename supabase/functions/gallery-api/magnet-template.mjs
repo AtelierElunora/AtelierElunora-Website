@@ -11,3 +11,4 @@ export function normalizeTemplate(input={}){
  return t;
 }
 export function resolveTemplateText(t,side,context={}){const row=t.sides[side];return row.source==='blank'?'':row.source==='custom'?row.text:row.source==='event'?context.name??'':row.source==='photo'?String(context.photo??''):t[row.source]??'';}
+

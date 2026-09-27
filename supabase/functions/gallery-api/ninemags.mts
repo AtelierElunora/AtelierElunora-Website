@@ -25,3 +25,4 @@ export async function prepareNineMags(client:SupabaseClient,userId:string,eventI
  const result=items.map((i,n)=>{const s=signed.find(s=>s.path===paths[n]);if(!s?.signedUrl||s.error)throw Error('Photo transfer is temporarily unavailable.');return {...i,filename:ordered[n].filename,url:s.signedUrl};});
  return {reference,count:pack.count,cents:pack.cents,variant:pack.variant.split('/').at(-1),expiresAt:Date.now()+300000,items:result};
 }
+

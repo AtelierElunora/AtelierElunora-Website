@@ -6,3 +6,8 @@
 .wrap-colors{display:flex;flex-wrap:wrap;gap:20px}.wrap-colors label{flex:1;min-width:150px}.wrap-colors input[type=color]{width:100%;height:52px;padding:4px;cursor:pointer;border:1px solid #b19a73}
 
 #letter-queue{padding:20px;border:1px solid #b19a73;margin:24px 0}#letter-active{display:flex;flex-wrap:wrap;gap:12px}#letter-status{font-weight:bold}@page letterSheet{size:8.5in 11in;margin:0}@media print{#sheets.letter-sheets{page:letterSheet}#sheets.letter-sheets img{width:8.5in;height:11in;page:letterSheet}}
+
+
+@page ds820Sheet{size:8in 12in;margin:0}@media print{#sheets.ds820-sheets{page:ds820Sheet}#sheets.ds820-sheets img{width:8in;height:12in;page:ds820Sheet}}
+
+#print-workbench{padding:24px;border:1px solid #b19a73;margin:24px 0;background:#f7f3eb}#run-controls{display:flex;flex-wrap:wrap;gap:12px}#crop-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:20px}.crop-card{border:1px solid #b19a73;padding:14px;background:#fff}.crop-card canvas{width:100%;height:auto;display:block}.crop-card .crop-selection{display:flex;align-items:center;gap:12px;font-weight:bold}.crop-selection input[type=checkbox]{appearance:auto;display:inline-block;flex:0 0 26px;width:26px;height:26px;accent-color:#4a4b36;cursor:pointer}.crop-card label{font-size:16px}.crop-card button{width:100%;font-size:15px}#crop-shared{display:flex;flex-wrap:wrap;gap:18px;align-items:end}#crop-shared label{flex:1;min-width:130px}#crop-status,#run-status{font-weight:bold}#crop-save{position:sticky;bottom:12px}

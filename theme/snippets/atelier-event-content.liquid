@@ -1,0 +1,36 @@
+{%- doc -%}
+  Replaces legacy event pricing sections with live product-backed output.
+  Matches semantic headings and prose, never a saved dollar amount.
+  @param {string} content - Merchant-authored HTML to render.
+{%- enddoc -%}
+{%- assign rendered_content = content -%}
+{%- if content contains '<p data-ae-event-pricing="table">' -%}
+  {%- assign marker_body = content | split: '<p data-ae-event-pricing="table">' | last | split: '</p>' | first -%}
+  {%- capture marker -%}<p data-ae-event-pricing="table">{{ marker_body }}</p>{%- endcapture -%}
+  {%- capture live_table -%}{% render 'atelier-event-table' %}{%- endcapture -%}
+  {%- assign rendered_content = rendered_content | replace: marker, live_table -%}
+{%- endif -%}
+{%- if content contains 'Total guest count' and content contains '30% retainer' -%}
+  {%- assign tables = content | split: '<table>' -%}
+  {%- for table_chunk in tables offset: 1 -%}
+    {%- assign table_body = table_chunk | split: '</table>' | first -%}
+    {%- if table_body contains 'Total guest count' and table_body contains 'Event price' -%}
+      {%- capture old_table -%}<table>{{ table_body }}</table>{%- endcapture -%}
+      {%- capture live_table -%}{% render 'atelier-event-table' %}{%- endcapture -%}
+      {%- assign rendered_content = rendered_content | replace: old_table, live_table -%}
+    {%- endif -%}
+  {%- endfor -%}
+{%- endif -%}
+{%- assign paragraphs = rendered_content | split: '<p>' -%}
+{%- for paragraph_chunk in paragraphs offset: 1 -%}
+  {%- assign paragraph = paragraph_chunk | split: '</p>' | first -%}
+  {%- if paragraph contains 'Events for 251–300 guests start at' or paragraph contains 'data-ae-event-capacity' -%}
+    {%- capture price -%}{% render 'atelier-event-price', tier: 300 %}{%- endcapture -%}
+    {%- capture live_paragraph -%}{{ 'unlimited_events.large_body' | t: price: price }}{%- endcapture -%}
+    {%- assign rendered_content = rendered_content | replace: paragraph, live_paragraph -%}
+  {%- elsif paragraph contains 'Planning for 251–300 guests?' -%}
+    {%- capture live_paragraph -%}<strong>Planning for 251–300 guests?</strong> <a href="/pages/contact">Request your custom quote</a> before booking; prices start at {% render 'atelier-event-price', tier: 300 %}.{%- endcapture -%}
+    {%- assign rendered_content = rendered_content | replace: paragraph, live_paragraph -%}
+  {%- endif -%}
+{%- endfor -%}
+{{- rendered_content -}}
