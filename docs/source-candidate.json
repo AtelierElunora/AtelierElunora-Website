@@ -1,0 +1,27 @@
+{
+  "status": "not-deployed",
+  "baselineCommit": "617e2def6fbbe2addc090c72cc5bce8cc8e624a6",
+  "feature": "Email and password sign-in",
+  "changes": [
+    {
+      "path": "theme/assets/atelier-owner-studio.js",
+      "productionSha256": "5a8cf8b0cf9dd3b80dcc38b324385aa014574138300e48d8feda2e8316533131",
+      "sha256": "5a0898efcf333be4f141af6c8d5061e9814529a8ff755887708ac0514959f61b"
+    },
+    {
+      "path": "theme/sections/atelier-client-gallery.liquid",
+      "productionSha256": "51845c154e6bb039ecf6017fc99e8ceaa74f173774e00505f8d95174c89c89dc",
+      "sha256": "92522d43ba6c61171b1fde1317f02898bd0df5d7c5aaca2a2a267dd925e0daa0"
+    },
+    {
+      "path": "supabase/functions/gallery-api/handler.mts",
+      "productionSha256": "954a3f509d413e83cdd51b55cab644fa6198609581fe1feabf001adefdf86d32",
+      "sha256": "96a189f3d4eb6a62c99361c13891a4dd3046b2ff51e6d5c229c54e275a68e35f"
+    },
+    {
+      "path": "supabase/functions/gallery-api/login.mts",
+      "productionSha256": "8d281462810c570058716a26d91de27ad8d1e958dd1f450bc82e964271e23239",
+      "sha256": "7753040333c6667ecc396f947c1ceb552c25d4dcd297bbab7dc266bd73a00ffb"
+    }
+  ]
+}
