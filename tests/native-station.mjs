@@ -17,3 +17,6 @@ assert.equal(checks,0);
 assert.equal((await stationRequest({token:'a'.repeat(64),purpose:'capture',action:'info'},denied,reply)).status,403);
 assert.equal(checks,1,'syntactically valid native token still requires database authorization');
 console.log('PASS: native opt-in, route/method/header restrictions, cross-origin rejection, and token authorization.');
+
+assert.equal(stationOriginAllowed(new Request('https://internal/gallery-api/station',{method:'POST',headers:{'X-Elunora-Request':'1'}}),true),true,'Supabase internal path');
+assert.equal(stationOriginAllowed(new Request('https://internal/gallery-api/owner',{method:'POST',headers:{'X-Elunora-Request':'1'}}),true),false);
