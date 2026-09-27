@@ -96,8 +96,12 @@ struct CaptureView: View {
             .foregroundStyle(Atelier.olive)
         }
         .onReceive(cameras.$receivedImage) { image in
-            guard let image, capture.canCapture else { return }
-            if capture.acceptPhoto(image) { cameras.consumeImage() }
+            guard let image else { return }
+            // Published emits before storage changes; consume on the next actor turn.
+            Task { @MainActor in
+                guard cameras.receivedImage === image, capture.canCapture else { return }
+                if capture.acceptPhoto(image) { cameras.consumeImage() }
+            }
         }
         .onChange(of: cameras.ready) { _, ready in
             if !ready { useCanon = false }

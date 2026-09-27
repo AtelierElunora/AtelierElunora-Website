@@ -50,12 +50,13 @@ enum CanonPTP {
     }
     static func jpeg(in payload: Data) -> Data? {
         // EOS viewfinder payloads wrap a JPEG in model-specific metadata.
+        guard payload.count >= 4, payload.count <= 16 * 1024 * 1024 else { return nil }
         let b = [UInt8](payload)
-        guard b.count >= 4, b.count <= 16 * 1024 * 1024 else { return nil }
         for start in 0..<(b.count - 3) where b[start] == 0xff && b[start + 1] == 0xd8 && b[start + 2] == 0xff {
             for end in stride(from: b.count - 2, through: start + 2, by: -1) where b[end] == 0xff && b[end + 1] == 0xd9 {
                 return Data(b[start...end + 1])
             }
+            return nil // No end marker exists after the first start marker.
         }
         return nil
     }

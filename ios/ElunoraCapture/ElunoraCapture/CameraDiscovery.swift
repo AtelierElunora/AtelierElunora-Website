@@ -60,6 +60,8 @@ import UIKit
         generation = UUID(); scanning = false; ready = false; busy = false
         captureTimer?.cancel(); liveTask?.cancel(); liveViewRunning = false; liveViewStopping = false; liveImage = nil
         awaitingJPEG = false; transfer?.cancel(); transfer = nil
+        if let directory = transferDirectory { try? FileManager.default.removeItem(at: directory) }
+        transferDirectory = nil
         if let id = commandID { finishCommand(id, result: .failure(CanonPTP.Failure(message: "Camera session ended."))) }
         camera?.requestCloseSession(); camera?.delegate = nil; camera = nil
         browser.stop(); devices = []; knownFiles = []; operations = []; eosInitialized = false
@@ -67,36 +69,59 @@ import UIKit
         note("Canon disconnected. The iPad camera is available.")
     }
     func consumeImage() { receivedImage = nil }
-    func deviceBrowser(_ browser: ICDeviceBrowser, didAdd device: ICDevice, moreComing: Bool) {
+    nonisolated func deviceBrowser(_ browser: ICDeviceBrowser, didAdd device: ICDevice, moreComing: Bool) {
+        Task { @MainActor [weak self] in self?.handleAddedDevice(browser, device) }
+    }
+    private func handleAddedDevice(_ browser: ICDeviceBrowser, _ device: ICDevice) {
         devices = (browser.devices ?? []).compactMap { ($0 as? ICCameraDevice)?.name }
         guard camera == nil, let found = device as? ICCameraDevice,
               (found.name ?? "").localizedCaseInsensitiveContains("canon") || (found.name ?? "").localizedCaseInsensitiveContains("r100") else { return }
         camera = found; found.delegate = self
         note("Opening \(found.name ?? "Canon")…"); found.requestOpenSession()
     }
-    func deviceBrowser(_ browser: ICDeviceBrowser, didRemove device: ICDevice, moreGoing: Bool) {
+    nonisolated func deviceBrowser(_ browser: ICDeviceBrowser, didRemove device: ICDevice, moreGoing: Bool) {
+        Task { @MainActor [weak self] in self?.handleRemovedDevice(device) }
+    }
+    private func handleRemovedDevice(_ device: ICDevice) {
         if device === camera { stop() }
     }
-    func didRemove(_ device: ICDevice) { if device === camera { stop() } }
-    func device(_ device: ICDevice, didOpenSessionWithError error: Error?) {
+    nonisolated func didRemove(_ device: ICDevice) {
+        Task { @MainActor [weak self] in self?.handleRemovedDevice(device) }
+    }
+    nonisolated func device(_ device: ICDevice, didOpenSessionWithError error: Error?) {
+        Task { @MainActor [weak self] in self?.handleOpenedSession(device, error) }
+    }
+    private func handleOpenedSession(_ device: ICDevice, _ error: Error?) {
         guard device === camera else { return }
         if let error { note("Cannot open Canon: \(error.localizedDescription)"); return }
         note("Session open. Waiting for the camera’s photo catalog…")
     }
-    func deviceDidBecomeReady(withCompleteContentCatalog device: ICCameraDevice) {
+    nonisolated func deviceDidBecomeReady(withCompleteContentCatalog device: ICCameraDevice) {
+        Task { @MainActor [weak self] in self?.handleReady(device) }
+    }
+    private func handleReady(_ device: ICCameraDevice) {
         guard device === camera else { return }
         knownFiles = Set((device.mediaFiles ?? []).map { ObjectIdentifier($0) })
         ready = true; note("Canon ready for testing. Existing card photos will not be imported.")
         diagnostics.append("Capabilities: \(device.capabilities.joined(separator: ", "))")
     }
-    func device(_ device: ICDevice, didCloseSessionWithError error: Error?) {
+    nonisolated func device(_ device: ICDevice, didCloseSessionWithError error: Error?) {
+        Task { @MainActor [weak self] in self?.handleClosedSession(device) }
+    }
+    private func handleClosedSession(_ device: ICDevice) {
         guard device === camera else { return }; stop()
     }
-    func device(_ device: ICDevice, didEncounterError error: Error?) {
+    nonisolated func device(_ device: ICDevice, didEncounterError error: Error?) {
+        Task { @MainActor [weak self] in self?.handleDeviceError(device, error) }
+    }
+    private func handleDeviceError(_ device: ICDevice, _ error: Error?) {
         guard device === camera else { return }
         note("Camera error: \(error?.localizedDescription ?? "unknown"). Reconnect or use the iPad camera.")
     }
-    func cameraDevice(_ camera: ICCameraDevice, didAdd items: [ICCameraItem]) {
+    nonisolated func cameraDevice(_ camera: ICCameraDevice, didAdd items: [ICCameraItem]) {
+        Task { @MainActor [weak self] in self?.handleItems(camera, items) }
+    }
+    private func handleItems(_ camera: ICCameraDevice, _ items: [ICCameraItem]) {
         guard camera === self.camera else { return }
         for item in items {
             let fresh = knownFiles.insert(ObjectIdentifier(item)).inserted
@@ -107,12 +132,30 @@ import UIKit
             break
         }
     }
-    func cameraDevice(_ camera: ICCameraDevice, didRemove items: [ICCameraItem]) {}
-    func cameraDevice(_ camera: ICCameraDevice, didRenameItems items: [ICCameraItem]) {}
-    func cameraDevice(_ camera: ICCameraDevice, didReceiveThumbnail thumbnail: CGImage?, for item: ICCameraItem, error: Error?) {}
-    func cameraDevice(_ camera: ICCameraDevice, didReceiveMetadata metadata: [AnyHashable: Any]?, for item: ICCameraItem, error: Error?) {}
-    func cameraDevice(_ camera: ICCameraDevice, didReceivePTPEvent eventData: Data) {
+    nonisolated func cameraDevice(_ camera: ICCameraDevice, didRemove items: [ICCameraItem]) {}
+    nonisolated func cameraDevice(_ camera: ICCameraDevice, didRenameItems items: [ICCameraItem]) {}
+    nonisolated func cameraDevice(_ camera: ICCameraDevice, didReceiveThumbnail thumbnail: CGImage?, for item: ICCameraItem, error: Error?) {}
+    nonisolated func cameraDevice(_ camera: ICCameraDevice, didReceiveMetadata metadata: [AnyHashable: Any]?, for item: ICCameraItem, error: Error?) {}
+    nonisolated func cameraDevice(_ camera: ICCameraDevice, didReceivePTPEvent eventData: Data) {
         // ImageCaptureCore owns object discovery. Do not race it with EOS GetEvent polling.
+    }
+    nonisolated func cameraDeviceDidChangeCapability(_ camera: ICCameraDevice) {
+        Task { @MainActor [weak self] in
+            guard let self, camera === self.camera else { return }
+            self.note("Camera capabilities changed.")
+        }
+    }
+    nonisolated func cameraDeviceDidRemoveAccessRestriction(_ device: ICDevice) {
+        Task { @MainActor [weak self] in
+            guard let self, device === self.camera else { return }
+            self.note("Camera access restriction removed. Waiting for catalog readiness…")
+        }
+    }
+    nonisolated func cameraDeviceDidEnableAccessRestriction(_ device: ICDevice) {
+        Task { @MainActor [weak self] in
+            guard let self, device === self.camera else { return }
+            self.stop(); self.note("Camera access is restricted. Unlock/authorize the camera and reconnect.")
+        }
     }
     private func armTransfer() {
         busy = true; awaitingJPEG = true
@@ -141,7 +184,7 @@ import UIKit
                 armTransfer(); _ = try await send(0x100e, [0, 0])
                 note("Shutter requested. Waiting for the new JPEG…")
             } catch {
-                if !awaitingJPEG { busy = false }
+                if !awaitingJPEG && transfer == nil { busy = false }
                 note(error.localizedDescription)
             }
             return
@@ -203,7 +246,10 @@ import UIKit
                             throw CanonPTP.Failure(message: "No decodable live-view frame.")
                         }
                         self.liveImage = image; failures = 0
-                    } catch { failures += 1 }
+                    } catch {
+                        failures += 1
+                        if failures >= 3 { self.note("Live-view error: \(error.localizedDescription)") }
+                    }
                     if failures >= 3 { break }
                     try? await Task.sleep(nanoseconds: 350_000_000)
                 }
