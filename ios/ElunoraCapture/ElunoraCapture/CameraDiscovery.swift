@@ -262,6 +262,11 @@ import UIKit
             }
         } catch { busy = false; note(error.localizedDescription) }
     }
+    func prepareForCapture() async -> Bool {
+        stopLiveView()
+        if let liveTask { await liveTask.value }
+        return !Task.isCancelled && canOperate
+    }
     func stopLiveView() {
         guard liveViewRunning else { return }
         liveViewStopping = true; liveTask?.cancel(); liveViewRunning = false

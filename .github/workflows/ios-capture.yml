@@ -17,5 +17,9 @@ jobs:
         run: |
           swiftc ios/ElunoraCapture/ElunoraCapture/CanonPTP.swift ios/ElunoraCapture/ProtocolTests/main.swift -o /tmp/elunora-ptp-tests
           /tmp/elunora-ptp-tests
+      - name: Test capture countdown
+        run: |
+          swiftc -parse-as-library ios/ElunoraCapture/ElunoraCapture/CaptureCountdown.swift ios/ElunoraCapture/CountdownTests/CountdownTests.swift -o /tmp/elunora-countdown-tests
+          /tmp/elunora-countdown-tests
       - name: Compile iPad app
         run: xcodebuild -project ios/ElunoraCapture/ElunoraCapture.xcodeproj -scheme ElunoraCapture -sdk iphonesimulator -configuration Debug CODE_SIGNING_ALLOWED=NO build

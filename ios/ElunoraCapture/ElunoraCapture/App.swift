@@ -2,6 +2,7 @@ import SwiftUI
 import UIKit
 import AVFoundation
 import CoreText
+import Combine
 
 private enum Atelier {
     static func registerFonts() {
@@ -51,6 +52,13 @@ struct CaptureView: View {
     @State private var cameraError: String?
     @State private var testMode = false
     @State private var useCanon = false
+    @AppStorage("captureCountdownSeconds") private var countdownSeconds = 5
+    @AppStorage("captureFrontCamera") private var frontCamera = true
+    @StateObject private var countdown = CaptureCountdown()
+    @State private var preparingCapture = false
+    @State private var prepareTask: Task<Void, Never>?
+    @State private var captureAttempt = UUID()
+    private var captureLocked: Bool { preparingCapture || countdown.isRunning || requestingCamera || showingCamera }
 
     var body: some View {
         GeometryReader { geometry in
@@ -104,11 +112,11 @@ struct CaptureView: View {
             }
         }
         .onChange(of: cameras.ready) { _, ready in
-            if !ready { useCanon = false }
+            if !ready { cancelCountdown(); useCanon = false }
         }
         .sheet(isPresented: $showingSetup) { setupSheet }
         .fullScreenCover(isPresented: $showingCamera) {
-            IPadCamera { image in
+            IPadCamera(seconds: CaptureCountdown.validatedDelay(countdownSeconds), frontCamera: frontCamera) { image in
                 showingCamera = false
                 if let image { capture.acceptPhoto(image) }
             }.ignoresSafeArea()
@@ -120,7 +128,28 @@ struct CaptureView: View {
             }
         } message: { Text(cameraError ?? "Please try again.") }
         .onChange(of: scenePhase) { _, phase in
+            if phase != .active { cancelCountdown(); showingCamera = false }
             if phase == .background { cameras.stop() }
+        }
+        .onDisappear { cancelCountdown() }
+        .overlay {
+            if countdown.isRunning || preparingCapture {
+                ZStack {
+                    Atelier.cream.opacity(0.96).ignoresSafeArea()
+                    VStack(spacing: 24) {
+                        Text("ATELIER ELUNORA").font(.custom("BrownCarolinaSans", size: 26)).tracking(3)
+                        Text(preparingCapture ? "Getting ready…" : "A moment to keep.")
+                            .font(.custom("EdwardianScriptITCPro-Regular", size: 48))
+                        if let remaining = countdown.remaining {
+                            Text(String(remaining)).font(.system(size: 128, weight: .light, design: .rounded))
+                                .monospacedDigit().accessibilityLabel("Photo in \(remaining) seconds")
+                                .accessibilityAddTraits(.updatesFrequently)
+                        } else { ProgressView() }
+                        Text("Look at the camera and smile.")
+                        Button("Cancel") { cancelCountdown() }.buttonStyle(AtelierButton(secondary: true))
+                    }.foregroundStyle(Atelier.olive)
+                }
+            }
         }
     }
 
@@ -133,7 +162,7 @@ struct CaptureView: View {
                 Button { showingSetup = true } label: {
                     Label("Station setup", systemImage: "slider.horizontal.3")
                         .font(.callout).padding(.vertical, 12)
-                }.accessibilityHint("Open event connection and camera controls")
+                }.disabled(captureLocked).accessibilityHint("Open event connection and camera controls")
             }
             VStack(spacing: 8) {
                 Image("AEMonogram").resizable().scaledToFit()
@@ -180,7 +209,7 @@ struct CaptureView: View {
             }
             HStack(spacing: 8) {
                 Image(systemName: capture.preview == nil ? "camera" : "photo")
-                Text(capture.preview == nil ? (testMode ? "Test-photo mode" : (useCanon ? "Canon · Stop live view before taking a photo" : "iPad camera · Ready when you are")) : (capture.previewIsTest ? "Test photo · Preview before sending" : "Your photo · Preview before sending"))
+                Text(capture.preview == nil ? (testMode ? "Test-photo mode" : (useCanon ? "Canon · Ready for your moment" : "iPad camera · Ready when you are")) : (capture.previewIsTest ? "Test photo · Preview before sending" : "Your photo · Preview before sending"))
                     .font(.footnote)
             }.padding(14).frame(maxWidth: .infinity).background(Atelier.cream)
         }
@@ -201,10 +230,10 @@ struct CaptureView: View {
     @ViewBuilder private var actionButtons: some View {
         if capture.pending == nil {
             Button {
-                if testMode { capture.makeTestPhoto() } else if useCanon { Task { await cameras.capture() } } else { Task { await openCamera() } }
+                beginCapture()
             } label: {
-                Label(testMode ? "Create test photo" : (useCanon ? "Take Canon photo" : "Take a photo"), systemImage: "camera")
-            }.buttonStyle(AtelierButton()).disabled(!capture.canCapture || requestingCamera || cameras.busy || (useCanon && !cameras.canOperate))
+                Label(testMode ? "Create test photo" : "Capture", systemImage: "camera")
+            }.buttonStyle(AtelierButton()).disabled(!capture.canCapture || captureLocked || cameras.busy || (useCanon && !cameras.canOperate && !cameras.liveViewRunning))
         } else {
             if capture.pending?.attempted != true {
                 Button { capture.retake() } label: {
@@ -228,6 +257,47 @@ struct CaptureView: View {
                     .font(.footnote).multilineTextAlignment(.center)
             }
         }.padding(.bottom, 12)
+    }
+
+    @MainActor private func cancelCountdown() {
+        captureAttempt = UUID(); prepareTask?.cancel(); prepareTask = nil
+        countdown.cancel(); preparingCapture = false
+    }
+
+    @MainActor private func beginCapture() {
+        guard capture.canCapture, !captureLocked, !cameras.busy else { return }
+        if !testMode && !useCanon {
+            Task { await openCamera() }
+            return
+        }
+        let canon = useCanon && !testMode
+        let epoch = UUID(); captureAttempt = epoch; preparingCapture = true
+        prepareTask = Task { @MainActor in
+            if canon {
+                let ready = await cameras.prepareForCapture()
+                guard captureAttempt == epoch, !Task.isCancelled else { return }
+                guard ready else {
+                    preparingCapture = false
+                    cameraError = "Canon is not ready. Reconnect it or select the iPad camera."
+                    return
+                }
+            }
+            guard captureAttempt == epoch, !Task.isCancelled, scenePhase == .active else { return }
+            preparingCapture = false
+            countdown.start(seconds: countdownSeconds) {
+                guard captureAttempt == epoch, scenePhase == .active, capture.canCapture else { return }
+                if canon {
+                    guard useCanon, cameras.canOperate else { return }
+                    // Reserve the UI until capture() marks the camera busy.
+                    preparingCapture = true
+                    prepareTask = Task { @MainActor in
+                        guard captureAttempt == epoch, !Task.isCancelled else { return }
+                        preparingCapture = false
+                        await cameras.capture()
+                    }
+                } else { capture.makeTestPhoto() }
+            }
+        }
     }
 
     @MainActor private func openCamera() async {
@@ -259,7 +329,17 @@ struct CaptureView: View {
                             if enabled { testMode = false } else { cameras.stopLiveView() }
                         }
                     Label("iPad camera · Default and backup", systemImage: "ipad")
-                    Text("Opens the front camera. Use the camera switch button to choose the rear camera.").font(.footnote)
+                    Picker("iPad lens", selection: $frontCamera) {
+                        Text("Front (selfie)").tag(true)
+                        Text("Rear").tag(false)
+                    }
+                    Picker("Capture countdown", selection: $countdownSeconds) {
+                        Text("Off").tag(0)
+                        Text("3 seconds").tag(3)
+                        Text("5 seconds").tag(5)
+                        Text("10 seconds").tag(10)
+                    }
+                    Text("Tap Capture once. The iPad preview opens, counts down, and takes the photo automatically. Canon live view stops before its countdown. You can cancel before the shutter fires.").font(.footnote)
                     Toggle("Use generated test photos", isOn: $testMode)
                         .disabled(capture.busy || capture.pending != nil || useCanon)
                 }
@@ -294,7 +374,7 @@ struct CaptureView: View {
                         if cameras.liveViewRunning { cameras.stopLiveView() }
                         else { Task { await cameras.startLiveView() } }
                     }.disabled(cameras.busy || !cameras.ready || !cameras.experimentalEOS || !capture.canCapture)
-                    Text("Use JPEG or RAW+JPEG, a memory card, and single-shot mode. Start with physical-shutter transfer. EOS control and live view require R100 testing. Stop live view before capture.").font(.footnote)
+                    Text("Use JPEG or RAW+JPEG, a memory card, and single-shot mode. Start with physical-shutter transfer. EOS control and live view require R100 testing. Live view stops automatically before the countdown.").font(.footnote)
                     if cameras.receivedImage != nil {
                         Button("Retry loading received photo") {
                             if let image = cameras.receivedImage, capture.acceptPhoto(image) { cameras.consumeImage() }
@@ -308,6 +388,7 @@ struct CaptureView: View {
                     Text("Atelier Elunora · Capture prototype").font(.footnote)
                 }
             }
+            .disabled(captureLocked)
             .scrollContentBackground(.hidden).background(Atelier.cream)
             .foregroundStyle(Atelier.olive).tint(Atelier.olive)
             .navigationTitle("Station setup").navigationBarTitleDisplayMode(.inline)
@@ -321,26 +402,148 @@ struct CaptureView: View {
 }
 
 
-// Native still capture. Its built-in camera switch provides front/rear selection.
-private struct IPadCamera: UIViewControllerRepresentable {
+// A custom overlay keeps guest capture to one tap; UIKit returns the still directly
+// to our existing review screen when its default camera controls are hidden.
+@MainActor private struct IPadCamera: UIViewControllerRepresentable {
+    var seconds: Int
+    var frontCamera: Bool
     var completion: (UIImage?) -> Void
-    func makeCoordinator() -> Coordinator { Coordinator(completion: completion) }
+    func makeCoordinator() -> Coordinator { Coordinator(seconds: seconds, completion: completion) }
     func makeUIViewController(context: Context) -> UIImagePickerController {
         let picker = UIImagePickerController()
         picker.sourceType = .camera
         picker.cameraCaptureMode = .photo
         picker.allowsEditing = false
-        if UIImagePickerController.isCameraDeviceAvailable(.front) { picker.cameraDevice = .front }
+        picker.showsCameraControls = false
+        let preferred: UIImagePickerController.CameraDevice = frontCamera ? .front : .rear
+        if UIImagePickerController.isCameraDeviceAvailable(preferred) { picker.cameraDevice = preferred }
         picker.delegate = context.coordinator
+        context.coordinator.attach(to: picker)
         return picker
     }
     func updateUIViewController(_ controller: UIImagePickerController, context: Context) {}
-    final class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
-        let completion: (UIImage?) -> Void
-        init(completion: @escaping (UIImage?) -> Void) { self.completion = completion }
-        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) { completion(nil) }
+    static func dismantleUIViewController(_ controller: UIImagePickerController, coordinator: Coordinator) {
+        coordinator.invalidate(); controller.delegate = nil; controller.cameraOverlayView = nil
+    }
+    @MainActor final class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+        private let seconds: Int
+        private let completion: (UIImage?) -> Void
+        private let countdown = CaptureCountdown()
+        private weak var picker: UIImagePickerController?
+        private var observation: AnyCancellable?
+        private var inactiveObserver: AnyCancellable?
+        private var warmup: Task<Void, Never>?
+        private var watchdog: Task<Void, Never>?
+        private var finished = false
+        private var fired = false
+        init(seconds: Int, completion: @escaping (UIImage?) -> Void) {
+            self.seconds = seconds; self.completion = completion
+        }
+        func attach(to picker: UIImagePickerController) {
+            self.picker = picker
+            let overlay = CameraCountdownOverlay(frame: picker.view.bounds)
+            overlay.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            overlay.onAppear = { [weak self, weak overlay] in self?.start(overlay: overlay) }
+            overlay.onCancel = { [weak self] in self?.finish(nil) }
+            observation = countdown.$remaining.sink { [weak overlay] remaining in
+                guard let remaining else { return }
+                overlay?.number.text = String(remaining)
+                overlay?.caption.text = "Look at the camera and smile."
+                UIAccessibility.post(notification: .announcement, argument: String(remaining))
+            }
+            inactiveObserver = NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)
+                .sink { [weak self] _ in self?.finish(nil) }
+            picker.cameraOverlayView = overlay
+        }
+        private func start(overlay: CameraCountdownOverlay?) {
+            guard warmup == nil, !finished else { return }
+            warmup = Task { @MainActor [weak self, weak overlay] in
+                // Allow presentation/layout to settle before the full guest countdown.
+                do { try await Task.sleep(nanoseconds: 700_000_000) } catch { return }
+                guard let self, !self.finished, self.picker?.view.window != nil,
+                      UIApplication.shared.applicationState == .active else { return }
+                self.countdown.start(seconds: self.seconds) { [weak self, weak overlay] in
+                    guard let self, !self.finished, !self.fired,
+                          let picker = self.picker, picker.view.window != nil,
+                          UIApplication.shared.applicationState == .active else { return }
+                    self.fired = true
+                    overlay?.number.text = "Smile!"
+                    overlay?.caption.text = "Taking your photo…"
+                    // Cancel after firing discards the result; it never starts another exposure.
+                    picker.takePicture()
+                    self.watchdog = Task { @MainActor [weak self, weak overlay] in
+                        do { try await Task.sleep(nanoseconds: 15_000_000_000) } catch { return }
+                        guard let self, !self.finished else { return }
+                        overlay?.number.text = "Please retry"
+                        overlay?.caption.text = "The camera did not return a photo. Tap Cancel, then Capture again."
+                    }
+                }
+            }
+        }
+        func invalidate() {
+            finished = true; countdown.cancel(); warmup?.cancel(); watchdog?.cancel()
+            observation = nil; inactiveObserver = nil
+        }
+        private func finish(_ image: UIImage?) {
+            guard !finished else { return }
+            invalidate(); completion(image)
+        }
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) { finish(nil) }
         func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
-            completion(info[.originalImage] as? UIImage)
+            finish(info[.originalImage] as? UIImage)
         }
     }
+}
+
+@MainActor private final class CameraCountdownOverlay: UIView {
+    let number = UILabel()
+    let caption = UILabel()
+    var onAppear: (() -> Void)?
+    var onCancel: (() -> Void)?
+    private var appeared = false
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        backgroundColor = .clear
+        let brand = UILabel()
+        brand.text = "ATELIER ELUNORA"
+        brand.font = UIFont(name: "BrownCarolinaSans", size: 25) ?? .systemFont(ofSize: 25, weight: .medium)
+        number.text = "Get ready"
+        number.font = .systemFont(ofSize: 110, weight: .light)
+        number.adjustsFontSizeToFitWidth = true; number.minimumScaleFactor = 0.3
+        number.accessibilityTraits.insert(.updatesFrequently)
+        caption.text = "Opening your camera…"; caption.font = .preferredFont(forTextStyle: .title3)
+        caption.numberOfLines = 0
+        for label in [brand, number, caption] {
+            label.textColor = UIColor(red: 244/255, green: 242/255, blue: 239/255, alpha: 1)
+            label.textAlignment = .center
+            label.layer.shadowColor = UIColor.black.cgColor
+            label.layer.shadowOpacity = 0.9; label.layer.shadowRadius = 4
+            label.layer.shadowOffset = .zero
+        }
+        let cancel = UIButton(type: .system)
+        var config = UIButton.Configuration.filled()
+        config.title = "Cancel"
+        config.baseBackgroundColor = UIColor(red: 74/255, green: 75/255, blue: 54/255, alpha: 1)
+        config.baseForegroundColor = .white
+        config.contentInsets = NSDirectionalEdgeInsets(top: 18, leading: 36, bottom: 18, trailing: 36)
+        cancel.configuration = config
+        cancel.addTarget(self, action: #selector(cancelTapped), for: .touchUpInside)
+        let stack = UIStackView(arrangedSubviews: [number, caption])
+        stack.axis = .vertical; stack.spacing = 16
+        for view in [brand, stack, cancel] { view.translatesAutoresizingMaskIntoConstraints = false; addSubview(view) }
+        NSLayoutConstraint.activate([
+            brand.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor, constant: 28),
+            brand.centerXAnchor.constraint(equalTo: centerXAnchor),
+            stack.centerXAnchor.constraint(equalTo: centerXAnchor), stack.centerYAnchor.constraint(equalTo: centerYAnchor),
+            stack.widthAnchor.constraint(lessThanOrEqualTo: widthAnchor, multiplier: 0.85),
+            cancel.centerXAnchor.constraint(equalTo: centerXAnchor),
+            cancel.bottomAnchor.constraint(equalTo: safeAreaLayoutGuide.bottomAnchor, constant: -32)
+        ])
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        if window != nil, !appeared { appeared = true; onAppear?() }
+    }
+    @objc private func cancelTapped() { onCancel?() }
 }

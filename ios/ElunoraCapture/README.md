@@ -4,6 +4,24 @@ Branded native iPad capture for Atelier Elunora's event gallery and print workfl
 The iPad camera is the default; experimental Canon USB controls are optional.
 Minimum deployment target: iPadOS 17. No third-party Swift package or Canon SDK is needed.
 
+## Guest capture countdown
+
+Tap **Capture** once to take a photo automatically after the countdown (5 seconds by
+default). Station setup offers Off, 3, 5 or 10 seconds and a front/rear iPad lens choice;
+settings persist between launches. The iPad shows its live camera preview behind the
+countdown. Canon live view is stopped before the countdown to serialize USB commands.
+The generated test photo also uses the countdown.
+
+Cancel before the shutter, leave the app, or disconnect the Canon to cancel the timer.
+Returning to the app does not resume a cancelled capture. After a photo, the existing
+review/retake/approve flow applies. No timer automatically uploads a photo. Camera
+startup, autofocus and shutter latency may add time beyond the displayed countdown.
+
+On the physical iPad: verify default five-second auto capture without a second shutter
+tap; test 3/10/Off, front/rear, Cancel near zero, rapid tapping, background/resume,
+rotation, retake, approval and upload. For Canon also test disconnect during countdown
+and starting capture while live view is running. R100 verification still awaits hardware.
+
 ## Current features
 
 - AE branding, custom fonts and native front/rear iPad camera capture.
