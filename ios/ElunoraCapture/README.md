@@ -1,3 +1,13 @@
+## Latest update: iPad camera and brand fonts
+
+The main capture button now opens the iPad camera (front by default, with Apple's camera-switch control). Camera permission is requested before opening. Taking a photo returns to the branded review screen; approval reuses the existing event submission and durable retry path. Photos are redrawn upright, resized to at most 2400 pixels on the longest edge, and compressed below 4 MiB. Generated test photos remain available in Station setup. Canon capture and automatic Canon-failure detection are not implemented yet.
+
+Download the updated branch as a ZIP. Separately unzip the private Elunora-App-Brand-Fonts.zip supplied in chat and copy BrownCarolinaSans.otf and EdwardianScript.otf into ios/ElunoraCapture/ElunoraCapture/BrandFonts. That folder is already included in Xcode's resources. The fonts register at app launch using their actual PostScript names. Edwardian was unpacked from the provided WOFF to native OpenType. Font binaries are excluded from the public repository.
+
+Open the updated Xcode project, choose the same signing team and bundle identifier as your current installation, and Run on the iPad. Do not uninstall an app with a pending photo. Verify fonts, camera permission, front/rear switching, cancel, portrait/landscape orientation, review/retake, and a submission to a dedicated test event. Test a network interruption and confirm retry produces one photo/job. Camera permissions and native capture still require physical-device testing; this Linux environment cannot compile the Apple SDK.
+
+---
+
 > Deployment update, September 26, 2026: native station support is now deployed to gallery-api version 53. It was patched onto live version 51 to preserve newer production features. Native access is enabled by default in that deployment and can be disabled with NATIVE_CAPTURE_ENABLED=false. The historical deployment notes below describe the initial prototype; do not deploy this branch's older full backend over production. The onChange deprecation warning is also fixed. Physical iPad test-photo rendering has been confirmed by the owner; live upload and Canon capture still require device testing.
 
 # Elunora Capture — iPad prototype 0.1
