@@ -1,6 +1,16 @@
 import SwiftUI
+import UIKit
+import AVFoundation
+import CoreText
 
 private enum Atelier {
+    static func registerFonts() {
+        for file in ["BrownCarolinaSans", "EdwardianScript"] {
+            if let url = Bundle.main.url(forResource: file, withExtension: "otf", subdirectory: "BrandFonts") {
+                CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
+            }
+        }
+    }
     static let olive = Color(red: 74/255, green: 75/255, blue: 54/255)
     static let cream = Color(red: 244/255, green: 242/255, blue: 239/255)
     static let ivory = Color(red: 231/255, green: 229/255, blue: 217/255)
@@ -9,6 +19,7 @@ private enum Atelier {
 }
 
 @main struct ElunoraCaptureApp: App {
+    init() { Atelier.registerFonts() }
     var body: some Scene {
         WindowGroup { CaptureView().preferredColorScheme(.light).tint(Atelier.olive) }
     }
@@ -35,6 +46,10 @@ struct CaptureView: View {
     @StateObject private var cameras = CameraDiscovery()
     @Environment(\.scenePhase) private var scenePhase
     @State private var showingSetup = false
+    @State private var showingCamera = false
+    @State private var requestingCamera = false
+    @State private var cameraError: String?
+    @State private var testMode = false
 
     var body: some View {
         GeometryReader { geometry in
@@ -46,8 +61,8 @@ struct CaptureView: View {
                         eventBadge.padding(.top, 28)
                         VStack(spacing: 10) {
                             Text(capture.pending == nil ? "A moment to keep." : "A memory worth keeping.")
-                                .font(.system(.largeTitle, design: .serif)).multilineTextAlignment(.center)
-                            Text(capture.pending == nil ? "Create a test photo to try your keepsake experience." : "Take a look, then send your photo to be made into a magnet.")
+                                .font(.custom("EdwardianScriptITCPro-Regular", size: 48, relativeTo: .largeTitle)).multilineTextAlignment(.center)
+                            Text(capture.pending == nil ? "Take a photo to create a keepsake from your celebration." : "Take a look, then send your photo to be made into a magnet.")
                                 .font(.body).multilineTextAlignment(.center).frame(maxWidth: 570)
                         }
                         photoStage(maxHeight: geometry.size.height > 800 ? 400 : 280)
@@ -72,6 +87,18 @@ struct CaptureView: View {
             .foregroundStyle(Atelier.olive)
         }
         .sheet(isPresented: $showingSetup) { setupSheet }
+        .fullScreenCover(isPresented: $showingCamera) {
+            IPadCamera { image in
+                showingCamera = false
+                if let image { capture.acceptPhoto(image) }
+            }.ignoresSafeArea()
+        }
+        .alert("Camera unavailable", isPresented: Binding(get: { cameraError != nil }, set: { if !$0 { cameraError = nil } })) {
+            Button("OK", role: .cancel) { cameraError = nil }
+            Button("Open Settings") {
+                if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
+            }
+        } message: { Text(cameraError ?? "Please try again.") }
         .onChange(of: scenePhase) { _, phase in
             if phase == .background { cameras.stop() }
         }
@@ -80,7 +107,7 @@ struct CaptureView: View {
     private var header: some View {
         VStack(spacing: 18) {
             HStack {
-                Label("TEST EXPERIENCE", systemImage: "sparkles")
+                Label(testMode ? "TEST EXPERIENCE" : "IPAD CAMERA", systemImage: testMode ? "sparkles" : "camera")
                     .font(.caption2.weight(.semibold)).tracking(1.4)
                 Spacer()
                 Button { showingSetup = true } label: {
@@ -90,7 +117,7 @@ struct CaptureView: View {
             }
             VStack(spacing: 8) {
                 Text("ATELIER ELUNORA")
-                    .font(.system(.title, design: .serif)).tracking(3)
+                    .font(.custom("BrownCarolinaSans", size: 32, relativeTo: .title)).tracking(3)
                     .multilineTextAlignment(.center)
                 Text("MOMENTS, MADE TANGIBLE")
                     .font(.caption2.weight(.medium)).tracking(2.2)
@@ -111,13 +138,13 @@ struct CaptureView: View {
             if let image = capture.preview {
                 Image(uiImage: image).resizable().scaledToFit()
                     .frame(maxWidth: .infinity).frame(maxHeight: maxHeight)
-                    .padding(16).accessibilityLabel("Your test photo preview")
+                    .padding(16).accessibilityLabel("Your photo preview")
             } else {
                 VStack(spacing: 18) {
                     Image(systemName: "camera.aperture")
                         .font(.system(size: 54, weight: .ultraLight)).accessibilityHidden(true)
                     Text("Every celebration has a story.")
-                        .font(.system(.title2, design: .serif)).multilineTextAlignment(.center)
+                        .font(.custom("BrownCarolinaSans", size: 26, relativeTo: .title2)).multilineTextAlignment(.center)
                     Text("Let’s make a little piece of yours.")
                         .font(.body).multilineTextAlignment(.center)
                 }
@@ -127,7 +154,7 @@ struct CaptureView: View {
             }
             HStack(spacing: 8) {
                 Image(systemName: capture.preview == nil ? "camera" : "photo")
-                Text(capture.preview == nil ? "Test-photo mode · Canon capture coming next" : "Test photo · Preview before sending")
+                Text(capture.preview == nil ? (testMode ? "Test-photo mode" : "iPad camera · Ready when you are") : (capture.previewIsTest ? "Test photo · Preview before sending" : "Your photo · Preview before sending"))
                     .font(.footnote)
             }.padding(14).frame(maxWidth: .infinity).background(Atelier.cream)
         }
@@ -147,9 +174,11 @@ struct CaptureView: View {
 
     @ViewBuilder private var actionButtons: some View {
         if capture.pending == nil {
-            Button { capture.makeTestPhoto() } label: {
-                Label("Create test photo", systemImage: "camera")
-            }.buttonStyle(AtelierButton())
+            Button {
+                if testMode { capture.makeTestPhoto() } else { Task { await openCamera() } }
+            } label: {
+                Label(testMode ? "Create test photo" : "Take a photo", systemImage: "camera")
+            }.buttonStyle(AtelierButton()).disabled(!capture.canCapture || requestingCamera)
         } else {
             if capture.pending?.attempted != true {
                 Button { capture.retake() } label: {
@@ -175,17 +204,42 @@ struct CaptureView: View {
         }.padding(.bottom, 12)
     }
 
+    @MainActor private func openCamera() async {
+        guard capture.canCapture, !requestingCamera else { return }
+        requestingCamera = true; defer { requestingCamera = false }
+        guard UIImagePickerController.isSourceTypeAvailable(.camera) else {
+            cameraError = "This device has no available camera. Camera capture requires a physical iPad."; return
+        }
+        let allowed: Bool
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .authorized: allowed = true
+        case .notDetermined: allowed = await AVCaptureDevice.requestAccess(for: .video)
+        default: allowed = false
+        }
+        guard allowed else {
+            cameraError = "Allow camera access in Settings to use the iPad camera."; return
+        }
+        guard scenePhase == .active, capture.canCapture else { return }
+        showingCamera = true
+    }
+
     private var setupSheet: some View {
         NavigationStack {
             Form {
+                Section("Capture camera") {
+                    Label("iPad camera · Default", systemImage: "ipad")
+                    Text("Opens the front camera. Use the camera switch button to choose the rear camera.").font(.footnote)
+                    Toggle("Use generated test photos", isOn: $testMode)
+                        .disabled(capture.busy || capture.pending != nil)
+                }
                 Section("Event connection") {
                     SecureField("Paste capture station link", text: $capture.link)
                         .textInputAutocapitalization(.never).autocorrectionDisabled()
                         .disabled(capture.busy || capture.pending != nil)
-                    Button("Connect test event") { Task { await capture.connect() } }
+                    Button("Connect event") { Task { await capture.connect() } }
                         .disabled(capture.busy || capture.pending != nil)
                     if !capture.eventName.isEmpty { Label(capture.eventName, systemImage: "checkmark.circle") }
-                    Text("Use a dedicated test event. Approved test photos enter its real gallery and print queue.")
+                    Text("Approved photos enter this event’s gallery and print queue. Use a test event while checking the app.")
                         .font(.footnote)
                     if capture.pending != nil {
                         Text("Finish the current photo before switching events.").font(.footnote)
@@ -215,5 +269,30 @@ struct CaptureView: View {
                 }
             }
         }.preferredColorScheme(.light)
+    }
+}
+
+
+// Native still capture. Its built-in camera switch provides front/rear selection.
+private struct IPadCamera: UIViewControllerRepresentable {
+    var completion: (UIImage?) -> Void
+    func makeCoordinator() -> Coordinator { Coordinator(completion: completion) }
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.sourceType = .camera
+        picker.cameraCaptureMode = .photo
+        picker.allowsEditing = false
+        if UIImagePickerController.isCameraDeviceAvailable(.front) { picker.cameraDevice = .front }
+        picker.delegate = context.coordinator
+        return picker
+    }
+    func updateUIViewController(_ controller: UIImagePickerController, context: Context) {}
+    final class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+        let completion: (UIImage?) -> Void
+        init(completion: @escaping (UIImage?) -> Void) { self.completion = completion }
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) { completion(nil) }
+        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
+            completion(info[.originalImage] as? UIImage)
+        }
     }
 }
