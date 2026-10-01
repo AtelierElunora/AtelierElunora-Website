@@ -1,4 +1,4 @@
-# Atelier Elunora — native iPhone app, v3.10
+# Atelier Elunora — native iPhone app, v3.11
 
 ## Build on your phone
 
@@ -125,3 +125,10 @@ WOFF/WOFF2 require their original OTF/TTF edition; renaming does not convert the
 No proprietary font files are supplied. Drop your files in the included folder before building. Check the preview on iPhone, especially Brown Carolina capitals and capture/checkout labels, and test larger Dynamic Type sizes. Native app screens use these fonts; Shopify pages and system controls keep their own typography.
 
 Validation: Swift syntax, folder resource reference and ZIP contents checked here. Actual font registration/rendering and Xcode compilation require your Mac/iPhone and actual font files.
+
+
+## v3.11 — normal capitalization on sign-in
+
+Sign-in now explicitly uses mixed-case system typography for instructions, form labels, entered email/code, password placeholders, actions and headings. The AE monogram, olive/cream palette and card layout remain. Imported display fonts no longer flow into the authentication form. Email, code and password fields disable automatic capitalization and autocorrection. Password characters are passed exactly as entered; only the existing email normalization lowercases the email address.
+
+Build/run the updated project, copying your existing licensed font files into the new BrandedFonts folder first. Use the same bundle identifier. Confirm that `you@example.com`, Password and Welcome back display normal case; test a mixed-case password and email-code login. Static Swift syntax and ZIP integrity checked here; actual iPhone rendering and authentication need device testing.

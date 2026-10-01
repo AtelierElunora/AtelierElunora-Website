@@ -333,46 +333,46 @@ struct AppLoginView: View {
                 VStack(spacing: 28) {
                     VStack(spacing: 14) {
                         Image("AEMonogram").resizable().scaledToFit().frame(width: 88, height: 88)
-                        Text("ATELIER ELUNORA").brandFont(.emphasis, size: 16, relativeTo: .callout).tracking(0.8)
-                        Text("Your memories, together.").brandFont(.heading, size: 38, relativeTo: .largeTitle).multilineTextAlignment(.center)
-                        Text("Sign in to your account and the galleries shared with you.").brandFont(size: 15, relativeTo: .subheadline).multilineTextAlignment(.center)
+                        Text("ATELIER ELUNORA").font(.system(.callout, weight: .semibold)).tracking(0.8)
+                        Text("Your memories, together.").font(.system(.largeTitle, design: .serif)).multilineTextAlignment(.center)
+                        Text("Sign in to your account and the galleries shared with you.").font(.subheadline).multilineTextAlignment(.center)
                     }
                     VStack(alignment: .leading, spacing: 16) {
-                        Text("Welcome back").brandFont(.heading, size: 28, relativeTo: .title2)
-                        Text("Email").brandFont(size: 15, relativeTo: .subheadline)
-                        TextField("you@example.com", text: $email).textContentType(.username).keyboardType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled().padding(14).background(.white).overlay(Rectangle().stroke(border)).disabled(codeSent || working)
-                        Toggle("Use an email code", isOn: $emailMode).brandFont(size: 15, relativeTo: .subheadline).disabled(codeSent || working)
+                        Text("Welcome back").font(.system(.title2, design: .serif))
+                        Text("Email").font(.subheadline)
+                        TextField("you@example.com", text: $email).font(.body).textContentType(.username).keyboardType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled().padding(14).background(.white).overlay(Rectangle().stroke(border)).disabled(codeSent || working)
+                        Toggle("Use an email code", isOn: $emailMode).font(.subheadline).disabled(codeSent || working)
                         if emailMode {
                             if codeSent {
-                                Text("Eight-digit email code").brandFont(size: 15, relativeTo: .subheadline)
-                                TextField("00000000", text: $code).keyboardType(.numberPad).textContentType(.oneTimeCode).padding(14).background(.white).overlay(Rectangle().stroke(border)).disabled(working)
-                                Text("Check your inbox for the sign-in code.").brandFont(size: 13, relativeTo: .footnote)
+                                Text("Eight-digit email code").font(.subheadline)
+                                TextField("00000000", text: $code).font(.body).textInputAutocapitalization(.never).autocorrectionDisabled().keyboardType(.numberPad).textContentType(.oneTimeCode).padding(14).background(.white).overlay(Rectangle().stroke(border)).disabled(working)
+                                Text("Check your inbox for the sign-in code.").font(.footnote)
                             }
                         } else {
-                            Text("Password").brandFont(size: 15, relativeTo: .subheadline)
-                            SecureField("Your password", text: $password).textContentType(.password).padding(14).background(.white).overlay(Rectangle().stroke(border)).disabled(working)
+                            Text("Password").font(.subheadline)
+                            SecureField("Your password", text: $password).font(.body).textInputAutocapitalization(.never).autocorrectionDisabled().textContentType(.password).padding(14).background(.white).overlay(Rectangle().stroke(border)).disabled(working)
                         }
                         if !codeSent {
-                            Text("Security verification").brandFont(size: 15, relativeTo: .subheadline)
-                            if verification.loading { ProgressView("Loading verification…").brandFont(size: 13, relativeTo: .footnote) }
+                            Text("Security verification").font(.subheadline)
+                            if verification.loading { ProgressView("Loading verification…").font(.footnote) }
                             BrowserView(model: verification).frame(height: 220).background(card).clipped()
-                            if let error = verification.error { Text(error).foregroundStyle(.red).brandFont(size: 13, relativeTo: .footnote) }
-                            Button("Reload security check") { verification.webView.reload() }.brandFont(size: 13, relativeTo: .footnote).disabled(working)
+                            if let error = verification.error { Text(error).foregroundStyle(.red).font(.footnote) }
+                            Button("Reload security check") { verification.webView.reload() }.font(.footnote).disabled(working)
                         }
                         Button { Task { if codeSent { await verify() } else { await authenticate() } } } label: {
-                            Text(working ? "Signing in…" : codeSent ? "Verify code and sign in" : emailMode ? "Send sign-in code" : "Sign in").brandFont(.emphasis).foregroundStyle(paper).frame(maxWidth: .infinity, minHeight: 48).background(ink)
+                            Text(working ? "Signing in…" : codeSent ? "Verify code and sign in" : emailMode ? "Send sign-in code" : "Sign in").font(.system(.body, weight: .semibold)).foregroundStyle(paper).frame(maxWidth: .infinity, minHeight: 48).background(ink)
                         }.buttonStyle(.plain).disabled(working || commerce.busy || email.trimmingCharacters(in: .whitespaces).isEmpty || (codeSent ? code.count != 8 : (!emailMode && password.isEmpty) || verification.loading)).opacity(working ? 0.65 : 1)
-                        if codeSent { Button("Request another code") { codeSent = false; code = ""; verification.webView.reload() }.brandFont(size: 13, relativeTo: .footnote).disabled(working) }
-                        if let errorMessage { Text(errorMessage).brandFont(size: 13, relativeTo: .footnote).foregroundStyle(.red) }
-                        Text("Your session stays securely saved on this phone. Your password is never saved by the app.").brandFont(size: 13, relativeTo: .footnote)
+                        if codeSent { Button("Request another code") { codeSent = false; code = ""; verification.webView.reload() }.font(.footnote).disabled(working) }
+                        if let errorMessage { Text(errorMessage).font(.footnote).foregroundStyle(.red) }
+                        Text("Your session stays securely saved on this phone. Your password is never saved by the app.").font(.footnote)
                     }.padding(20).background(card).overlay(Rectangle().stroke(border))
-                    Text("Made to be kept.").brandFont(.heading, size: 22, relativeTo: .title2)
+                    Text("Made to be kept.").font(.system(.title2, design: .serif))
                 }.frame(maxWidth: 480).padding(.horizontal, 16).padding(.vertical, 28).frame(maxWidth: .infinity)
             }.background(paper).foregroundStyle(ink).tint(ink)
                 .navigationTitle("Sign in").navigationBarTitleDisplayMode(.inline)
                 .toolbarBackground(paper, for: .navigationBar).toolbarBackground(.visible, for: .navigationBar)
                 .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { password = ""; dismiss() }.disabled(working) } }
-        }
+        }.font(.body)
     }
     private func authenticate() async {
         guard !working else { return }
