@@ -2,12 +2,13 @@ import SwiftUI
 import PhotosUI
 import AVFoundation
 
-private let olive = Color(red: 65/255, green: 72/255, blue: 39/255)
-private let ivory = Color(red: 235/255, green: 229/255, blue: 217/255)
+let olive = Color(red: 65/255, green: 72/255, blue: 39/255)
+let ivory = Color(red: 235/255, green: 229/255, blue: 217/255)
 
 @main struct ElunoraCustomerApp: App {
     @StateObject private var store = PhotoStore()
-    var body: some Scene { WindowGroup { CustomerHome().environmentObject(store).tint(olive) } }
+    @StateObject private var commerce = CommerceModel()
+    var body: some Scene { WindowGroup { CustomerHome().environmentObject(store).environmentObject(commerce).tint(olive) } }
 }
 
 struct CustomerHome: View {
@@ -16,7 +17,9 @@ struct CustomerHome: View {
         TabView {
             CapturePage().tabItem { Label("Capture", systemImage: "camera") }
             PhotosPage().tabItem { Label("My photos", systemImage: "photo.on.rectangle") }
-            ExplorePage().tabItem { Label("Explore", systemImage: "bag") }
+            OrderPage().tabItem { Label("Order", systemImage: "bag") }
+            GalleryPage().tabItem { Label("Galleries", systemImage: "rectangle.stack") }
+            MorePage().tabItem { Label("More", systemImage: "ellipsis.circle") }
         }
         .alert("Photo library", isPresented: Binding(get: { store.errorMessage != nil }, set: { if !$0 { store.errorMessage = nil } })) { Button("OK") { store.errorMessage = nil } } message: { Text(store.errorMessage ?? "") }
     }
@@ -42,7 +45,7 @@ struct CapturePage: View {
             ScrollView { VStack(alignment: .leading, spacing: 24) {
                 BrandHeading(title: "Keep this moment.")
                 Image(systemName: "camera.aperture").font(.system(size: 110, weight: .ultraLight)).frame(maxWidth: .infinity).padding(36)
-                Text("Take a photo or choose one you already love. Your photos stay on this phone until you remove them.")
+                Text("Take a photo or choose one you already love. Your photos are saved on this phone. Selected photos upload when you continue to magnet checkout.")
                 Button { Task { await openCamera() } } label: { Label("Take a photo", systemImage: "camera.fill").font(.headline).foregroundStyle(ivory).frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent).tint(olive).disabled(cameraOpening || importing)
                 PhotosPicker(selection: $selected, maxSelectionCount: 12, matching: .images) { Label("Choose from phone", systemImage: "photo.on.rectangle").frame(maxWidth: .infinity) }.buttonStyle(.bordered).disabled(importing)
                 if importing { ProgressView("Saving your photos…") }
@@ -54,8 +57,8 @@ struct CapturePage: View {
                 guard !items.isEmpty else { return }
                 Task { importing = true; defer { importing = false; selected = [] }
                     for item in items { do {
-                        if let data = try await item.loadTransferable(type: Data.self) { store.saveImported(data) }
-                        else { store.errorMessage = "A selected photo could not be loaded." }
+                        let data = try await item.loadTransferable(type: Data.self)
+                        if let data { store.saveImported(data) } else { store.errorMessage = "A selected photo could not be loaded." }
                     } catch { store.errorMessage = "Could not import photo: \(error.localizedDescription)" } }
                 }
             }
@@ -77,34 +80,22 @@ struct CapturePage: View {
 
 struct PhotosPage: View {
     @EnvironmentObject private var store: PhotoStore
+    @EnvironmentObject private var commerce: CommerceModel
     @State private var deleting: SavedPhoto?
     var body: some View { NavigationStack { ScrollView { VStack(alignment: .leading, spacing: 20) {
         BrandHeading(title: "Your little keepsakes.")
-        Text("\(store.photos.count) saved photos. Magnet ordering from these photos is coming next.")
+        Text("\(store.photos.count) saved photos. Choose photos for your magnet pack, then open Order to crop and review.")
         if store.photos.isEmpty { ContentUnavailableView("Your tray is ready", systemImage: "photo", description: Text("Take or import a photo from Capture.")) }
         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
             ForEach(store.photos) { photo in VStack {
                 if let image = store.thumbnail(photo) { Image(uiImage: image).resizable().scaledToFit().frame(height: 155).frame(maxWidth: .infinity).background(.white).clipShape(RoundedRectangle(cornerRadius: 14)) }
-                Button("Remove", role: .destructive) { deleting = photo }.font(.footnote)
+                Button { store.toggleSelection(photo) } label: { Label(store.order.items.contains(where: { $0.id == photo.id }) ? "Selected" : "Select", systemImage: store.order.items.contains(where: { $0.id == photo.id }) ? "checkmark.circle.fill" : "circle") }.buttonStyle(.bordered).disabled(commerce.busy)
+                Button("Remove", role: .destructive) { deleting = photo }.font(.footnote).disabled(commerce.busy)
             } }
         }
     }.padding(24) }.background(ivory).foregroundStyle(olive).navigationTitle("My photos").navigationBarTitleDisplayMode(.inline)
         .confirmationDialog("Remove this saved photo?", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }), titleVisibility: .visible) {
             Button("Remove", role: .destructive) { if let photo = deleting { store.remove(photo) }; deleting = nil }
         } message: { Text("The original in your phone’s Photos library is unaffected.") }
-    } }
-}
-
-private struct WebDestination: Identifiable { let id = UUID(); let url: URL }
-struct ExplorePage: View {
-    @State private var destination: WebDestination?
-    private let pages = [("Shop photo magnets", "/collections/photo-magnets"), ("Client gallery", "/pages/client-gallery"), ("Wedding packages", "/pages/packages"), ("Special events", "/pages/special-events"), ("Contact", "/pages/contact")]
-    var body: some View { NavigationStack { ScrollView { VStack(alignment: .leading, spacing: 24) {
-        BrandHeading(title: "Made to be kept.")
-        Text("Explore our keepsakes, event experiences, and your private gallery.")
-        ForEach(pages, id: \.0) { page in Button { if let url = URL(string: "https://atelierelunora.com" + page.1) { destination = WebDestination(url: url) } } label: { HStack { Text(page.0); Spacer(); Image(systemName: "arrow.up.right") }.padding(12) }.buttonStyle(.bordered) }
-        Text("These pages use your website. Photos saved in this app are not transferred to checkout yet.").font(.footnote)
-    }.padding(24) }.background(ivory).foregroundStyle(olive).navigationTitle("Explore").navigationBarTitleDisplayMode(.inline)
-        .sheet(item: $destination) { StoreBrowser(url: $0.url).ignoresSafeArea() }
     } }
 }
