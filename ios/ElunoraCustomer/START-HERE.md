@@ -1,4 +1,4 @@
-# Atelier Elunora — native iPhone app, v3.9
+# Atelier Elunora — native iPhone app, v3.10
 
 ## Build on your phone
 
@@ -114,16 +114,14 @@ Event ownership is session-based, just like the existing QR uploader: website up
 Validation here: Swift syntax and project references checked; backend contract tests exercise two-guest filtering, pending/approved visibility, refused whole-gallery claims, invalid sessions and revoked sessions. Live database function definitions were inspected read-only. No live event/photo/account records were created for testing. Xcode compilation, camera scanning, real uploads and device UI remain to be tested on a Mac/iPhone.
 
 
-## v3.9 — import brand fonts and preserve readable weights
+## v3.10 — BrandedFonts folder
 
-Open Account → App fonts → Import font files. Select one or more OTF/TTF files in Files/iCloud Drive. Choose separate faces for headings, body text, and buttons/capitals. Files and choices persist locally across launches. Restore system fonts resets choices without deleting your imported files.
+Place your licensed OTF/TTF files in `ElunoraCustomer/BrandedFonts` next to App.swift, then build/run. The folder is already referenced by Xcode and copied into the app bundle, including archives. No per-font target membership, Info.plist entries, font registration steps, or in-app selections are needed. Use the existing folder in Finder rather than creating a duplicate Xcode reference.
 
-Font registration uses each file's real PostScript name. Real weight metadata determines which faces are offered for body text and emphasis. Thin/light faces are available for headings; regular faces for body text; Medium/Semibold/Bold faces for emphasis. If no heavier face exists, buttons and capitals use system semibold, not an ineffective `.bold()` modifier on a thin custom face. The ATELIER ELUNORA label is now 16-point with reduced tracking (0.8), and all custom fonts scale with Dynamic Type. No synthetic stroke/outline is applied to the brand font.
+The app automatically selects Brown Carolina Regular for body text, Edwardian Script for headings (Brown Carolina if absent), and a real heavier Brown Carolina face for buttons/capitals. Font family and PostScript names are read from the files; filenames can vary. If no Medium/Semibold/Bold face is present, controls and capitals keep system semibold to avoid the previous thin-weight problem. Light display faces are not applied to body text. A single alternative non-Edwardian family can also be used automatically.
 
-The live preview includes all capitals, mixed-case text, numerals, the capture button and checkout label. Check Brown Carolina's capitals on your actual iPhone before choosing it for release. Font metadata cannot establish optical readability by itself. A variable font's default face is imported; this version does not add a variable-axis weight editor. Import a static heavier edition if needed.
+WOFF/WOFF2 require their original OTF/TTF edition; renaming does not convert them. Files in nested folders and uppercase OTF/TTF extensions are detected. Invalid/unsupported fonts are reported in Account → App fonts, which now previews the automatically active fonts. The in-app importer and manual font selections have been removed. Every installation of the built app receives the same bundled fonts; rebuilding applies updated files even on a phone that previously saved v3.9 font choices.
 
-WOFF/WOFF2 are web font files and are rejected with an explanation. Obtain the original licensed OTF/TTF edition; renaming the extension does not convert the format. The app does not upload font files to a server.
+No proprietary font files are supplied. Drop your files in the included folder before building. Check the preview on iPhone, especially Brown Carolina capitals and capture/checkout labels, and test larger Dynamic Type sizes. Native app screens use these fonts; Shopify pages and system controls keep their own typography.
 
-Imports affect this installation. To distribute your fonts to everyone, add the OTF/TTF files to the ElunoraCustomer Xcode target with Copy items if needed and target membership checked; bundled OTF/TTF files are registered on launch. The selected default PostScript names should then be set for the release build after reviewing the actual files. No proprietary font files are included in this ZIP. Native app typography is configurable; Shopify/web content and system navigation controls retain their own typography.
-
-Device checks: import your actual fonts; confirm face names and previews; select each role; visit Capture, Galleries, Event sharing, Order and login; relaunch and confirm restoration; enable a larger text size; verify the capture and checkout labels remain legible; import the same file twice; try an invalid file and a WOFF2 file; restore defaults. Static Swift syntax and all eight target source references checked here. Xcode compilation and actual font rendering need Mac/iPhone verification.
+Validation: Swift syntax, folder resource reference and ZIP contents checked here. Actual font registration/rendering and Xcode compilation require your Mac/iPhone and actual font files.
