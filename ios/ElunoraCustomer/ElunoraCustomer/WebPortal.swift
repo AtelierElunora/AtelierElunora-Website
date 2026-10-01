@@ -14,8 +14,24 @@ struct SharedFile: Identifiable { let id = UUID(); let url: URL }
     init(url: URL, session: CustomerSession?) {
         seed = session
         let configuration = WKWebViewConfiguration(); configuration.websiteDataStore = .default()
+        if ["www.atelierelunora.com", "atelierelunora.com"].contains(url.host ?? ""), url.path == "/pages/app-security" {
+            let styling = WKUserScript(source: """
+            if (['https://www.atelierelunora.com','https://atelierelunora.com'].includes(location.origin) && location.pathname === '/pages/app-security') {
+                const style = document.createElement('style');
+                style.textContent = 'html,body,#ae-app-security{background:#E8E5D9!important}#ae-app-security{padding:8px!important;color:#4A4B36!important}';
+                document.head.append(style);
+                const status = document.getElementById('ae-app-status');
+                const update = () => { if (status && status.textContent.includes('Tap Continue sign-in')) status.textContent = 'Verification complete.'; };
+                if (status) { update(); new MutationObserver(update).observe(status,{childList:true,subtree:true}); }
+            }
+            """, injectionTime: .atDocumentEnd, forMainFrameOnly: true)
+            configuration.userContentController.addUserScript(styling)
+        }
         webView = WKWebView(frame: .zero, configuration: configuration)
         super.init(); webView.navigationDelegate = self; webView.uiDelegate = self; webView.allowsBackForwardNavigationGestures = true
+        if url.path == "/pages/app-security" {
+            webView.isOpaque = false; webView.backgroundColor = .clear; webView.scrollView.backgroundColor = .clear; webView.scrollView.isScrollEnabled = false
+        }
         webView.load(URLRequest(url: url))
     }
     private func isStore(_ url: URL?) -> Bool {
@@ -28,7 +44,7 @@ struct SharedFile: Identifiable { let id = UUID(); let url: URL }
         if (!['https://www.atelierelunora.com','https://atelierelunora.com'].includes(location.origin) || location.pathname !== '/pages/app-security') return null;
         return window.aeAppCaptchaToken || null;
         """, arguments: [:], in: nil, contentWorld: .page)
-        guard let token = result as? String, !token.isEmpty, token.count <= 2048 else { throw CustomerError(message: "Finish the security check, then tap Continue sign-in.") }
+        guard let token = result as? String, !token.isEmpty, token.count <= 2048 else { throw CustomerError(message: "Complete the security check, then tap Sign in or Send sign-in code.") }
         return token
     }
     func readSession() async throws -> CustomerSession {

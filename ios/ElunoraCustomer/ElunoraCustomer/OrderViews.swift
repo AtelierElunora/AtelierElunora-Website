@@ -313,74 +313,81 @@ struct MorePage: View {
 struct AppLoginView: View {
     @EnvironmentObject private var commerce: CommerceModel
     @Environment(\.dismiss) private var dismiss
+    @StateObject private var verification = WebBrowserModel(url: URL(string: "https://www.atelierelunora.com/pages/app-security")!, session: nil)
     @State private var email = ""
     @State private var password = ""
     @State private var code = ""
     @State private var emailMode = false
     @State private var codeSent = false
-    @State private var security = false
     @State private var working = false
     @State private var errorMessage: String?
+    private let paper = Color(red: 244/255, green: 242/255, blue: 239/255)
+    private let card = Color(red: 232/255, green: 229/255, blue: 217/255)
+    private let ink = Color(red: 74/255, green: 75/255, blue: 54/255)
+    private let border = Color(red: 214/255, green: 210/255, blue: 188/255)
     var body: some View {
         NavigationStack {
-            Form {
-                Section { BrandHeading(title: "Welcome back."); Text("Sign in to see your account and every gallery shared with your email.") }
-                Section("Sign in") {
-                    TextField("Email", text: $email).textContentType(.username).keyboardType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled().disabled(codeSent || working)
-                    Toggle("Use an email code", isOn: $emailMode).disabled(codeSent || working)
-                    if emailMode {
-                        if codeSent { TextField("Eight-digit code", text: $code).keyboardType(.numberPad).textContentType(.oneTimeCode) }
-                    } else { SecureField("Password", text: $password).textContentType(.password).disabled(working) }
-                    if codeSent {
-                        Button("Verify code and sign in") { Task { await verify() } }.disabled(code.count != 8 || working)
-                        Button("Request another code") { codeSent = false; code = ""; security = true }
-                    } else {
-                        Button(emailMode ? "Send sign-in code" : "Sign in") { security = true }.disabled(email.trimmingCharacters(in: .whitespaces).isEmpty || (!emailMode && password.isEmpty) || working || commerce.busy)
+            ScrollView {
+                VStack(spacing: 28) {
+                    VStack(spacing: 14) {
+                        Image("AEMonogram").resizable().scaledToFit().frame(width: 88, height: 88)
+                        Text("ATELIER ELUNORA").font(.caption).tracking(4)
+                        Text("Your memories, together.").font(.system(size: 38, weight: .regular, design: .serif)).multilineTextAlignment(.center)
+                        Text("Sign in to your account and the galleries shared with you.").font(.subheadline).multilineTextAlignment(.center)
                     }
-                    if working { ProgressView("Signing in…") }
-                    if let errorMessage { Text(errorMessage).foregroundStyle(.red) }
-                }
-                Section { Text("Your existing gallery password works here. If you have not set one, use an email code. The app remembers your verified session securely; it does not save your password.").font(.footnote) }
-            }.navigationTitle("Sign in").toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { password = ""; dismiss() }.disabled(working) } }
-                .sheet(isPresented: $security) { LoginSecurityCheck { token in security = false; Task { await authenticate(token) } } }
-
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("Welcome back").font(.system(size: 28, design: .serif))
+                        Text("Email").font(.subheadline)
+                        TextField("you@example.com", text: $email).textContentType(.username).keyboardType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled().padding(14).background(.white).overlay(Rectangle().stroke(border)).disabled(codeSent || working)
+                        Toggle("Use an email code", isOn: $emailMode).font(.subheadline).disabled(codeSent || working)
+                        if emailMode {
+                            if codeSent {
+                                Text("Eight-digit email code").font(.subheadline)
+                                TextField("00000000", text: $code).keyboardType(.numberPad).textContentType(.oneTimeCode).padding(14).background(.white).overlay(Rectangle().stroke(border)).disabled(working)
+                                Text("Check your inbox for the sign-in code.").font(.footnote)
+                            }
+                        } else {
+                            Text("Password").font(.subheadline)
+                            SecureField("Your password", text: $password).textContentType(.password).padding(14).background(.white).overlay(Rectangle().stroke(border)).disabled(working)
+                        }
+                        if !codeSent {
+                            Text("Security verification").font(.subheadline)
+                            if verification.loading { ProgressView("Loading verification…").font(.footnote) }
+                            BrowserView(model: verification).frame(height: 220).background(card).clipped()
+                            if let error = verification.error { Text(error).foregroundStyle(.red).font(.footnote) }
+                            Button("Reload security check") { verification.webView.reload() }.font(.footnote).disabled(working)
+                        }
+                        Button { Task { if codeSent { await verify() } else { await authenticate() } } } label: {
+                            Text(working ? "Signing in…" : codeSent ? "Verify code and sign in" : emailMode ? "Send sign-in code" : "Sign in").font(.headline).foregroundStyle(paper).frame(maxWidth: .infinity, minHeight: 48).background(ink)
+                        }.buttonStyle(.plain).disabled(working || commerce.busy || email.trimmingCharacters(in: .whitespaces).isEmpty || (codeSent ? code.count != 8 : (!emailMode && password.isEmpty) || verification.loading)).opacity(working ? 0.65 : 1)
+                        if codeSent { Button("Request another code") { codeSent = false; code = ""; verification.webView.reload() }.font(.footnote).disabled(working) }
+                        if let errorMessage { Text(errorMessage).font(.footnote).foregroundStyle(.red) }
+                        Text("Your session stays securely saved on this phone. Your password is never saved by the app.").font(.footnote)
+                    }.padding(20).background(card).overlay(Rectangle().stroke(border))
+                    Text("Made to be kept.").font(.system(size: 22, design: .serif))
+                }.frame(maxWidth: 480).padding(.horizontal, 16).padding(.vertical, 28).frame(maxWidth: .infinity)
+            }.background(paper).foregroundStyle(ink).tint(ink)
+                .navigationTitle("Sign in").navigationBarTitleDisplayMode(.inline)
+                .toolbarBackground(paper, for: .navigationBar).toolbarBackground(.visible, for: .navigationBar)
+                .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { password = ""; dismiss() }.disabled(working) } }
         }
     }
-    private func authenticate(_ token: String) async {
-        working = true; errorMessage = nil; defer { working = false }
+    private func authenticate() async {
+        guard !working else { return }
+        working = true; errorMessage = nil; var usedToken = false; defer { working = false }
         do {
+            let token = try await verification.readCaptcha()
+            usedToken = true
             let address = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
             if emailMode { try await commerce.requestCode(email: address, captcha: token); codeSent = true }
             else { try await commerce.signIn(email: address, password: password, captcha: token); password = ""; dismiss() }
-        } catch { errorMessage = error.localizedDescription }
+        } catch { errorMessage = error.localizedDescription; if usedToken { verification.webView.reload() } }
     }
     private func verify() async {
+        guard !working else { return }
         working = true; errorMessage = nil; defer { working = false }
         do { try await commerce.verifyCode(email: email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(), code: code); dismiss() }
         catch { errorMessage = error.localizedDescription }
-    }
-}
-
-struct LoginSecurityCheck: View {
-    @Environment(\.dismiss) private var dismiss
-    @StateObject private var browser = WebBrowserModel(url: URL(string: "https://www.atelierelunora.com/pages/app-security")!, session: nil)
-    @State private var reading = false
-    let onToken: (String) -> Void
-    var body: some View {
-        NavigationStack {
-            VStack {
-                Text("Complete the security check below, then tap Continue sign-in.").font(.footnote).padding()
-                if browser.loading { ProgressView() }
-                if let error = browser.error { Text(error).font(.footnote).foregroundStyle(.red).padding() }
-                BrowserView(model: browser)
-                Button("Continue sign-in") { Task {
-                    reading = true; defer { reading = false }
-                    do { onToken(try await browser.readCaptcha()) }
-                    catch { browser.error = error.localizedDescription }
-                } }.buttonStyle(.borderedProminent).disabled(reading || browser.loading).padding()
-            }.navigationTitle("Security check").navigationBarTitleDisplayMode(.inline)
-                .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
-        }
     }
 }
 
