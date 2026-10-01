@@ -1,4 +1,4 @@
-# Atelier Elunora — native iPhone app, v3.4
+# Atelier Elunora — native iPhone app, v3.5
 
 ## Build on your phone
 
@@ -63,7 +63,7 @@ The workspace runs Linux: an Apple SDK compile, login inside WKWebView, physical
 
 Repository folder: ios/ElunoraCustomer on development/customer-mobile-app.
 
-## v3.4 testing and performance
+## v3.5 testing and performance
 
 Gallery metadata loads in batches of four concurrent requests instead of sequentially. Preview requests reuse in-flight work and a 40 MB memory cache with a 60-second reuse window; nothing is written to a disk photo cache. Explicit refresh and session changes clear the cache. This reduces repeat requests but first-load speed still depends on connection and server processing. Actual timing has not been measured on a phone here.
 
@@ -71,6 +71,10 @@ Test native password login, incorrect passwords, email-code delivery/verificatio
 
 This version adds no backend deployment or schema change. Linux grammar/project checks and mocked API contract checks do not replace an Xcode compile and physical iPhone testing of login, verification and payments.
 
-## v3.4 gallery tap fix
+## v3.5 gallery tap fix
 
 Thumbnail image and preview-button hit areas are explicitly bounded to the visible image frame. This prevents scaled images from intercepting taps on Select or on another row. Test portrait and landscape thumbnails: Select must toggle Selected without opening a photo; tapping the thumbnail must open that photo. Test Select photo in Create magnets as well. Physical-device tap testing still needs confirmation.
+
+## v3.5 single sign-in flow
+
+Native password/email-code login shows only the existing security challenge in its verification sheet. The website login form and navigation are hidden there; challenge validation remains unchanged. Successful login returns to the native account/galleries without requesting another sign-in. Gallery tools reuse the app session and omit the Connect to app prompt when already signed in. Test security verification, password and email-code sign-in, and opening Gallery tools on your phone. The DOM integration is scoped to the exact trusted gallery page; website markup changes may require an app update.

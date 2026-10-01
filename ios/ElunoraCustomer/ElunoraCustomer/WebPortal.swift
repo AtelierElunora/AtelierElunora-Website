@@ -11,13 +11,51 @@ struct SharedFile: Identifiable { let id = UUID(); let url: URL }
     private let seed: CustomerSession?
     private var seedChecked = false
     private var downloads: [ObjectIdentifier: URL] = [:]
-    init(url: URL, session: CustomerSession?) {
+    init(url: URL, session: CustomerSession?, securityOnly: Bool = false) {
         seed = session
         let configuration = WKWebViewConfiguration(); configuration.websiteDataStore = .default()
+        if securityOnly {
+            // Keep the existing, origin-verified challenge and its callbacks; omit the website login UI.
+            let script = WKUserScript(source: Self.securityScript, injectionTime: .atDocumentEnd, forMainFrameOnly: true)
+            configuration.userContentController.addUserScript(script)
+        }
         webView = WKWebView(frame: .zero, configuration: configuration)
         super.init(); webView.navigationDelegate = self; webView.uiDelegate = self; webView.allowsBackForwardNavigationGestures = true
         webView.load(URLRequest(url: url))
     }
+    private static let securityScript = """
+    (() => {
+        if (!['https://www.atelierelunora.com','https://atelierelunora.com'].includes(location.origin) || location.pathname !== '/pages/client-gallery') return;
+        const isolate = () => {
+            const form = document.querySelector('[data-ae-customer-gallery] .ag-login');
+            const input = form && form.querySelector('#ag-email');
+            const box = input && input.nextElementSibling;
+            const status = box && box.nextElementSibling;
+            const retry = status && status.nextElementSibling;
+            if (!box || box.tagName !== 'DIV' || !status || status.getAttribute('role') !== 'status' || !retry || retry.tagName !== 'BUTTON' || retry.type !== 'button') return false;
+            // Hide surrounding UI in place so the active challenge iframe never reloads.
+            for (const child of form.children) {
+                if (![box, status, retry].includes(child)) child.style.setProperty('display','none','important');
+            }
+            form.id = 'ae-app-security';
+            form.style.cssText = 'display:block!important;max-width:440px;margin:24px auto;padding:16px;';
+            let branch = form;
+            while (branch.parentElement && branch !== document.body) {
+                const parent = branch.parentElement;
+                for (const sibling of parent.children) {
+                    if (sibling !== branch) sibling.style.setProperty('display','none','important');
+                }
+                parent.style.setProperty('display','block','important');
+                branch = parent;
+            }
+            document.body.style.setProperty('background','#EBE5D9','important');
+            return true;
+        };
+        if (isolate()) return;
+        const observer = new MutationObserver(() => { if (isolate()) observer.disconnect(); });
+        observer.observe(document.body, {childList:true,subtree:true});
+    })();
+    """
     private func isStore(_ url: URL?) -> Bool {
         guard let url else { return false }
         return url.scheme == "https" && url.user == nil && url.password == nil && ["www.atelierelunora.com", "atelierelunora.com"].contains(url.host ?? "")

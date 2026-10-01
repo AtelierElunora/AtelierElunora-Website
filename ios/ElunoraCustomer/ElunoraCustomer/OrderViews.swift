@@ -188,7 +188,7 @@ struct GalleryPage: View {
                 .sheet(isPresented: $login, onDismiss: { Task { await reload() } }) { AppLoginView().environmentObject(commerce) }
                 .sheet(item: $magnetGallery) { group in GalleryMagnetOrder(gallery: group.gallery, photos: group.photos).environmentObject(commerce) }
                 .sheet(isPresented: $open, onDismiss: { Task { await reload() } }) {
-                    WebPortal(url: URL(string: "https://www.atelierelunora.com/pages/client-gallery")!, title: "Gallery account and tools", session: identity.isEmpty ? nil : commerce.session, connection: true).environmentObject(commerce)
+                    WebPortal(url: URL(string: "https://www.atelierelunora.com/pages/client-gallery")!, title: "Gallery tools", session: identity.isEmpty ? nil : commerce.session, connection: identity.isEmpty).environmentObject(commerce)
                 }
                 .sheet(item: $selected) { selection in
                     GalleryPhotoViewer(selection: selection).environmentObject(commerce)
@@ -363,13 +363,13 @@ struct AppLoginView: View {
 
 struct LoginSecurityCheck: View {
     @Environment(\.dismiss) private var dismiss
-    @StateObject private var browser = WebBrowserModel(url: URL(string: "https://www.atelierelunora.com/pages/client-gallery")!, session: nil)
+    @StateObject private var browser = WebBrowserModel(url: URL(string: "https://www.atelierelunora.com/pages/client-gallery")!, session: nil, securityOnly: true)
     @State private var reading = false
     let onToken: (String) -> Void
     var body: some View {
         NavigationStack {
             VStack {
-                Text("Complete the website security check below. Then tap Continue sign-in. Your email and password are entered in the app.").font(.footnote).padding()
+                Text("Complete the security check below, then tap Continue sign-in.").font(.footnote).padding()
                 if browser.loading { ProgressView() }
                 if let error = browser.error { Text(error).font(.footnote).foregroundStyle(.red).padding() }
                 BrowserView(model: browser)
