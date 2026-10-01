@@ -132,6 +132,7 @@ struct GalleryPage: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 24) {
                     BrandHeading(title: "Your memories, together.")
+                    NavigationLink("Your event uploads", destination: EventUploadPage())
                     if identity.isEmpty {
                         Text("Sign in with the email that received your gallery invitations. Your assigned galleries and photos will appear here.")
                         Button { login = true } label: { Text("Sign in to my galleries").foregroundStyle(ivory).frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent)

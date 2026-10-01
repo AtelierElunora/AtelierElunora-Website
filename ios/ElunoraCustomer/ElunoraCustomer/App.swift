@@ -8,10 +8,13 @@ let ivory = Color(red: 235/255, green: 229/255, blue: 217/255)
 @main struct ElunoraCustomerApp: App {
     @StateObject private var store = PhotoStore()
     @StateObject private var commerce = CommerceModel()
-    var body: some Scene { WindowGroup { CustomerHome().environmentObject(store).environmentObject(commerce).tint(olive) } }
+    @StateObject private var event = EventUploadModel()
+    var body: some Scene { WindowGroup { CustomerHome().environmentObject(store).environmentObject(commerce).environmentObject(event).tint(olive) } }
 }
 
 struct CustomerHome: View {
+    @EnvironmentObject private var commerce: CommerceModel
+    @EnvironmentObject private var event: EventUploadModel
     @EnvironmentObject private var store: PhotoStore
     var body: some View {
         TabView {
@@ -21,6 +24,7 @@ struct CustomerHome: View {
             GalleryPage().tabItem { Label("Galleries", systemImage: "rectangle.stack") }
             MorePage().tabItem { Label("Account", systemImage: "person.crop.circle") }
         }
+        .task(id: commerce.session?.email ?? "") { event.useProfile(commerce.session?.email ?? "") }
         .alert("Photo library", isPresented: Binding(get: { store.errorMessage != nil }, set: { if !$0 { store.errorMessage = nil } })) { Button("OK") { store.errorMessage = nil } } message: { Text(store.errorMessage ?? "") }
     }
 }
@@ -34,6 +38,7 @@ struct BrandHeading: View {
 }
 
 struct CapturePage: View {
+    @EnvironmentObject private var event: EventUploadModel
     @EnvironmentObject private var store: PhotoStore
     @State private var cameraVisible = false
     @State private var selected: [PhotosPickerItem] = []
@@ -44,6 +49,7 @@ struct CapturePage: View {
         NavigationStack {
             ScrollView { VStack(alignment: .leading, spacing: 24) {
                 BrandHeading(title: "Keep this moment.")
+                NavigationLink(destination: EventUploadPage()) { Label(event.active.map { "Sharing with " + $0.name } ?? "Join an event", systemImage: "qrcode.viewfinder") }.buttonStyle(.bordered)
                 Image(systemName: "camera.aperture").font(.system(size: 110, weight: .ultraLight)).frame(maxWidth: .infinity).padding(36)
                 Text("Take a photo or choose one you already love. Your photos are saved on this phone. Selected photos upload when you continue to magnet checkout.")
                 Button { Task { await openCamera() } } label: { Label("Take a photo", systemImage: "camera.fill").font(.headline).foregroundStyle(ivory).frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent).tint(olive).disabled(cameraOpening || importing)

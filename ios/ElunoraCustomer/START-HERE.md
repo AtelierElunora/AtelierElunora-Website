@@ -1,4 +1,4 @@
-# Atelier Elunora — native iPhone app, v3.7
+# Atelier Elunora — native iPhone app, v3.8
 
 ## Build on your phone
 
@@ -86,3 +86,29 @@ The sign-in verification sheet now loads /pages/app-security, containing only th
 ## v3.7 branded inline login
 
 Login uses the Shopify gallery palette: warm paper #F4F2EF, cream card #E8E5D9, olive #4A4B36, restrained borders, serif heading, and bundled AE monogram. The security widget is embedded directly in this native login screen. There is no separate verification sheet or Continue sign-in action. Enter credentials, complete the inline widget, and tap Sign in (or Send sign-in code). The widget still uses WKWebView as required by Cloudflare, loading the existing dedicated verification page under the app interface. Source: https://developers.cloudflare.com/turnstile/get-started/mobile-implementation/ . Custom Brown Carolina font files are not included in this customer project; system serif is used for headings. Test widget success/expiry/retry, incorrect credentials, email codes, small screens, keyboard and large text on a phone.
+
+
+## v3.8 — private event uploads
+
+- Open Capture → Join an event (also Galleries → Your event uploads).
+- Scan the existing event sharing QR inside the app, or paste its complete HTTPS sharing link. No short-code service or system Camera universal-link handoff is added in this version.
+- Review the event name and notice, consent, and tap Join event.
+- Take/import photos, return to Event sharing, select photos, and Upload. Keep the app open while uploading. Retry selected photos after a connection failure; saved reservation IDs prevent duplicate reservations.
+- Your event photos shows only submissions from this app's private event session, including pending host review. Refresh reloads previews and authorization. Existing host moderation, upload limits, closing dates, and QR revocation remain server-enforced. Uploading does not queue a print.
+- Leave event stops the active connection. Scanning the same valid QR again on this phone/profile restores that session. A rotated QR creates a new connection.
+
+Security: QR invitations are never reused as guest session credentials. The app generates an independent 256-bit random token, stores it in device-only Keychain, and calls only the existing session-scoped experience routes for event browsing/uploads. It never claims whole-gallery access. Studio and upload-later links are rejected in this flow. Signed preview URLs use ephemeral networking with no disk photo cache. Switching account profiles clears event images and cancels in-flight networking; sessions are separated locally by account profile. Account invitations continue to grant their separately configured full-gallery access.
+
+Event ownership is session-based, just like the existing QR uploader: website uploads, another phone, or a different app account profile do not automatically share this event photo list. This build does not add account-wide recovery/sync of QR guest sessions. Keep the same bundle ID to preserve the connection when updating.
+
+### Device acceptance test
+
+1. Build/run on two iPhones (or one iPhone and a separate browser session). Join the same event QR on both.
+2. Upload a distinct photo from each. Each guest must see only their own upload; the host dashboard can see both.
+3. With moderation enabled, verify the app displays Awaiting host review, then Shared after host approval and Refresh. Reject a photo and Refresh: it must disappear.
+4. Turn off connectivity during upload; reconnect and retry. Verify one host submission per selected photo, and that reopening the app/rejoining the same QR restores this session.
+5. Leave, rejoin, and switch app accounts: verify event previews clear and another profile cannot see the prior profile's submissions.
+6. Disable, expire, or rotate the event QR in the dashboard. Refresh/upload with the old session must fail and clear its gallery; the new QR can join.
+7. Deny camera access or use the simulator: paste the link to join. Test normal photo capture/import and existing magnet checkout for regressions.
+
+Validation here: Swift syntax and project references checked; backend contract tests exercise two-guest filtering, pending/approved visibility, refused whole-gallery claims, invalid sessions and revoked sessions. Live database function definitions were inspected read-only. No live event/photo/account records were created for testing. Xcode compilation, camera scanning, real uploads and device UI remain to be tested on a Mac/iPhone.
