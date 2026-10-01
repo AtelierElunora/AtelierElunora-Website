@@ -78,11 +78,11 @@ struct OrderPage: View {
     private func quantityBinding(_ id: String) -> Binding<Int> {
         Binding(get: { store.order.items.first { $0.id == id }?.quantity ?? 1 }, set: { value in if let index = store.order.items.firstIndex(where: { $0.id == id }) { store.order.items[index].quantity = value } })
     }
-    private func loadPricing() async { do { try await commerce.connectWorkspace(); error = nil } catch { error = error.localizedDescription } }
+    private func loadPricing() async { do { try await commerce.connectWorkspace(); error = nil } catch { self.error = error.localizedDescription } }
     private func checkoutNow() async {
         guard let pack = selectedPack else { return }
         do { checkout = try await commerce.prepareCheckout(entries: store.order.items, photos: store.photos, pack: pack, imageStore: store, consent: store.order.consent, orderId: store.order.orderId); error = nil }
-        catch { error = error.localizedDescription }
+        catch { self.error = error.localizedDescription }
     }
 }
 
@@ -138,7 +138,7 @@ struct MorePage: View {
         .sheet(item: $portal) { target in WebPortal(url: target.url, title: target.title, connection: target.connect).environmentObject(commerce) }
         .confirmationDialog("Sign out of the app?", isPresented: $signOut, titleVisibility: .visible) { Button("Sign out", role: .destructive) { Task {
             do { try await commerce.signOut(); await WKWebsiteDataStore.default().removeData(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), modifiedSince: .distantPast); error = nil }
-            catch { error = error.localizedDescription }
+            catch { self.error = error.localizedDescription }
         } } } message: { Text("Your local photos and order draft stay on this phone.") }
     } }
 }
