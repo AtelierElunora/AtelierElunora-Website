@@ -167,10 +167,10 @@ struct GalleryPage: View {
                                         VStack {
                                             Button { selected = SelectedGalleryPhoto(galleryId: group.id, photo: photo) } label: {
                                                 NativeGalleryImage(eventId: group.id, photo: photo, fullSize: false)
-                                            }.buttonStyle(.plain).accessibilityLabel("View \(photo.filename)")
+                                            }.frame(height: 160).contentShape(Rectangle()).clipped().buttonStyle(.plain).accessibilityLabel("View \(photo.filename)")
                                             Button { commerce.toggleGalleryPhoto(photo.id, eventId: group.id) } label: {
                                                 Label(commerce.galleryOrders[group.id]?.items.contains(where: { $0.id == photo.id }) == true ? "Selected" : "Select", systemImage: commerce.galleryOrders[group.id]?.items.contains(where: { $0.id == photo.id }) == true ? "checkmark.circle.fill" : "circle")
-                                            }.buttonStyle(.bordered).disabled(commerce.busy)
+                                            }.buttonStyle(.bordered).contentShape(Rectangle()).disabled(commerce.busy)
                                         }
                                     }
                                 }
@@ -252,7 +252,7 @@ struct NativeGalleryImage: View {
         VStack {
             if let image = displayedImage {
                 if fullSize { Image(uiImage: image).resizable().scaledToFit() }
-                else { GeometryReader { geometry in Image(uiImage: image).resizable().scaledToFill().frame(width: geometry.size.width, height: 160).clipped().clipShape(RoundedRectangle(cornerRadius: 12)) }.frame(height: 160) }
+                else { GeometryReader { geometry in Image(uiImage: image).resizable().scaledToFill().frame(width: geometry.size.width, height: 160).contentShape(Rectangle()).clipped().clipShape(RoundedRectangle(cornerRadius: 12)) }.frame(height: 160).contentShape(Rectangle()).clipped() }
             } else if failed {
                 if fullSize { Button("Retry photo") { retry += 1 }.frame(maxWidth: .infinity, minHeight: 160) }
                 else { Label("Tap to retry", systemImage: "photo").font(.footnote).frame(maxWidth: .infinity, minHeight: 160) }
@@ -433,7 +433,7 @@ struct GalleryMagnetOrder: View {
                     if draft.items.isEmpty { Text("Select photos below to add them to your pack.") }
                     ForEach(photos) { photo in
                         HStack {
-                            NativeGalleryImage(eventId: gallery.id, photo: photo, fullSize: false, crop: draft.items.first { $0.id == photo.id }).frame(width: 100)
+                            NativeGalleryImage(eventId: gallery.id, photo: photo, fullSize: false, crop: draft.items.first { $0.id == photo.id }).frame(width: 100, height: 160).contentShape(Rectangle()).clipped()
                             VStack(alignment: .leading) {
                                 Button(draft.items.contains(where: { $0.id == photo.id }) ? "Remove from pack" : "Select photo") {
                                     if draft.items.contains(where: { $0.id == photo.id }) { draft.items.removeAll { $0.id == photo.id } }

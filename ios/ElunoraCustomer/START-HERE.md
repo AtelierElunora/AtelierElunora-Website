@@ -1,4 +1,4 @@
-# Atelier Elunora — native iPhone app, v3.3
+# Atelier Elunora — native iPhone app, v3.4
 
 ## Build on your phone
 
@@ -63,10 +63,14 @@ The workspace runs Linux: an Apple SDK compile, login inside WKWebView, physical
 
 Repository folder: ios/ElunoraCustomer on development/customer-mobile-app.
 
-## v3.3 testing and performance
+## v3.4 testing and performance
 
 Gallery metadata loads in batches of four concurrent requests instead of sequentially. Preview requests reuse in-flight work and a 40 MB memory cache with a 60-second reuse window; nothing is written to a disk photo cache. Explicit refresh and session changes clear the cache. This reduces repeat requests but first-load speed still depends on connection and server processing. Actual timing has not been measured on a phone here.
 
 Test native password login, incorrect passwords, email-code delivery/verification and expired security tokens. Restart to verify remembered sessions. Test switching customer emails and sign-out to ensure gallery drafts, previews and checkout links from the prior session disappear. Select images in two different galleries, order each separately, and retry the same unchanged selection to verify it reuses its checkout reference. Check crops against fulfillment; gallery originals are unchanged. Revoked access must fail at the backend before checkout.
 
 This version adds no backend deployment or schema change. Linux grammar/project checks and mocked API contract checks do not replace an Xcode compile and physical iPhone testing of login, verification and payments.
+
+## v3.4 gallery tap fix
+
+Thumbnail image and preview-button hit areas are explicitly bounded to the visible image frame. This prevents scaled images from intercepting taps on Select or on another row. Test portrait and landscape thumbnails: Select must toggle Selected without opening a photo; tapping the thumbnail must open that photo. Test Select photo in Create magnets as well. Physical-device tap testing still needs confirmation.
