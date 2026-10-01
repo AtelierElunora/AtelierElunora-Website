@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "Atelier Elunora",
+    "slug": "atelier-elunora-customer",
+    "scheme": "atelierelunora",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Take photos to create your Atelier Elunora keepsakes.",
+          "recordAudioAndroid": false
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Choose photos for your Atelier Elunora keepsakes.",
+          "microphonePermission": false
+        }
+      ]
+    ]
+  }
+}

@@ -1,0 +1,8 @@
+# Planned integration; not called by the preview app.
+# Upload/verify photos and obtain an immutable selection reference before cart creation.
+mutation CustomerMagnetCart($input: CartInput!) {
+  cartCreate(input: $input) {
+    cart { id checkoutUrl }
+    userErrors { field message }
+  }
+}
