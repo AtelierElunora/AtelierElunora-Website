@@ -288,21 +288,25 @@ struct MorePage: View {
     @State private var error: String?
     private let links = [("Shop all keepsakes", "/collections/all"), ("Wedding packages", "/pages/packages"), ("Event experiences", "/pages/event-experience"), ("Special events", "/pages/special-events"), ("Availability and inquiries", "/pages/contact"), ("About Atelier Elunora", "/pages/about"), ("Privacy policy", "/policies/privacy-policy")]
     var body: some View { NavigationStack { List {
-        Section { BrandHeading(title: "Made to be kept.") }
+        Group {
+        Section { BrandHeading(title: "Made to be kept.") }.listRowBackground(ivory)
         Section("Appearance") { NavigationLink("App fonts", destination: BrandFontSettings()) }
         Section("Account") {
             Text(commerce.session?.email?.isEmpty == false ? (commerce.session?.email ?? "") : commerce.session == nil ? "Not connected" : "Private guest workspace")
             Button("Sign in or switch account") { login = true }.disabled(commerce.busy)
-            if commerce.session != nil { Button("Sign out", role: .destructive) { signOut = true }.disabled(commerce.busy) }
+            if commerce.session != nil { Button("Sign out", role: .destructive) { signOut = true }.foregroundStyle(.red).disabled(commerce.busy) }
         }
         if commerce.session?.email?.isEmpty == false { Section("Your gallery access") { AccountAccessList().environmentObject(commerce) } }
         Section("Services and store") { ForEach(links, id: \.0) { link in Button(link.0) { portal = PortalDestination(url: URL(string: "https://www.atelierelunora.com" + link.1)!, title: link.0) } } }
         if !commerce.checkouts.isEmpty { Section("Recent checkout links") {
-            Text("Opening checkout is not confirmation of payment. Your Shopify confirmation email is the order record.").brandFont(size: 13, relativeTo: .footnote)
+            Text("Opening checkout is not confirmation of payment. Your Shopify confirmation email is the order record.").font(.footnote)
             ForEach(commerce.checkouts) { receipt in Button("Selection \(receipt.reference.prefix(8)) · Reopen checkout") { if let url = URL(string: receipt.checkoutUrl) { portal = PortalDestination(url: url, title: "Secure checkout") } } }
         } }
         if let error { Section { Text(error).foregroundStyle(.red) } }
-    }.scrollContentBackground(.hidden).background(ivory).navigationTitle("Account")
+        }.listRowBackground(Color.white)
+    }.font(.body).foregroundStyle(olive).textCase(nil)
+        .scrollContentBackground(.hidden).background(ivory).navigationTitle("Account")
+        .toolbarBackground(ivory, for: .navigationBar).toolbarBackground(.visible, for: .navigationBar)
         .sheet(isPresented: $login) { AppLoginView().environmentObject(commerce) }
         .sheet(item: $portal) { target in WebPortal(url: target.url, title: target.title, connection: target.connect).environmentObject(commerce) }
         .confirmationDialog("Sign out of the app?", isPresented: $signOut, titleVisibility: .visible) { Button("Sign out", role: .destructive) { Task {
@@ -401,9 +405,9 @@ struct AccountAccessList: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             if loading { ProgressView("Checking gallery access…") }
-            ForEach(galleries) { gallery in Text(gallery.name).brandFont(.emphasis) }
-            if !loading && galleries.isEmpty && errorMessage == nil { Text("No galleries assigned yet.").brandFont(size: 13, relativeTo: .footnote) }
-            if let errorMessage { Text(errorMessage).foregroundStyle(.red).brandFont(size: 13, relativeTo: .footnote) }
+            ForEach(galleries) { gallery in Text(gallery.name).font(.headline) }
+            if !loading && galleries.isEmpty && errorMessage == nil { Text("No galleries assigned yet.").font(.footnote) }
+            if let errorMessage { Text(errorMessage).foregroundStyle(.red).font(.footnote) }
             NavigationLink("View photos in Galleries") { GalleryPage().environmentObject(commerce) }
         }.task(id: commerce.session?.email) {
             galleries = []; loading = true; defer { loading = false }

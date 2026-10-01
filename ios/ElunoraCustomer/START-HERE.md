@@ -1,4 +1,4 @@
-# Atelier Elunora — native iPhone app, v3.11
+# Atelier Elunora — native iPhone app, v3.12
 
 ## Build on your phone
 
@@ -132,3 +132,10 @@ Validation: Swift syntax, folder resource reference and ZIP contents checked her
 Sign-in now explicitly uses mixed-case system typography for instructions, form labels, entered email/code, password placeholders, actions and headings. The AE monogram, olive/cream palette and card layout remain. Imported display fonts no longer flow into the authentication form. Email, code and password fields disable automatic capitalization and autocorrection. Password characters are passed exactly as entered; only the existing email normalization lowercases the email address.
 
 Build/run the updated project, copying your existing licensed font files into the new BrandedFonts folder first. Use the same bundle identifier. Confirm that `you@example.com`, Password and Welcome back display normal case; test a mixed-case password and email-code login. Static Swift syntax and ZIP integrity checked here; actual iPhone rendering and authentication need device testing.
+
+
+## v3.12 — Account contrast in Dark Mode
+
+The app now requests a consistent light appearance to match its fixed olive/ivory palette. Account rows use white backgrounds and readable mixed-case system text, with an ivory navigation background. Brand headings remain styled with the bundled fonts. Account gallery names and checkout notes use readable system text too. This avoids dark system list cells and light headers clashing with the app's fixed colors when the phone is in Dark Mode.
+
+Copy your existing BrandedFonts files into this updated project before building. Keep the same bundle identifier. Test Account with the phone set to both Light and Dark appearances: rows should remain light, labels and actions readable, and tabs visible. Also open sign-in, App fonts, galleries and a service link. Swift syntax, project parsing, text/background contrast and ZIP integrity were checked here; device appearance still needs iPhone verification.

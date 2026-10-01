@@ -10,7 +10,7 @@ let ivory = Color(red: 235/255, green: 229/255, blue: 217/255)
     @StateObject private var commerce = CommerceModel()
     @StateObject private var event = EventUploadModel()
     @StateObject private var fonts = BrandFontStore()
-    var body: some Scene { WindowGroup { CustomerHome().brandFont().environmentObject(store).environmentObject(commerce).environmentObject(event).environmentObject(fonts).tint(olive) } }
+    var body: some Scene { WindowGroup { CustomerHome().brandFont().environmentObject(store).environmentObject(commerce).environmentObject(event).environmentObject(fonts).tint(olive).preferredColorScheme(.light) } }
 }
 
 struct CustomerHome: View {
