@@ -126,9 +126,9 @@ struct WebPortal: View {
     }
     var body: some View {
         NavigationStack { VStack(spacing: 0) {
-            if connection { Text("Finish the website security check or sign in below, then tap Connect to app.").font(.footnote).padding() }
+            if connection { Text("Finish the website security check or sign in below, then tap Connect to app.").brandFont(size: 13, relativeTo: .footnote).padding() }
             if browser.loading { ProgressView().padding(8) }
-            if let error = browser.error { Text(error).font(.footnote).foregroundStyle(.red).padding() }
+            if let error = browser.error { Text(error).brandFont(size: 13, relativeTo: .footnote).foregroundStyle(.red).padding() }
             BrowserView(model: browser)
             HStack {
                 Button { browser.webView.goBack() } label: { Image(systemName: "chevron.left").padding() }.accessibilityLabel("Back")

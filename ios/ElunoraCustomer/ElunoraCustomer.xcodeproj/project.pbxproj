@@ -1,5 +1,7 @@
 // !$*UTF8*$!
 { archiveVersion = 1; classes = {}; objectVersion = 56; objects = {
+A00000000000000000000026 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrandFonts.swift; sourceTree = "<group>"; };
+A00000000000000000000027 = { isa = PBXBuildFile; fileRef = A00000000000000000000026; };
 A00000000000000000000024 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventUploads.swift; sourceTree = "<group>"; };
 A00000000000000000000025 = { isa = PBXBuildFile; fileRef = A00000000000000000000024; };
 A0000000000000000000001E = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Commerce.swift; sourceTree = "<group>"; };
@@ -13,7 +15,7 @@ A00000000000000000000023 = { isa = PBXBuildFile; fileRef = A00000000000000000000
 000000000000000000000023 = { isa = PBXBuildFile; fileRef = 000000000000000000000022; };
 000000000000000000000001 = { isa = PBXProject; attributes = { LastUpgradeCheck = 1600; }; buildConfigurationList = 00000000000000000000000A; compatibilityVersion = "Xcode 14.0"; developmentRegion = en; knownRegions = (en, Base,); mainGroup = 000000000000000000000002; productRefGroup = 000000000000000000000004; projectDirPath = ""; projectRoot = ""; targets = (000000000000000000000005,); };
 000000000000000000000002 = { isa = PBXGroup; children = (000000000000000000000003, 000000000000000000000004,); sourceTree = "<group>"; };
-000000000000000000000003 = { isa = PBXGroup; path = ElunoraCustomer; sourceTree = "<group>"; children = (000000000000000000000010, 000000000000000000000011, 000000000000000000000012, A0000000000000000000001E, A00000000000000000000020, A00000000000000000000022, A00000000000000000000024, 000000000000000000000013, 000000000000000000000022,); };
+000000000000000000000003 = { isa = PBXGroup; path = ElunoraCustomer; sourceTree = "<group>"; children = (000000000000000000000010, 000000000000000000000011, 000000000000000000000012, A0000000000000000000001E, A00000000000000000000020, A00000000000000000000022, A00000000000000000000024, A00000000000000000000026, 000000000000000000000013, 000000000000000000000022,); };
 000000000000000000000004 = { isa = PBXGroup; name = Products; sourceTree = "<group>"; children = (000000000000000000000006,); };
 000000000000000000000006 = { isa = PBXFileReference; explicitFileType = wrapper.application; path = ElunoraCustomer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 000000000000000000000010 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };
@@ -24,7 +26,7 @@ A00000000000000000000023 = { isa = PBXBuildFile; fileRef = A00000000000000000000
 000000000000000000000016 = { isa = PBXBuildFile; fileRef = 000000000000000000000012; };
 000000000000000000000013 = { isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 000000000000000000000005 = { isa = PBXNativeTarget; buildConfigurationList = 00000000000000000000000B; buildPhases = (000000000000000000000007,000000000000000000000008,000000000000000000000009,); buildRules = (); dependencies = (); name = ElunoraCustomer; productName = ElunoraCustomer; productReference = 000000000000000000000006; productType = "com.apple.product-type.application"; };
-000000000000000000000007 = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000014,000000000000000000000015,000000000000000000000016,A0000000000000000000001F,A00000000000000000000021,A00000000000000000000023,A00000000000000000000025,); runOnlyForDeploymentPostprocessing = 0; };
+000000000000000000000007 = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000014,000000000000000000000015,000000000000000000000016,A0000000000000000000001F,A00000000000000000000021,A00000000000000000000023,A00000000000000000000025,A00000000000000000000027,); runOnlyForDeploymentPostprocessing = 0; };
 000000000000000000000008 = { isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 000000000000000000000009 = { isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000023,); runOnlyForDeploymentPostprocessing = 0; };
 00000000000000000000000A = { isa = XCConfigurationList; buildConfigurations = (00000000000000000000000C,00000000000000000000000D,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };

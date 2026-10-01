@@ -26,20 +26,20 @@ struct OrderPage: View {
             BrandHeading(title: "From photo to keepsake.")
             if commerce.session == nil {
                 Text("Connect a private workspace through our website security check. You can order without creating an account.")
-                Button { connect() } label: { Text("Connect private workspace").font(.headline).foregroundStyle(ivory).frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent)
+                Button { connect() } label: { Text("Connect private workspace").brandFont(.emphasis).foregroundStyle(ivory).frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent)
             } else {
-                Text((commerce.session?.email?.isEmpty == false) ? "Connected: \(commerce.session?.email ?? "")" : "Private guest workspace connected").font(.footnote)
+                Text((commerce.session?.email?.isEmpty == false) ? "Connected: \(commerce.session?.email ?? "")" : "Private guest workspace connected").brandFont(size: 13, relativeTo: .footnote)
                 Button(commerce.pricing == nil ? "Load available packs" : "Refresh pricing") { Task { await loadPricing() } }.buttonStyle(.bordered)
             }
             if let pricing = commerce.pricing {
-                Text("1 · Choose your pack").font(.headline)
+                Text("1 · Choose your pack").brandFont(.emphasis)
                 ForEach(pricing.packs) { pack in Button { store.order.count = pack.count; reviewing = false } label: {
                     HStack { Image(systemName: store.order.count == pack.count ? "checkmark.circle.fill" : "circle"); Text("\(pack.count) magnets"); Spacer(); Text(pack.price) }.padding(10)
                 }.buttonStyle(.bordered) }
-                if !pricing.enabled { Text("Checkout is currently paused. Your photos and draft remain saved.").font(.footnote) }
+                if !pricing.enabled { Text("Checkout is currently paused. Your photos and draft remain saved.").brandFont(size: 13, relativeTo: .footnote) }
             }
-            Text("2 · Choose and crop your photos").font(.headline)
-            Text("\(total) / \(store.order.count) magnets selected").font(.title3)
+            Text("2 · Choose and crop your photos").brandFont(.emphasis)
+            Text("\(total) / \(store.order.count) magnets selected").brandFont(.heading, size: 20, relativeTo: .title3)
             if store.order.items.isEmpty { Text("Open My photos to select the photos you’d like to print.") }
             ForEach(store.order.items) { draft in
                 if let photo = store.photos.first(where: { $0.id == draft.id }) {
@@ -53,19 +53,19 @@ struct OrderPage: View {
                     }
                 }
             }
-            Toggle("I agree to upload these selected photos to my private workspace so Atelier Elunora can make and fulfill my magnet order.", isOn: $store.order.consent).font(.footnote)
+            Toggle("I agree to upload these selected photos to my private workspace so Atelier Elunora can make and fulfill my magnet order.", isOn: $store.order.consent).brandFont(size: 13, relativeTo: .footnote)
             if reviewing {
-                Divider(); Text("3 · Review before payment").font(.headline)
-                Text("\(total) square photo magnets · \(selectedPack?.price ?? "")").font(.title3)
-                Text("Your previews show the crop that will be sent for printing. Shipping and tax are calculated at Shopify checkout.").font(.footnote)
-                Button { Task { await checkoutNow() } } label: { Text("Continue to secure checkout").font(.headline).foregroundStyle(ivory).frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent).disabled(!ready)
+                Divider(); Text("3 · Review before payment").brandFont(.emphasis)
+                Text("\(total) square photo magnets · \(selectedPack?.price ?? "")").brandFont(.heading, size: 20, relativeTo: .title3)
+                Text("Your previews show the crop that will be sent for printing. Shipping and tax are calculated at Shopify checkout.").brandFont(size: 13, relativeTo: .footnote)
+                Button { Task { await checkoutNow() } } label: { Text("Continue to secure checkout").brandFont(.emphasis).foregroundStyle(ivory).frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent).disabled(!ready)
             } else {
-                Button { reviewing = true } label: { Text("Review my magnets").font(.headline).foregroundStyle(ivory).frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent).disabled(!ready)
+                Button { reviewing = true } label: { Text("Review my magnets").brandFont(.emphasis).foregroundStyle(ivory).frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent).disabled(!ready)
             }
-            Button("Start a new order") { restart = true }.font(.footnote)
-            if let error { Text(error).foregroundStyle(.red).font(.footnote) }
+            Button("Start a new order") { restart = true }.brandFont(size: 13, relativeTo: .footnote)
+            if let error { Text(error).foregroundStyle(.red).brandFont(size: 13, relativeTo: .footnote) }
         }.padding(24).disabled(commerce.busy) }.background(ivory).foregroundStyle(olive)
-            .overlay { if commerce.busy { VStack { ProgressView(); Text(commerce.progress).font(.footnote) }.padding(24).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18)) } }
+            .overlay { if commerce.busy { VStack { ProgressView(); Text(commerce.progress).brandFont(size: 13, relativeTo: .footnote) }.padding(24).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18)) } }
             .navigationTitle("Order magnets").navigationBarTitleDisplayMode(.inline)
             .sheet(item: $portal, onDismiss: { if commerce.session != nil && commerce.pricing == nil { Task { await loadPricing() } } }) { target in WebPortal(url: target.url, title: target.title, connection: target.connect).environmentObject(commerce) }
             .sheet(item: $editing) { draft in CropEditor(draft: draft).environmentObject(store) }
@@ -96,7 +96,7 @@ struct CropEditor: View {
         VStack(alignment: .leading) { Text("Horizontal position"); Slider(value: $draft.x, in: 0...100, step: 1) }
         VStack(alignment: .leading) { Text("Vertical position"); Slider(value: $draft.y, in: 0...100, step: 1) }
         Button("Reset crop") { draft.x = 50; draft.y = 50; draft.zoom = 1 }.buttonStyle(.bordered)
-        Text("Only this order’s crop changes. Your saved photo remains intact.").font(.footnote)
+        Text("Only this order’s crop changes. Your saved photo remains intact.").brandFont(size: 13, relativeTo: .footnote)
     }.padding(24) }.background(ivory).foregroundStyle(olive).navigationTitle("Crop your magnet").navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }; ToolbarItem(placement: .confirmationAction) { Button("Save") { if let index = store.order.items.firstIndex(where: { $0.id == draft.id }) { store.order.items[index] = draft }; dismiss() } } }
     } }
@@ -137,31 +137,31 @@ struct GalleryPage: View {
                         Text("Sign in with the email that received your gallery invitations. Your assigned galleries and photos will appear here.")
                         Button { login = true } label: { Text("Sign in to my galleries").foregroundStyle(ivory).frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent)
                     } else {
-                        Text("Galleries for \(identity)").font(.footnote)
+                        Text("Galleries for \(identity)").brandFont(size: 13, relativeTo: .footnote)
                         HStack {
                             Button("Refresh galleries") { Task { await reload() } }.disabled(loading)
                             Spacer()
                             Button("Gallery tools") { open = true }
                         }
                         if loading { ProgressView("Loading your galleries…") }
-                        if let errorMessage { Text(errorMessage).font(.footnote).foregroundStyle(.red) }
+                        if let errorMessage { Text(errorMessage).brandFont(size: 13, relativeTo: .footnote).foregroundStyle(.red) }
                         if !loading && groups.isEmpty && errorMessage == nil {
                             ContentUnavailableView("No galleries assigned yet", systemImage: "rectangle.stack", description: Text("Galleries appear after access is granted to this email. Refresh after receiving a new invitation."))
                         }
                         ForEach(groups) { group in
                             VStack(alignment: .leading, spacing: 12) {
                                 Divider()
-                                Text(group.gallery.name).font(.system(size: 25, design: .serif))
-                                if let date = group.gallery.event_date { Text(date).font(.footnote) }
+                                Text(group.gallery.name).brandFont(.heading, size: 25, relativeTo: .title2)
+                                if let date = group.gallery.event_date { Text(date).brandFont(size: 13, relativeTo: .footnote) }
                                 HStack {
-                                    Text("\(group.photos.count) photos").font(.footnote)
+                                    Text("\(group.photos.count) photos").brandFont(size: 13, relativeTo: .footnote)
                                     Spacer()
                                     Button("Create magnets") { magnetGallery = group }.buttonStyle(.borderedProminent).foregroundStyle(ivory).disabled(group.photos.isEmpty || commerce.busy)
                                 }
                                 if let message = group.error {
-                                    Text(message).font(.footnote).foregroundStyle(.red)
+                                    Text(message).brandFont(size: 13, relativeTo: .footnote).foregroundStyle(.red)
                                 } else if group.photos.isEmpty && !loading {
-                                    Text("Photos will appear here when they are added to this gallery.").font(.footnote)
+                                    Text("Photos will appear here when they are added to this gallery.").brandFont(size: 13, relativeTo: .footnote)
                                 }
                                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 12)], spacing: 12) {
                                     ForEach(group.photos) { photo in
@@ -256,7 +256,7 @@ struct NativeGalleryImage: View {
                 else { GeometryReader { geometry in Image(uiImage: image).resizable().scaledToFill().frame(width: geometry.size.width, height: 160).contentShape(Rectangle()).clipped().clipShape(RoundedRectangle(cornerRadius: 12)) }.frame(height: 160).contentShape(Rectangle()).clipped() }
             } else if failed {
                 if fullSize { Button("Retry photo") { retry += 1 }.frame(maxWidth: .infinity, minHeight: 160) }
-                else { Label("Tap to retry", systemImage: "photo").font(.footnote).frame(maxWidth: .infinity, minHeight: 160) }
+                else { Label("Tap to retry", systemImage: "photo").brandFont(size: 13, relativeTo: .footnote).frame(maxWidth: .infinity, minHeight: 160) }
             } else { ProgressView().frame(maxWidth: .infinity, minHeight: 160) }
         }
         .task(id: "\(commerce.session?.email ?? ""):\(commerce.previewVersion):\(eventId):\(photo.id):\(retry)") {
@@ -289,6 +289,7 @@ struct MorePage: View {
     private let links = [("Shop all keepsakes", "/collections/all"), ("Wedding packages", "/pages/packages"), ("Event experiences", "/pages/event-experience"), ("Special events", "/pages/special-events"), ("Availability and inquiries", "/pages/contact"), ("About Atelier Elunora", "/pages/about"), ("Privacy policy", "/policies/privacy-policy")]
     var body: some View { NavigationStack { List {
         Section { BrandHeading(title: "Made to be kept.") }
+        Section("Appearance") { NavigationLink("App fonts", destination: BrandFontSettings()) }
         Section("Account") {
             Text(commerce.session?.email?.isEmpty == false ? (commerce.session?.email ?? "") : commerce.session == nil ? "Not connected" : "Private guest workspace")
             Button("Sign in or switch account") { login = true }.disabled(commerce.busy)
@@ -297,7 +298,7 @@ struct MorePage: View {
         if commerce.session?.email?.isEmpty == false { Section("Your gallery access") { AccountAccessList().environmentObject(commerce) } }
         Section("Services and store") { ForEach(links, id: \.0) { link in Button(link.0) { portal = PortalDestination(url: URL(string: "https://www.atelierelunora.com" + link.1)!, title: link.0) } } }
         if !commerce.checkouts.isEmpty { Section("Recent checkout links") {
-            Text("Opening checkout is not confirmation of payment. Your Shopify confirmation email is the order record.").font(.footnote)
+            Text("Opening checkout is not confirmation of payment. Your Shopify confirmation email is the order record.").brandFont(size: 13, relativeTo: .footnote)
             ForEach(commerce.checkouts) { receipt in Button("Selection \(receipt.reference.prefix(8)) · Reopen checkout") { if let url = URL(string: receipt.checkoutUrl) { portal = PortalDestination(url: url, title: "Secure checkout") } } }
         } }
         if let error { Section { Text(error).foregroundStyle(.red) } }
@@ -332,40 +333,40 @@ struct AppLoginView: View {
                 VStack(spacing: 28) {
                     VStack(spacing: 14) {
                         Image("AEMonogram").resizable().scaledToFit().frame(width: 88, height: 88)
-                        Text("ATELIER ELUNORA").font(.caption).tracking(4)
-                        Text("Your memories, together.").font(.system(size: 38, weight: .regular, design: .serif)).multilineTextAlignment(.center)
-                        Text("Sign in to your account and the galleries shared with you.").font(.subheadline).multilineTextAlignment(.center)
+                        Text("ATELIER ELUNORA").brandFont(.emphasis, size: 16, relativeTo: .callout).tracking(0.8)
+                        Text("Your memories, together.").brandFont(.heading, size: 38, relativeTo: .largeTitle).multilineTextAlignment(.center)
+                        Text("Sign in to your account and the galleries shared with you.").brandFont(size: 15, relativeTo: .subheadline).multilineTextAlignment(.center)
                     }
                     VStack(alignment: .leading, spacing: 16) {
-                        Text("Welcome back").font(.system(size: 28, design: .serif))
-                        Text("Email").font(.subheadline)
+                        Text("Welcome back").brandFont(.heading, size: 28, relativeTo: .title2)
+                        Text("Email").brandFont(size: 15, relativeTo: .subheadline)
                         TextField("you@example.com", text: $email).textContentType(.username).keyboardType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled().padding(14).background(.white).overlay(Rectangle().stroke(border)).disabled(codeSent || working)
-                        Toggle("Use an email code", isOn: $emailMode).font(.subheadline).disabled(codeSent || working)
+                        Toggle("Use an email code", isOn: $emailMode).brandFont(size: 15, relativeTo: .subheadline).disabled(codeSent || working)
                         if emailMode {
                             if codeSent {
-                                Text("Eight-digit email code").font(.subheadline)
+                                Text("Eight-digit email code").brandFont(size: 15, relativeTo: .subheadline)
                                 TextField("00000000", text: $code).keyboardType(.numberPad).textContentType(.oneTimeCode).padding(14).background(.white).overlay(Rectangle().stroke(border)).disabled(working)
-                                Text("Check your inbox for the sign-in code.").font(.footnote)
+                                Text("Check your inbox for the sign-in code.").brandFont(size: 13, relativeTo: .footnote)
                             }
                         } else {
-                            Text("Password").font(.subheadline)
+                            Text("Password").brandFont(size: 15, relativeTo: .subheadline)
                             SecureField("Your password", text: $password).textContentType(.password).padding(14).background(.white).overlay(Rectangle().stroke(border)).disabled(working)
                         }
                         if !codeSent {
-                            Text("Security verification").font(.subheadline)
-                            if verification.loading { ProgressView("Loading verification…").font(.footnote) }
+                            Text("Security verification").brandFont(size: 15, relativeTo: .subheadline)
+                            if verification.loading { ProgressView("Loading verification…").brandFont(size: 13, relativeTo: .footnote) }
                             BrowserView(model: verification).frame(height: 220).background(card).clipped()
-                            if let error = verification.error { Text(error).foregroundStyle(.red).font(.footnote) }
-                            Button("Reload security check") { verification.webView.reload() }.font(.footnote).disabled(working)
+                            if let error = verification.error { Text(error).foregroundStyle(.red).brandFont(size: 13, relativeTo: .footnote) }
+                            Button("Reload security check") { verification.webView.reload() }.brandFont(size: 13, relativeTo: .footnote).disabled(working)
                         }
                         Button { Task { if codeSent { await verify() } else { await authenticate() } } } label: {
-                            Text(working ? "Signing in…" : codeSent ? "Verify code and sign in" : emailMode ? "Send sign-in code" : "Sign in").font(.headline).foregroundStyle(paper).frame(maxWidth: .infinity, minHeight: 48).background(ink)
+                            Text(working ? "Signing in…" : codeSent ? "Verify code and sign in" : emailMode ? "Send sign-in code" : "Sign in").brandFont(.emphasis).foregroundStyle(paper).frame(maxWidth: .infinity, minHeight: 48).background(ink)
                         }.buttonStyle(.plain).disabled(working || commerce.busy || email.trimmingCharacters(in: .whitespaces).isEmpty || (codeSent ? code.count != 8 : (!emailMode && password.isEmpty) || verification.loading)).opacity(working ? 0.65 : 1)
-                        if codeSent { Button("Request another code") { codeSent = false; code = ""; verification.webView.reload() }.font(.footnote).disabled(working) }
-                        if let errorMessage { Text(errorMessage).font(.footnote).foregroundStyle(.red) }
-                        Text("Your session stays securely saved on this phone. Your password is never saved by the app.").font(.footnote)
+                        if codeSent { Button("Request another code") { codeSent = false; code = ""; verification.webView.reload() }.brandFont(size: 13, relativeTo: .footnote).disabled(working) }
+                        if let errorMessage { Text(errorMessage).brandFont(size: 13, relativeTo: .footnote).foregroundStyle(.red) }
+                        Text("Your session stays securely saved on this phone. Your password is never saved by the app.").brandFont(size: 13, relativeTo: .footnote)
                     }.padding(20).background(card).overlay(Rectangle().stroke(border))
-                    Text("Made to be kept.").font(.system(size: 22, design: .serif))
+                    Text("Made to be kept.").brandFont(.heading, size: 22, relativeTo: .title2)
                 }.frame(maxWidth: 480).padding(.horizontal, 16).padding(.vertical, 28).frame(maxWidth: .infinity)
             }.background(paper).foregroundStyle(ink).tint(ink)
                 .navigationTitle("Sign in").navigationBarTitleDisplayMode(.inline)
@@ -400,9 +401,9 @@ struct AccountAccessList: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             if loading { ProgressView("Checking gallery access…") }
-            ForEach(galleries) { gallery in Text(gallery.name).font(.headline) }
-            if !loading && galleries.isEmpty && errorMessage == nil { Text("No galleries assigned yet.").font(.footnote) }
-            if let errorMessage { Text(errorMessage).foregroundStyle(.red).font(.footnote) }
+            ForEach(galleries) { gallery in Text(gallery.name).brandFont(.emphasis) }
+            if !loading && galleries.isEmpty && errorMessage == nil { Text("No galleries assigned yet.").brandFont(size: 13, relativeTo: .footnote) }
+            if let errorMessage { Text(errorMessage).foregroundStyle(.red).brandFont(size: 13, relativeTo: .footnote) }
             NavigationLink("View photos in Galleries") { GalleryPage().environmentObject(commerce) }
         }.task(id: commerce.session?.email) {
             galleries = []; loading = true; defer { loading = false }
@@ -431,13 +432,13 @@ struct GalleryMagnetOrder: View {
         NavigationStack {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 20) {
-                    Text(gallery.name).font(.system(size: 28, design: .serif))
-                    Text("Create magnets from this gallery. These photos are already stored securely; no upload is needed.").font(.footnote)
+                    Text(gallery.name).brandFont(.heading, size: 28, relativeTo: .title2)
+                    Text("Create magnets from this gallery. These photos are already stored securely; no upload is needed.").brandFont(size: 13, relativeTo: .footnote)
                     if let pricing {
                         ForEach(pricing.packs) { option in Button { draft.count = option.count; reviewed = false } label: { HStack { Image(systemName: draft.count == option.count ? "checkmark.circle.fill" : "circle"); Text("\(option.count) magnets"); Spacer(); Text(option.price) } }.buttonStyle(.bordered) }
-                        if !pricing.enabled { Text("Checkout is paused for this gallery.").font(.footnote) }
+                        if !pricing.enabled { Text("Checkout is paused for this gallery.").brandFont(size: 13, relativeTo: .footnote) }
                     } else { ProgressView("Loading packs…"); Button("Retry pricing") { Task { await loadPrices() } } }
-                    Text("\(total) / \(draft.count) magnets selected").font(.headline)
+                    Text("\(total) / \(draft.count) magnets selected").brandFont(.emphasis)
                     if draft.items.isEmpty { Text("Select photos below to add them to your pack.") }
                     ForEach(photos) { photo in
                         HStack {
@@ -450,19 +451,19 @@ struct GalleryMagnetOrder: View {
                                 if let item = draft.items.first(where: { $0.id == photo.id }) {
                                     Stepper("\(item.quantity) copies", value: quantity(photo.id), in: 1...12)
                                     Button("Adjust crop") { editing = item }
-                                    Text("Zoom \(Int(item.zoom * 100))% · position \(Int(item.x))/\(Int(item.y))").font(.caption)
+                                    Text("Zoom \(Int(item.zoom * 100))% · position \(Int(item.x))/\(Int(item.y))").brandFont(size: 12, relativeTo: .caption)
                                 }
                             }
                         }
                     }
-                    Toggle("I approve these photos and crop settings for my magnet order.", isOn: $draft.consent).font(.footnote)
+                    Toggle("I approve these photos and crop settings for my magnet order.", isOn: $draft.consent).brandFont(size: 13, relativeTo: .footnote)
                     if reviewed {
-                        Text("Review: \(total) magnets · \(pack?.price ?? "")").font(.headline)
-                        Text("Shipping and tax are calculated at Shopify checkout. Check every crop before continuing.").font(.footnote)
+                        Text("Review: \(total) magnets · \(pack?.price ?? "")").brandFont(.emphasis)
+                        Text("Shipping and tax are calculated at Shopify checkout. Check every crop before continuing.").brandFont(size: 13, relativeTo: .footnote)
                         Button("Continue to secure checkout") { Task { await orderNow() } }.buttonStyle(.borderedProminent).foregroundStyle(ivory).disabled(!ready)
                     } else { Button("Review magnets") { reviewed = true }.buttonStyle(.borderedProminent).foregroundStyle(ivory).disabled(!ready) }
                     Button("Start a new gallery order") { draft = OrderDraft(); reviewed = false }
-                    if let errorMessage { Text(errorMessage).foregroundStyle(.red).font(.footnote) }
+                    if let errorMessage { Text(errorMessage).foregroundStyle(.red).brandFont(size: 13, relativeTo: .footnote) }
                     if commerce.busy { ProgressView(commerce.progress) }
                 }.padding(24).disabled(commerce.busy)
             }.background(ivory).foregroundStyle(olive).navigationTitle("Gallery magnets").navigationBarTitleDisplayMode(.inline)

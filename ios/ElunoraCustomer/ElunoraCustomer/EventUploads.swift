@@ -210,9 +210,9 @@ struct EventUploadPage: View {
             BrandHeading(title: event.active?.name ?? "Share the celebration.")
             if let active = event.active {
                 Label("Sharing with \(active.name)", systemImage: "lock.shield")
-                Text("Only photos you upload through this app’s event connection appear here. The host can review your submissions.").font(.footnote)
+                Text("Only photos you upload through this app’s event connection appear here. The host can review your submissions.").brandFont(size: 13, relativeTo: .footnote)
                 Button("Take or import photos") { capturing = true }.disabled(event.busy)
-                Text("Choose photos to share").font(.headline)
+                Text("Choose photos to share").brandFont(.emphasis)
                 if store.photos.isEmpty { Text("Take or import photos first, then return here to select them.") }
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())]) {
                     ForEach(store.photos) { photo in
@@ -230,15 +230,15 @@ struct EventUploadPage: View {
                     let chosen = store.photos.filter { selection.contains($0.id) }
                     Task { await event.upload(chosen, store: store); selection = selection.filter { !event.uploaded($0) } }
                 }.buttonStyle(.borderedProminent).foregroundStyle(ivory).disabled(event.busy || selection.isEmpty)
-                if let message = event.message { Text(message).font(.footnote) }
+                if let message = event.message { Text(message).brandFont(size: 13, relativeTo: .footnote) }
                 Divider()
-                HStack { Text("Your event photos").font(.headline); Spacer(); Button("Refresh") { Task { await event.refresh() } }.disabled(event.busy) }
-                if event.photos.isEmpty && !event.busy { Text("Your uploaded photos will appear here.").font(.footnote) }
+                HStack { Text("Your event photos").brandFont(.emphasis); Spacer(); Button("Refresh") { Task { await event.refresh() } }.disabled(event.busy) }
+                if event.photos.isEmpty && !event.busy { Text("Your uploaded photos will appear here.").brandFont(size: 13, relativeTo: .footnote) }
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())]) {
                     ForEach(event.photos) { photo in
                         VStack {
                             EventPreview(address: photo.url).frame(height: 150).clipped()
-                            Text(photo.status == "pending" ? "Awaiting host review" : "Shared").font(.caption)
+                            Text(photo.status == "pending" ? "Awaiting host review" : "Shared").brandFont(size: 12, relativeTo: .caption)
                         }
                     }
                 }
@@ -250,9 +250,9 @@ struct EventUploadPage: View {
                 Button("Find event") { Task { await inspect(link) } }.disabled(checking || link.isEmpty)
                 if checking { ProgressView("Checking event…") }
                 if let invite {
-                    Text(invite.name).font(.title2)
+                    Text(invite.name).brandFont(.heading, size: 22, relativeTo: .title2)
                     if !invite.welcome.isEmpty { Text(invite.welcome) }
-                    Text("Up to \(invite.guestLimit) photos. \(invite.moderation ? "Uploads are reviewed by the host." : "Uploads are shared with the host immediately.")").font(.footnote)
+                    Text("Up to \(invite.guestLimit) photos. \(invite.moderation ? "Uploads are reviewed by the host." : "Uploads are shared with the host immediately.")").brandFont(size: 13, relativeTo: .footnote)
                     Toggle("I have permission to share these photos with the event host for this event.", isOn: $consent)
                     Button("Join event") {
                         Task {
@@ -263,7 +263,7 @@ struct EventUploadPage: View {
                 }
             }
             if event.busy { ProgressView("Connecting…") }
-            if let error = event.error { Text(error).foregroundStyle(.red).font(.footnote) }
+            if let error = event.error { Text(error).foregroundStyle(.red).brandFont(size: 13, relativeTo: .footnote) }
         }.padding(24) }.background(ivory).foregroundStyle(olive)
             .navigationTitle("Event sharing").navigationBarTitleDisplayMode(.inline)
             .task { await event.refresh() }
@@ -303,7 +303,7 @@ private struct EventPreview: View {
     var body: some View {
         Group {
             if let image { Image(uiImage: image).resizable().scaledToFit() }
-            else if failed { Text("Tap Refresh to reload preview").font(.caption) }
+            else if failed { Text("Tap Refresh to reload preview").brandFont(size: 12, relativeTo: .caption) }
             else { ProgressView() }
         }.task(id: address) {
             image = nil; failed = false

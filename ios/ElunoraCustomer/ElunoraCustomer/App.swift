@@ -9,7 +9,8 @@ let ivory = Color(red: 235/255, green: 229/255, blue: 217/255)
     @StateObject private var store = PhotoStore()
     @StateObject private var commerce = CommerceModel()
     @StateObject private var event = EventUploadModel()
-    var body: some Scene { WindowGroup { CustomerHome().environmentObject(store).environmentObject(commerce).environmentObject(event).tint(olive) } }
+    @StateObject private var fonts = BrandFontStore()
+    var body: some Scene { WindowGroup { CustomerHome().brandFont().environmentObject(store).environmentObject(commerce).environmentObject(event).environmentObject(fonts).tint(olive) } }
 }
 
 struct CustomerHome: View {
@@ -32,8 +33,8 @@ struct CustomerHome: View {
 struct BrandHeading: View {
     let title: String
     var body: some View { VStack(alignment: .leading, spacing: 12) {
-        HStack { Image("AEMonogram").resizable().scaledToFit().frame(width: 48, height: 48); Text("ATELIER ELUNORA").font(.caption).tracking(3) }
-        Text(title).font(.system(size: 34, weight: .regular, design: .serif))
+        HStack { Image("AEMonogram").resizable().scaledToFit().frame(width: 48, height: 48); Text("ATELIER ELUNORA").brandFont(.emphasis, size: 16, relativeTo: .callout).tracking(0.8) }
+        Text(title).brandFont(.heading, size: 34, relativeTo: .largeTitle)
     }.foregroundStyle(olive) }
 }
 
@@ -52,10 +53,10 @@ struct CapturePage: View {
                 NavigationLink(destination: EventUploadPage()) { Label(event.active.map { "Sharing with " + $0.name } ?? "Join an event", systemImage: "qrcode.viewfinder") }.buttonStyle(.bordered)
                 Image(systemName: "camera.aperture").font(.system(size: 110, weight: .ultraLight)).frame(maxWidth: .infinity).padding(36)
                 Text("Take a photo or choose one you already love. Your photos are saved on this phone. Selected photos upload when you continue to magnet checkout.")
-                Button { Task { await openCamera() } } label: { Label("Take a photo", systemImage: "camera.fill").font(.headline).foregroundStyle(ivory).frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent).tint(olive).disabled(cameraOpening || importing)
+                Button { Task { await openCamera() } } label: { Label("Take a photo", systemImage: "camera.fill").brandFont(.emphasis).foregroundStyle(ivory).frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent).tint(olive).disabled(cameraOpening || importing)
                 PhotosPicker(selection: $selected, maxSelectionCount: 12, matching: .images) { Label("Choose from phone", systemImage: "photo.on.rectangle").frame(maxWidth: .infinity) }.buttonStyle(.bordered).disabled(importing)
                 if importing { ProgressView("Saving your photos…") }
-                Text("\(store.photos.count) photos saved in My photos").font(.footnote)
+                Text("\(store.photos.count) photos saved in My photos").brandFont(size: 13, relativeTo: .footnote)
             }.padding(24) }.background(ivory).foregroundStyle(olive)
             .navigationTitle("Capture").navigationBarTitleDisplayMode(.inline)
             .fullScreenCover(isPresented: $cameraVisible) { PhoneCamera(onPhoto: { store.save($0); cameraVisible = false }, onCancel: { cameraVisible = false }).ignoresSafeArea() }
@@ -96,7 +97,7 @@ struct PhotosPage: View {
             ForEach(store.photos) { photo in VStack {
                 if let image = store.thumbnail(photo) { Image(uiImage: image).resizable().scaledToFit().frame(height: 155).frame(maxWidth: .infinity).background(.white).clipShape(RoundedRectangle(cornerRadius: 14)) }
                 Button { store.toggleSelection(photo) } label: { Label(store.order.items.contains(where: { $0.id == photo.id }) ? "Selected" : "Select", systemImage: store.order.items.contains(where: { $0.id == photo.id }) ? "checkmark.circle.fill" : "circle") }.buttonStyle(.bordered).disabled(commerce.busy)
-                Button("Remove", role: .destructive) { deleting = photo }.font(.footnote).disabled(commerce.busy)
+                Button("Remove", role: .destructive) { deleting = photo }.brandFont(size: 13, relativeTo: .footnote).disabled(commerce.busy)
             } }
         }
     }.padding(24) }.background(ivory).foregroundStyle(olive).navigationTitle("My photos").navigationBarTitleDisplayMode(.inline)
