@@ -4,6 +4,7 @@ import Security
 import UIKit
 import ImageIO
 import CryptoKit
+import WebKit
 
 struct CustomerSession: Codable {
     var access_token: String
@@ -42,7 +43,7 @@ private struct SelectionState: Decodable { var revision: Int; var items: [Select
 private struct Studio: Decodable { var link: String; var eventId: String }
 private struct Reservation: Decodable { var photoId: String; var uploadUrl: String?; var ready: Bool? }
 private struct Finished: Decodable { var status: String; var photoId: String? }
-private struct Identity: Decodable { var email: String?; var owner: Bool; var mfaRequired: Bool }
+private struct Identity: Decodable { var email: String?; var owner: Bool; var mfaRequired: Bool; var aal: String }
 private struct EmptyReply: Decodable {}
 struct CustomerError: LocalizedError { let message: String; var status: Int? = nil; var errorDescription: String? { message } }
 
@@ -64,6 +65,10 @@ private enum SecureConnection {
 }
 
 @MainActor final class CommerceModel: ObservableObject {
+    @Published private(set) var accessRole: AppAccessRole = .unverified
+    @Published var roleError: String?
+    @Published var customerPreview = false
+    private var authGeneration = UUID()
     @Published private(set) var session: CustomerSession?
     @Published private(set) var pricing: PackPricing?
     @Published private(set) var busy = false
@@ -113,23 +118,32 @@ private enum SecureConnection {
     }
     private func renew() async throws {
         guard let current = session else { throw CustomerError(message: "Connect your private workspace first.") }
+        let generation = authGeneration
         guard current.expires_at < Date().timeIntervalSince1970 + 90 else { return }
         if refreshTask == nil { refreshTask = Task { try await self.raw("refresh", body: ["refresh_token": current.refresh_token], token: nil, as: CustomerSession.self) } }
         guard let task = refreshTask else { return }
-        do { let refreshed = try await task.value; session = refreshed; refreshTask = nil; try persist() }
-        catch { refreshTask = nil; throw error }
+        do { let refreshed = try await task.value; guard generation == authGeneration else { throw CancellationError() }; session = refreshed; refreshTask = nil; try persist() }
+        catch { if generation == authGeneration { refreshTask = nil }; throw error }
     }
     private func call<T: Decodable>(_ path: String, _ body: [String: Any]? = nil, as type: T.Type) async throws -> T {
-        try await renew(); return try await raw(path, body: body, token: session?.access_token, as: type)
+        let generation = authGeneration
+        try await renew()
+        let result = try await raw(path, body: body, token: session?.access_token, as: type)
+        guard generation == authGeneration else { throw CancellationError() }
+        return result
     }
     func accept(_ candidate: CustomerSession) async throws {
         guard !busy, candidate.access_token.count < 8192, !candidate.access_token.isEmpty, !candidate.refresh_token.isEmpty, candidate.refresh_token.count < 2049 else { throw CustomerError(message: "Finish the website security check or sign in first.") }
         let identity: Identity = try await raw("session", body: nil, token: candidate.access_token, as: Identity.self)
-        guard !identity.owner else { throw CustomerError(message: "Use a customer session for shopping. Choose Continue without signing in in a fresh private workspace instead of connecting the owner studio account.") }
+
         // User changes never inherit another session's upload mappings.
         if session?.refresh_token != candidate.refresh_token { workspace = nil; uploads = [:]; pricing = nil; attempt = nil; attempts = [:]; galleryOrders = [:]; clearPreviews(); clearHistory() }
         var verified = candidate; verified.email = identity.email
+        refreshTask?.cancel(); refreshTask = nil; authGeneration = UUID(); accessRole = .unverified
+        await WKWebsiteDataStore.default().removeData(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), modifiedSince: .distantPast)
         session = verified; try persist()
+        accessRole = AppAccessRole.verified(owner: identity.owner, aal: identity.aal)
+        roleError = nil; customerPreview = false
     }
     func connectWorkspace() async throws {
         guard !busy else { return }; busy = true; defer { busy = false; progress = "" }
@@ -309,8 +323,62 @@ private enum SecureConnection {
     private func clearHistory() { checkouts = []; try? FileManager.default.removeItem(at: historyURL) }
     func signOut() async throws {
         guard !busy else { return }
-        try await renew()
-        if let session { let _: EmptyReply = try await raw("logout", body: ["refresh_token": session.refresh_token], token: session.access_token, as: EmptyReply.self) }
+        do {
+            try await renew()
+            if let session { let _: EmptyReply = try await raw("logout", body: ["refresh_token": session.refresh_token], token: session.access_token, as: EmptyReply.self) }
+        } catch let error as CustomerError where error.status == 401 {
+            // A revoked/expired session can still be removed from this device.
+        }
+        UserDefaults.standard.set(false, forKey: "ownerBoothActive")
+        refreshTask?.cancel(); refreshTask = nil; authGeneration = UUID(); accessRole = .unverified; roleError = nil; customerPreview = false
         SecureConnection.clear(); session = nil; workspace = nil; uploads = [:]; pricing = nil; attempt = nil; attempts = [:]; galleryOrders = [:]; clearPreviews(); clearHistory()
+        await WKWebsiteDataStore.default().removeData(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), modifiedSince: .distantPast)
+    }
+}
+
+extension CommerceModel {
+    func checkAccess() async {
+        guard session != nil else { accessRole = .unverified; roleError = nil; return }
+        let generation = authGeneration
+        do {
+            let identity: Identity = try await call("session", as: Identity.self)
+            guard generation == authGeneration else { return }
+            accessRole = AppAccessRole.verified(owner: identity.owner, aal: identity.aal)
+            roleError = nil
+            if !identity.owner { customerPreview = false }
+        } catch {
+            guard generation == authGeneration else { return }
+            accessRole = .unverified; roleError = error.localizedDescription; customerPreview = false
+        }
+    }
+    func ownerMFAStatus() async throws -> OwnerMFAStatus {
+        let result: OwnerMFAStatus = try await call("mfa/status", as: OwnerMFAStatus.self)
+        guard result.owner else { accessRole = .customer; throw CustomerError(message: "Owner access is required.") }
+        return result
+    }
+    func verifyOwner(factorID: String, code: String) async throws {
+        guard UUID(uuidString: factorID) != nil, code.count == 6, code.allSatisfy({ $0.isASCII && $0.isNumber }) else { throw CustomerError(message: "Enter the six-digit authenticator code.") }
+        let generation = authGeneration
+        let result: CustomerSession = try await call("mfa/verify", ["factorId": factorID, "code": code], as: CustomerSession.self)
+        let identity: Identity = try await raw("session", body: nil, token: result.access_token, as: Identity.self)
+        guard generation == authGeneration, identity.owner, identity.aal == "aal2", identity.email?.lowercased() == session?.email?.lowercased() else { throw CustomerError(message: "Could not verify this owner session.") }
+        var verified = result; verified.email = identity.email
+        refreshTask?.cancel(); refreshTask = nil; authGeneration = UUID()
+        session = verified; try persist(); accessRole = .owner; roleError = nil
+    }
+    private func requireOwner() async throws {
+        let identity: Identity = try await call("session", as: Identity.self)
+        accessRole = AppAccessRole.verified(owner: identity.owner, aal: identity.aal)
+        guard accessRole == .owner else { throw CustomerError(message: "Verify your owner authenticator to continue.") }
+    }
+    func ownerEvents() async throws -> [OwnerEvent] {
+        try await requireOwner()
+        let reply: OwnerEventsReply = try await call("owner", as: OwnerEventsReply.self)
+        return reply.events.filter { $0.active && $0.deleted_at == nil && $0.purge_started_at == nil }
+    }
+    func createCaptureStation(eventID: String) async throws -> OwnerStationReply {
+        guard UUID(uuidString: eventID) != nil else { throw CustomerError(message: "Select a valid event.") }
+        try await requireOwner()
+        return try await call("owner/station/" + eventID, ["action": "create", "purpose": "capture"], as: OwnerStationReply.self)
     }
 }

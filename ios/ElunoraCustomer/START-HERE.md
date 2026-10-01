@@ -1,4 +1,4 @@
-# Atelier Elunora — native iPhone app, v3.12
+# Atelier Elunora — combined customer and owner iOS app, v4.0
 
 ## Build on your phone
 
@@ -8,134 +8,56 @@
 4. Connect and unlock your iPhone, trust your Mac, and choose the phone in Xcode's device menu.
 5. Enable Developer Mode if requested, then press Run.
 
-Minimum iOS 17. Use an Xcode version whose iOS SDK supports your phone. No npm, Expo, Homebrew, CocoaPods, or third-party packages are needed. The operator capture app is separate.
-
-## Included functionality
-
-- Capture and import photos; keep private app copies and remove them individually.
-- Select a 3/6/12/24/48 magnet pack, set quantities, and adjust square crops with zoom and position controls.
-- Save order drafts between launches. Original photos remain intact; uploads use orientation-correct JPEG copies up to 4096 pixels on the long edge.
-- Read pack pricing and availability from the existing backend, upload selected photos to private storage, save a selection revision, and open Shopify checkout.
-- Resume interrupted uploads using saved reservation IDs. Checkout retries reuse the selection and received checkout link. Start a new order deliberately creates a new selection.
-- Show assigned galleries directly in the native Galleries tab, with all available visible photos grouped under their gallery names. Tap a photo for a larger preview. Pull to refresh for new photos or invitations.
-- Access password/email-code login, downloads, gallery magnet ordering, services, packages, inquiries, store, and privacy pages inside the app. Downloads open a native share sheet to save to Files.
-- Keep session tokens in the iOS Keychain, refresh them, and sign out. Checkout links clear when changing sessions or signing out.
-
-Account login, gallery download/order tools, service pages, and inquiries use the existing website interface inside the app. Assigned-gallery browsing and photo previews are native. The camera, photo tray, crop editor, pack selection, saved draft, and upload/order preparation are native SwiftUI. There are no Snapchat social features or filters in this version.
-
-## Connect and order
-
-1. Capture/import photos. In **My photos**, tap Select on the photos to print.
-2. In **Order**, tap **Connect private workspace**. Complete the website security check and choose **Continue without signing in**, or sign in with a customer account. Then tap **Connect to app** in the bottom toolbar.
-3. Load packs if needed. Choose a pack and set quantities until the selected total equals the pack size. Each photo supports up to 12 copies.
-4. Tap **Adjust crop**, position/zoom, and Save. Accept the upload permission notice.
-5. Tap **Review my magnets**, then **Continue to secure checkout**. Selected photos upload at this point.
-6. Pay on Shopify, where shipping and tax are calculated. Closing checkout does not mark an order paid; your Shopify confirmation email is the order record.
-
-This uses production backend and Shopify checkout. For a test without purchasing, stop before submitting payment. Payment testing requires a deliberately authorized purchase or a separately configured test payment environment. No backend deployment or payment-mode change is included.
-
-Owner administrator sessions cannot connect as customer sessions. Use a customer account or guest workspace.
-
-## Sign in and use your account
-
-The Account tab has a native email/password login and an eight-digit email-code option. Sign in with the customer email already invited to your galleries. Complete the website security check in the verification sheet, then tap Continue sign-in; do not submit another login on that page. The app sends the credentials to the existing authenticated login API and saves only the verified session in Keychain. Account lists the galleries available to the current user. Owner administrator accounts still require their existing owner/MFA workflow and cannot connect as customer sessions.
-
-## View galleries assigned to your email
-
-Open Galleries, tap Sign in to my galleries, and use the native password or email-code login. Alternatively, sign in from Account. The app loads accessible galleries and displays each gallery name above its photo grid. Guest workspaces without an email do not receive invited galleries. Select photos in a gallery and tap Create magnets for native ordering with pack selection, quantities, crop controls, review, and Shopify checkout. Photos remain associated with their source gallery and are never uploaded again. Orders contain photos from one gallery at a time. Use Gallery tools for downloads; sign out under More to change accounts. Closed, hidden, revoked, and expired-access content remains unavailable under the existing backend permissions.
-
-## Phone acceptance checklist
-
-- Test camera permission denial and Settings recovery, front/back camera, retake, and imports including portrait HEIC images.
-- Crop portrait/landscape photos at each edge. Verify selected quantities equal the pack count and previews match printing crops.
-- Quit/reopen and confirm photos, quantities, crop positions, pack, and permission choice persist.
-- Disconnect during upload, reconnect, and retry. Confirm ordinary retries reuse completed uploads and the selection reference.
-- Open checkout twice for an unchanged draft; confirm the received link reopens. Change a crop/quantity or start a new order and confirm a new selection.
-- Test guest/customer connection. Use an email with two assigned galleries; confirm each grid contains its own photos, tap for larger previews, and pull to refresh. Sign out, connect a different email, and confirm prior galleries disappear. Verify expired/revoked galleries and hidden photos are unavailable. Test download to Files, inquiries, and sign-out. Confirm another session cannot see prior checkout links.
-- Verify Shopify receives the pack and selection reference without private photo URLs. For payment testing, confirm the paid order reaches fulfillment and crop settings match.
-- Remove a photo and confirm its app-owned upload copy is also removed. This does not delete Apple Photos originals or photos already uploaded for orders. Uninstalling removes local photos/drafts, but not cloud order records.
-
-## Validation status
-
-Verified against live gallery API contracts and the existing website crop/export formula. Seventeen backend contract checks passed for product packs, invalid quantities/variants, price mismatch, checkout metadata, and checkout host rejection, using mocked Shopify responses without purchases. Project references, plist/scheme XML, images, and Swift grammar are checked separately.
-
-The workspace runs Linux: an Apple SDK compile, login inside WKWebView, physical camera, and end-to-end payment/fulfillment test could not run here. Complete the checklist before release. App Store submission, account deletion UX, social feeds, notifications, and custom camera filters remain separate work.
-
-Repository folder: ios/ElunoraCustomer on development/customer-mobile-app.
-
-## v3.7 testing and performance
-
-Gallery metadata loads in batches of four concurrent requests instead of sequentially. Preview requests reuse in-flight work and a 40 MB memory cache with a 60-second reuse window; nothing is written to a disk photo cache. Explicit refresh and session changes clear the cache. This reduces repeat requests but first-load speed still depends on connection and server processing. Actual timing has not been measured on a phone here.
-
-Test native password login, incorrect passwords, email-code delivery/verification and expired security tokens. Restart to verify remembered sessions. Test switching customer emails and sign-out to ensure gallery drafts, previews and checkout links from the prior session disappear. Select images in two different galleries, order each separately, and retry the same unchanged selection to verify it reuses its checkout reference. Check crops against fulfillment; gallery originals are unchanged. Revoked access must fail at the backend before checkout.
-
-This version adds no backend deployment or schema change. Linux grammar/project checks and mocked API contract checks do not replace an Xcode compile and physical iPhone testing of login, verification and payments.
-
-## v3.7 gallery tap fix
-
-Thumbnail image and preview-button hit areas are explicitly bounded to the visible image frame. This prevents scaled images from intercepting taps on Select or on another row. Test portrait and landscape thumbnails: Select must toggle Selected without opening a photo; tapping the thumbnail must open that photo. Test Select photo in Create magnets as well. Physical-device tap testing still needs confirmation.
-
-## v3.7 single sign-in flow
-
-Native password/email-code login shows only the existing security challenge in its verification sheet. The website login form and navigation are hidden there; challenge validation remains unchanged. Successful login returns to the native account/galleries without requesting another sign-in. Gallery tools reuse the app session and omit the Connect to app prompt when already signed in. Test security verification, password and email-code sign-in, and opening Gallery tools on your phone. The DOM integration is scoped to the exact trusted gallery page; website markup changes may require an app update.
-
-## v3.7 dedicated verification page
-
-The sign-in verification sheet now loads /pages/app-security, containing only the security widget, status and retry control. It never loads the client gallery login page. The page HTML is included as AppSecurityPage.html and was created on Shopify separately. Keep this page available for app sign-in. Its public site key is the existing gallery-login site key; no secret is present. Passwords remain in the native app and are submitted to the existing Auth API. Test on a physical phone; verification cannot be completed automatically here.
-
-## v3.7 branded inline login
-
-Login uses the Shopify gallery palette: warm paper #F4F2EF, cream card #E8E5D9, olive #4A4B36, restrained borders, serif heading, and bundled AE monogram. The security widget is embedded directly in this native login screen. There is no separate verification sheet or Continue sign-in action. Enter credentials, complete the inline widget, and tap Sign in (or Send sign-in code). The widget still uses WKWebView as required by Cloudflare, loading the existing dedicated verification page under the app interface. Source: https://developers.cloudflare.com/turnstile/get-started/mobile-implementation/ . Custom Brown Carolina font files are not included in this customer project; system serif is used for headings. Test widget success/expiry/retry, incorrect credentials, email codes, small screens, keyboard and large text on a phone.
+Minimum iOS 17. Use an Xcode version whose iOS SDK supports your phone. No npm, Expo, Homebrew, CocoaPods, or third-party packages are needed. This project now includes the owner booth. The original standalone capture project remains available separately.
 
 
-## v3.8 — private event uploads
+## v4.0 — one app, owner and customer experiences
 
-- Open Capture → Join an event (also Galleries → Your event uploads).
-- Scan the existing event sharing QR inside the app, or paste its complete HTTPS sharing link. No short-code service or system Camera universal-link handoff is added in this version.
-- Review the event name and notice, consent, and tap Join event.
-- Take/import photos, return to Event sharing, select photos, and Upload. Keep the app open while uploading. Retry selected photos after a connection failure; saved reservation IDs prevent duplicate reservations.
-- Your event photos shows only submissions from this app's private event session, including pending host review. Refresh reloads previews and authorization. Existing host moderation, upload limits, closing dates, and QR revocation remain server-enforced. Uploading does not queue a print.
-- Leave event stops the active connection. Scanning the same valid QR again on this phone/profile restores that session. A rotated QR creates a new connection.
+This build includes the current capture implementation from development/ipad-camera-prototype (47f704594d29f7831703162796ddb8a774ca6217), including the 0/3/5/10-second countdown, front/rear camera choice, photo review/retry, Canon JPEG transfer and experimental EOS/live-view controls. The native customer features and BrandedFonts folder remain included.
 
-Security: QR invitations are never reused as guest session credentials. The app generates an independent 256-bit random token, stores it in device-only Keychain, and calls only the existing session-scoped experience routes for event browsing/uploads. It never claims whole-gallery access. Studio and upload-later links are rejected in this flow. Signed preview URLs use ephemeral networking with no disk photo cache. Switching account profiles clears event images and cancels in-flight networking; sessions are separated locally by account profile. Account invitations continue to grant their separately configured full-gallery access.
+### Owner workflow
 
-Event ownership is session-based, just like the existing QR uploader: website uploads, another phone, or a different app account profile do not automatically share this event photo list. This build does not add account-wide recovery/sync of QR guest sessions. Keep the same bundle ID to preserve the connection when updating.
+1. Sign in through Account using your owner credentials, then enter your existing six-digit authenticator code. Owner status comes from the authenticated server session; email alone never grants owner access.
+2. The owner booth dashboard opens. Choose an active event and tap Connect selected event. The server creates a 12-hour capture station scoped to that event; copying a station link is no longer required. Existing capture links can still be entered in Station setup.
+3. Open booth setup, then tap Station setup to choose the countdown, front/rear camera, and Canon options. Start with a test event. Canon controls retain their experimental status and need R100 hardware testing.
+4. In Station setup, tap Lock booth for guests. Or use Start locked booth from the dashboard. Guests can capture, retake and approve. Approved submissions use the existing event gallery and print queue. The Mac print helper still handles physical printing.
+5. To change settings or leave the booth, tap Owner controls, enter a fresh authenticator code, then open Station setup. Return to owner dashboard is available after unlocking. The booth cannot be dismissed with a swipe. Backgrounding locks it; relaunching an active booth restores it locked after the saved account is verified by the server.
+6. Switch to customer view opens the customer tabs; Return to booth restores the owner dashboard. This previews the customer interface using the owner's existing access; use a separate customer login to test invitation restrictions accurately. Pending booth photos must be resolved before switching accounts or customer view.
 
-### Device acceptance test
+Guest accounts keep the customer app. Anonymous visitors can still capture/import and use event QR sharing. Owner login without a verified authenticator is gated; first-time enrollment continues through the existing owner studio.
 
-1. Build/run on two iPhones (or one iPhone and a separate browser session). Join the same event QR on both.
-2. Upload a distinct photo from each. Each guest must see only their own upload; the host dashboard can see both.
-3. With moderation enabled, verify the app displays Awaiting host review, then Shared after host approval and Refresh. Reject a photo and Refresh: it must disappear.
-4. Turn off connectivity during upload; reconnect and retry. Verify one host submission per selected photo, and that reopening the app/rejoining the same QR restores this session.
-5. Leave, rejoin, and switch app accounts: verify event previews clear and another profile cannot see the prior profile's submissions.
-6. Disable, expire, or rotate the event QR in the dashboard. Refresh/upload with the old session must fail and clear its gallery; the new QR can join.
-7. Deny camera access or use the simulator: paste the link to join. Test normal photo capture/import and existing magnet checkout for regressions.
+### Booth lock and data protection
 
-Validation here: Swift syntax and project references checked; backend contract tests exercise two-guest filtering, pending/approved visibility, refused whole-gallery claims, invalid sessions and revoked sessions. Live database function definitions were inspected read-only. No live event/photo/account records were created for testing. Xcode compilation, camera scanning, real uploads and device UI remain to be tested on a Mac/iPhone.
+The lock protects in-app owner controls and requires a fresh server-verified TOTP challenge to unlock. It does not stop the iOS Home gesture or app switching: turn on Guided Access in iOS Settings → Accessibility, then start it with the hardware-button shortcut when handing the device to guests. Keep your authenticator on another device if the booth device is in Guided Access.
 
+Owner role and AAL2 are checked before owner event/station requests, and existing server checks remain authoritative. Capture requests use only the event capture capability, never the owner's JWT. Station connection and pending JPEG/retry IDs are stored with file protection in an owner-specific folder excluded from backups. Customer galleries/photos are not used as the booth capture store. Switching authentication sessions cancels stale refresh results and clears embedded website sessions. No backend schema, RLS, or Edge Function changes were required for this integration.
 
-## v3.10 — BrandedFonts folder
+The combined app cannot automatically read the separate capture app's sandbox. Finish its pending photos before migrating, then connect the event in this app. Copy your font files into this project's BrandedFonts folder before building. Use your existing customer app bundle identifier to preserve its local customer photos.
 
-Place your licensed OTF/TTF files in `ElunoraCustomer/BrandedFonts` next to App.swift, then build/run. The folder is already referenced by Xcode and copied into the app bundle, including archives. No per-font target membership, Info.plist entries, font registration steps, or in-app selections are needed. Use the existing folder in Finder rather than creating a duplicate Xcode reference.
+### Required device test before an event
 
-The app automatically selects Brown Carolina Regular for body text, Edwardian Script for headings (Brown Carolina if absent), and a real heavier Brown Carolina face for buttons/capitals. Font family and PostScript names are read from the files; filenames can vary. If no Medium/Semibold/Bold face is present, controls and capitals keep system semibold to avoid the previous thin-weight problem. Light display faces are not applied to body text. A single alternative non-Edwardian family can also be used automatically.
+- Customer login: only customer tabs; invited gallery restrictions and QR upload isolation still work.
+- Owner login: MFA required before dashboard; wrong code denied; correct code loads active events.
+- Connect a test event, capture on built-in camera with countdown, retake, approve, verify one gallery photo/print job. Retry an interrupted submission and verify no duplicate.
+- Test R100 transfer and optional EOS/live-view functions separately. Confirm built-in camera fallback.
+- Lock booth, try setup/back/swipe; owner controls must require a new valid code. Background and force quit/relaunch: the booth must reopen locked after account verification. Test Guided Access separately.
+- Unlock, return to dashboard, switch to customer view and back. Sign out and use a different account; no prior owner controls or embedded web session should remain.
+- Revoke a station or expire its link: submissions must be rejected and pending photos retained for review/retry.
 
-WOFF/WOFF2 require their original OTF/TTF edition; renaming does not convert them. Files in nested folders and uppercase OTF/TTF extensions are detected. Invalid/unsupported fonts are reported in Account → App fonts, which now previews the automatically active fonts. The in-app importer and manual font selections have been removed. Every installation of the built app receives the same bundled fonts; rebuilding applies updated files even on a phone that previously saved v3.9 font choices.
+Validation here: all Swift source files syntax-checked; Xcode source/resource references and plist/ZIP verified; mock tests against the downloaded live handler/MFA code cover customer denials, forged editable metadata, AAL2 station gating, invalid/revoked sessions, fresh unlock verification and wrong-user verification denial. No live test users, photos, stations, emails or prints were created. Linux cannot compile this iOS target or exercise iPhone/iPad camera UI; the checks above still require Xcode and physical devices.
 
-No proprietary font files are supplied. Drop your files in the included folder before building. Check the preview on iPhone, especially Brown Carolina capitals and capture/checkout labels, and test larger Dynamic Type sizes. Native app screens use these fonts; Shopify pages and system controls keep their own typography.
+## Customer features retained
 
-Validation: Swift syntax, folder resource reference and ZIP contents checked here. Actual font registration/rendering and Xcode compilation require your Mac/iPhone and actual font files.
+Capture/import, local photo tray, native magnet crop/pack selection, checkout, native assigned galleries grouped by event, event QR uploads limited to each guest's private upload session, and password/email-code sign-in remain available. Cloudflare verification is embedded in the native login screen. Account and sign-in use readable system text; the app uses a consistent light olive/cream appearance.
 
+To order, capture/import photos, select them in My photos, connect a private workspace in Order, select a pack and quantities, review crops and consent, then continue to Shopify checkout. An opened checkout link is not proof of payment; payment confirmation remains authoritative on the backend. Stop before payment when testing unless you intend to purchase.
 
-## v3.11 — normal capitalization on sign-in
+For customer event sharing, open Capture → Join an event or Galleries → Your event uploads. Scan the existing sharing QR (or paste its full link), consent, select photos and upload. The upload gallery shows only this phone/profile's private guest-session submissions. Uploads from a website session or another phone do not automatically appear. QR possession never grants full-gallery access; separately invited accounts retain their assigned gallery access.
 
-Sign-in now explicitly uses mixed-case system typography for instructions, form labels, entered email/code, password placeholders, actions and headings. The AE monogram, olive/cream palette and card layout remain. Imported display fonts no longer flow into the authentication form. Email, code and password fields disable automatic capitalization and autocorrection. Password characters are passed exactly as entered; only the existing email normalization lowercases the email address.
+## Brand fonts
 
-Build/run the updated project, copying your existing licensed font files into the new BrandedFonts folder first. Use the same bundle identifier. Confirm that `you@example.com`, Password and Welcome back display normal case; test a mixed-case password and email-code login. Static Swift syntax and ZIP integrity checked here; actual iPhone rendering and authentication need device testing.
+Copy your licensed OTF/TTF files into ElunoraCustomer/BrandedFonts, then build. The folder is already connected to Xcode resources. The app reads the actual font family, PostScript name and weight automatically: Brown Carolina for body, Edwardian Script for headings when available, and an actual heavier face for buttons/capitals. System semibold remains when no heavier face exists. WOFF/WOFF2 need the original OTF/TTF edition; renaming does not convert them. No proprietary font files are included. Native Account and sign-in controls keep readable mixed-case system fonts.
 
+## Local data and distribution
 
-## v3.12 — Account contrast in Dark Mode
-
-The app now requests a consistent light appearance to match its fixed olive/ivory palette. Account rows use white backgrounds and readable mixed-case system text, with an ivory navigation background. Brand headings remain styled with the bundled fonts. Account gallery names and checkout notes use readable system text too. This avoids dark system list cells and light headers clashing with the app's fixed colors when the phone is in Dark Mode.
-
-Copy your existing BrandedFonts files into this updated project before building. Keep the same bundle identifier. Test Account with the phone set to both Light and Dark appearances: rows should remain light, labels and actions readable, and tabs visible. Also open sign-in, App fonts, galleries and a service link. Swift syntax, project parsing, text/background contrast and ZIP integrity were checked here; device appearance still needs iPhone verification.
+Use the same bundle identifier when updating to preserve customer photos and sessions. This combined build uses separate owner booth storage within its own app container; it does not migrate another app's data automatically. Do not uninstall an app with pending photos. TestFlight/App Store submission is not included. No live purchases, test uploads or print jobs were performed here.

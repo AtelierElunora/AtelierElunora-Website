@@ -12,6 +12,7 @@
 <key>CFBundleVersion</key><string>1</string>
 <key>LSRequiresIPhoneOS</key><true/>
 <key>NSCameraUsageDescription</key><string>Take photos for your Atelier Elunora keepsakes and scan event sharing QR codes.</string>
+<key>NSPhotoLibraryUsageDescription</key><string>Access photos provided by the connected booth camera.</string>
 <key>UILaunchScreen</key><dict/>
 <key>UISupportedInterfaceOrientations</key><array><string>UIInterfaceOrientationPortrait</string></array>
 <key>UISupportedInterfaceOrientations~ipad</key><array><string>UIInterfaceOrientationPortrait</string><string>UIInterfaceOrientationPortraitUpsideDown</string><string>UIInterfaceOrientationLandscapeLeft</string><string>UIInterfaceOrientationLandscapeRight</string></array>
