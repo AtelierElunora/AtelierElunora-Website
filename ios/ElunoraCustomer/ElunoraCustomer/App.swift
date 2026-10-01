@@ -43,7 +43,7 @@ struct CapturePage: View {
                 BrandHeading(title: "Keep this moment.")
                 Image(systemName: "camera.aperture").font(.system(size: 110, weight: .ultraLight)).frame(maxWidth: .infinity).padding(36)
                 Text("Take a photo or choose one you already love. Your photos stay on this phone until you remove them.")
-                Button { Task { await openCamera() } } label: { Label("Take a photo", systemImage: "camera.fill").frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent).disabled(cameraOpening || importing)
+                Button { Task { await openCamera() } } label: { Label("Take a photo", systemImage: "camera.fill").font(.headline).foregroundStyle(ivory).frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent).tint(olive).disabled(cameraOpening || importing)
                 PhotosPicker(selection: $selected, maxSelectionCount: 12, matching: .images) { Label("Choose from phone", systemImage: "photo.on.rectangle").frame(maxWidth: .infinity) }.buttonStyle(.bordered).disabled(importing)
                 if importing { ProgressView("Saving your photos…") }
                 Text("\(store.photos.count) photos saved in My photos").font(.footnote)
