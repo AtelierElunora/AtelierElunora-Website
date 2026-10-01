@@ -102,17 +102,147 @@ struct CropEditor: View {
     } }
 }
 
+struct LoadedGallery: Identifiable {
+    let gallery: AssignedGallery
+    var photos: [GalleryPhoto] = []
+    var error: String?
+    var id: String { gallery.id }
+}
+struct SelectedGalleryPhoto: Identifiable {
+    let galleryId: String
+    let photo: GalleryPhoto
+    var id: String { galleryId + ":" + photo.id }
+}
+
 struct GalleryPage: View {
     @EnvironmentObject private var commerce: CommerceModel
     @State private var open = false
-    var body: some View { NavigationStack { VStack(alignment: .leading, spacing: 24) {
-        BrandHeading(title: "Your memories, together.")
-        Text("Sign in to your invited galleries to view, select, download, and order photos. Your existing password and email-code options are available.")
-        Button { open = true } label: { Text("Open my galleries").foregroundStyle(ivory).frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent)
-        Spacer()
-    }.padding(24).background(ivory).foregroundStyle(olive).navigationTitle("Galleries").navigationBarTitleDisplayMode(.inline)
-        .sheet(isPresented: $open) { WebPortal(url: URL(string: "https://www.atelierelunora.com/pages/client-gallery")!, title: "Client galleries", session: commerce.session?.email?.isEmpty == false ? commerce.session : nil, connection: true).environmentObject(commerce) }
-    } }
+    @State private var groups: [LoadedGallery] = []
+    @State private var loading = false
+    @State private var errorMessage: String?
+    @State private var selected: SelectedGalleryPhoto?
+    @State private var loadID = UUID()
+    private var identity: String { commerce.session?.email?.lowercased() ?? "" }
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 24) {
+                    BrandHeading(title: "Your memories, together.")
+                    if identity.isEmpty {
+                        Text("Sign in with the email that received your gallery invitations. Your assigned galleries and photos will appear here.")
+                        Button { open = true } label: { Text("Sign in to my galleries").foregroundStyle(ivory).frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent)
+                    } else {
+                        Text("Galleries for \(identity)").font(.footnote)
+                        HStack {
+                            Button("Refresh galleries") { Task { await reload() } }.disabled(loading)
+                            Spacer()
+                            Button("Gallery tools") { open = true }
+                        }
+                        if loading { ProgressView("Loading your galleries…") }
+                        if let errorMessage { Text(errorMessage).font(.footnote).foregroundStyle(.red) }
+                        if !loading && groups.isEmpty && errorMessage == nil {
+                            ContentUnavailableView("No galleries assigned yet", systemImage: "rectangle.stack", description: Text("Galleries appear after access is granted to this email. Refresh after receiving a new invitation."))
+                        }
+                        ForEach(groups) { group in
+                            VStack(alignment: .leading, spacing: 12) {
+                                Divider()
+                                Text(group.gallery.name).font(.system(size: 25, design: .serif))
+                                if let date = group.gallery.event_date { Text(date).font(.footnote) }
+                                Text("\(group.photos.count) photos").font(.footnote)
+                                if let message = group.error {
+                                    Text(message).font(.footnote).foregroundStyle(.red)
+                                } else if group.photos.isEmpty && !loading {
+                                    Text("Photos will appear here when they are added to this gallery.").font(.footnote)
+                                }
+                                LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 12)], spacing: 12) {
+                                    ForEach(group.photos) { photo in
+                                        Button { selected = SelectedGalleryPhoto(galleryId: group.id, photo: photo) } label: {
+                                            NativeGalleryImage(eventId: group.id, photo: photo, fullSize: false)
+                                        }.buttonStyle(.plain).accessibilityLabel("View \(photo.filename)")
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }.padding(24)
+            }.background(ivory).foregroundStyle(olive)
+                .navigationTitle("Galleries").navigationBarTitleDisplayMode(.inline)
+                .refreshable { await reload() }
+                .task(id: identity) { selected = nil; await reload() }
+                .sheet(isPresented: $open, onDismiss: { Task { await reload() } }) {
+                    WebPortal(url: URL(string: "https://www.atelierelunora.com/pages/client-gallery")!, title: "Gallery account and tools", session: identity.isEmpty ? nil : commerce.session, connection: true).environmentObject(commerce)
+                }
+                .sheet(item: $selected) { selection in
+                    GalleryPhotoViewer(selection: selection).environmentObject(commerce)
+                }
+        }
+    }
+    @MainActor private func reload() async {
+        let requestID = UUID(); loadID = requestID
+        groups = []; errorMessage = nil
+        guard !identity.isEmpty else { loading = false; return }
+        loading = true
+        defer { if loadID == requestID { loading = false } }
+        do {
+            let galleries = try await commerce.assignedGalleries()
+            try Task.checkCancellation()
+            guard loadID == requestID else { return }
+            groups = galleries.map { LoadedGallery(gallery: $0) }
+            for gallery in galleries {
+                do {
+                    let detail = try await commerce.galleryDetail(gallery.id)
+                    try Task.checkCancellation()
+                    guard loadID == requestID else { return }
+                    if let index = groups.firstIndex(where: { $0.id == gallery.id }) { groups[index].photos = detail.photos }
+                } catch {
+                    guard loadID == requestID, !Task.isCancelled else { return }
+                    if let index = groups.firstIndex(where: { $0.id == gallery.id }) { groups[index].error = error.localizedDescription }
+                }
+            }
+        } catch {
+            guard loadID == requestID, !Task.isCancelled else { return }
+            errorMessage = error.localizedDescription
+        }
+    }
+}
+
+struct NativeGalleryImage: View {
+    @EnvironmentObject private var commerce: CommerceModel
+    let eventId: String
+    let photo: GalleryPhoto
+    let fullSize: Bool
+    @State private var image: UIImage?
+    @State private var failed = false
+    @State private var retry = 0
+    var body: some View {
+        VStack {
+            if let image {
+                if fullSize { Image(uiImage: image).resizable().scaledToFit() }
+                else { GeometryReader { geometry in Image(uiImage: image).resizable().scaledToFill().frame(width: geometry.size.width, height: 160).clipped().clipShape(RoundedRectangle(cornerRadius: 12)) }.frame(height: 160) }
+            } else if failed {
+                if fullSize { Button("Retry photo") { retry += 1 }.frame(maxWidth: .infinity, minHeight: 160) }
+                else { Label("Tap to retry", systemImage: "photo").font(.footnote).frame(maxWidth: .infinity, minHeight: 160) }
+            } else { ProgressView().frame(maxWidth: .infinity, minHeight: 160) }
+        }
+        .task(id: "\(commerce.session?.access_token ?? ""):\(eventId):\(photo.id):\(retry)") {
+            image = nil; failed = false
+            do {
+                let loaded = try await commerce.galleryPreview(eventId: eventId, photoId: photo.id)
+                try Task.checkCancellation(); image = loaded
+            } catch { if !Task.isCancelled { failed = true } }
+        }
+    }
+}
+struct GalleryPhotoViewer: View {
+    @Environment(\.dismiss) private var dismiss
+    let selection: SelectedGalleryPhoto
+    var body: some View {
+        NavigationStack {
+            ScrollView { NativeGalleryImage(eventId: selection.galleryId, photo: selection.photo, fullSize: true).padding() }
+                .background(ivory).navigationTitle(selection.photo.filename).navigationBarTitleDisplayMode(.inline)
+                .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Done") { dismiss() } } }
+        }
+    }
 }
 
 struct MorePage: View {

@@ -1,8 +1,8 @@
-# Atelier Elunora — native iPhone app, v3
+# Atelier Elunora — native iPhone app, v3.2
 
 ## Build on your phone
 
-1. Unzip the updated folder on your Mac. Open this copy of **ElunoraCustomer.xcodeproj**; the earlier v2 project does not include the new files.
+1. Unzip the updated folder on your Mac. Open this copy of **ElunoraCustomer.xcodeproj**; earlier copies do not include these updates.
 2. Select the blue project and the ElunoraCustomer target in Xcode.
 3. Under Signing & Capabilities, select your Apple team with Automatically manage signing enabled. If needed, change the bundle identifier to a unique value. Keep the same identifier as your previous build to preserve its local photos.
 4. Connect and unlock your iPhone, trust your Mac, and choose the phone in Xcode's device menu.
@@ -17,10 +17,11 @@ Minimum iOS 17. Use an Xcode version whose iOS SDK supports your phone. No npm, 
 - Save order drafts between launches. Original photos remain intact; uploads use orientation-correct JPEG copies up to 4096 pixels on the long edge.
 - Read pack pricing and availability from the existing backend, upload selected photos to private storage, save a selection revision, and open Shopify checkout.
 - Resume interrupted uploads using saved reservation IDs. Checkout retries reuse the selection and received checkout link. Start a new order deliberately creates a new selection.
-- Access existing invited galleries, password/email-code login, downloads, gallery magnet ordering, services, packages, inquiries, store, and privacy pages inside the app. Downloads open a native share sheet to save to Files.
+- Show assigned galleries directly in the native Galleries tab, with all available visible photos grouped under their gallery names. Tap a photo for a larger preview. Pull to refresh for new photos or invitations.
+- Access password/email-code login, downloads, gallery magnet ordering, services, packages, inquiries, store, and privacy pages inside the app. Downloads open a native share sheet to save to Files.
 - Keep session tokens in the iOS Keychain, refresh them, and sign out. Checkout links clear when changing sessions or signing out.
 
-Gallery/account login, service pages, and inquiries use the existing website interface inside the app. The camera, photo tray, crop editor, pack selection, saved draft, and upload/order preparation are native SwiftUI. There are no Snapchat social features or filters in this version.
+Account login, gallery download/order tools, service pages, and inquiries use the existing website interface inside the app. Assigned-gallery browsing and photo previews are native. The camera, photo tray, crop editor, pack selection, saved draft, and upload/order preparation are native SwiftUI. There are no Snapchat social features or filters in this version.
 
 ## Connect and order
 
@@ -35,6 +36,10 @@ This uses production backend and Shopify checkout. For a test without purchasing
 
 Owner administrator sessions cannot connect as customer sessions. Use a customer account or guest workspace.
 
+## View galleries assigned to your email
+
+Open Galleries, tap Sign in to my galleries, and sign in with the invited email using your password or email code. Tap Connect to app. The app loads accessible galleries and displays each gallery name above its photo grid. Guest workspaces without an email do not receive invited galleries. Use Gallery tools for downloads and gallery magnet orders; sign out under More to change accounts. Closed, hidden, revoked, and expired-access content remains unavailable under the existing backend permissions.
+
 ## Phone acceptance checklist
 
 - Test camera permission denial and Settings recovery, front/back camera, retake, and imports including portrait HEIC images.
@@ -42,7 +47,7 @@ Owner administrator sessions cannot connect as customer sessions. Use a customer
 - Quit/reopen and confirm photos, quantities, crop positions, pack, and permission choice persist.
 - Disconnect during upload, reconnect, and retry. Confirm ordinary retries reuse completed uploads and the selection reference.
 - Open checkout twice for an unchanged draft; confirm the received link reopens. Change a crop/quantity or start a new order and confirm a new selection.
-- Test guest/customer connection, invited galleries, download to Files, inquiries, and sign-out. Confirm another session cannot see prior checkout links.
+- Test guest/customer connection. Use an email with two assigned galleries; confirm each grid contains its own photos, tap for larger previews, and pull to refresh. Sign out, connect a different email, and confirm prior galleries disappear. Verify expired/revoked galleries and hidden photos are unavailable. Test download to Files, inquiries, and sign-out. Confirm another session cannot see prior checkout links.
 - Verify Shopify receives the pack and selection reference without private photo URLs. For payment testing, confirm the paid order reaches fulfillment and crop settings match.
 - Remove a photo and confirm its app-owned upload copy is also removed. This does not delete Apple Photos originals or photos already uploaded for orders. Uninstalling removes local photos/drafts, but not cloud order records.
 

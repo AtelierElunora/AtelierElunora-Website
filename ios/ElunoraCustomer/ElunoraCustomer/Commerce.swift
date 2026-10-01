@@ -28,6 +28,15 @@ struct CheckoutReceipt: Codable, Identifiable {
     var date: Date = Date()
     enum CodingKeys: String, CodingKey { case checkoutUrl, reference }
 }
+struct AssignedGallery: Decodable, Identifiable {
+    let id: String
+    let name: String
+    let event_date: String?
+    let is_sample: Bool?
+}
+struct GalleryPhoto: Decodable, Identifiable { let id: String; let filename: String }
+struct GalleryListReply: Decodable { let events: [AssignedGallery] }
+struct GalleryDetailReply: Decodable { let event: AssignedGallery; let photos: [GalleryPhoto]; let expiresAt: String? }
 private struct SelectionItem: Decodable { var photoId: String; var quantity: Int; var x: Double; var y: Double; var zoom: Double }
 private struct SelectionState: Decodable { var revision: Int; var items: [SelectionItem]? }
 private struct Studio: Decodable { var link: String; var eventId: String }
@@ -113,7 +122,8 @@ private enum SecureConnection {
         guard !identity.owner else { throw CustomerError(message: "Use a customer session for shopping. Choose Continue without signing in in a fresh private workspace instead of connecting the owner studio account.") }
         // User changes never inherit another session's upload mappings.
         if session?.refresh_token != candidate.refresh_token { workspace = nil; uploads = [:]; pricing = nil; attempt = nil; clearHistory() }
-        session = candidate; try persist()
+        var verified = candidate; verified.email = identity.email
+        session = verified; try persist()
     }
     func connectWorkspace() async throws {
         guard !busy else { return }; busy = true; defer { busy = false; progress = "" }
@@ -207,6 +217,31 @@ private enum SecureConnection {
         checkouts.removeAll { $0.reference == checkout.reference }; checkouts.insert(checkout, at: 0)
         if let data = try? JSONEncoder().encode(Array(checkouts.prefix(30))) { try? data.write(to: historyURL, options: [.atomic, .completeFileProtection]) }
         return checkout
+    }
+    func assignedGalleries() async throws -> [AssignedGallery] {
+        guard session?.email?.isEmpty == false else { throw CustomerError(message: "Sign in with the email that received your gallery invitation.") }
+        let result: GalleryListReply = try await call("events", as: GalleryListReply.self)
+        return result.events
+    }
+    func galleryDetail(_ id: String) async throws -> GalleryDetailReply {
+        guard UUID(uuidString: id) != nil else { throw CustomerError(message: "Gallery unavailable.") }
+        return try await call("events/\(id)", as: GalleryDetailReply.self)
+    }
+    private let previewSession = URLSession(configuration: .ephemeral)
+    func galleryPreview(eventId: String, photoId: String) async throws -> UIImage {
+        guard UUID(uuidString: eventId) != nil, UUID(uuidString: photoId) != nil else { throw CustomerError(message: "Photo unavailable.") }
+        try await renew()
+        var request = URLRequest(url: base.appendingPathComponent("events/\(eventId)/photos/\(photoId)"), cachePolicy: .reloadIgnoringLocalCacheData)
+        request.timeoutInterval = 45
+        request.setValue("https://www.atelierelunora.com", forHTTPHeaderField: "Origin")
+        request.setValue("1", forHTTPHeaderField: "X-Elunora-Request")
+        request.setValue("Bearer " + (session?.access_token ?? ""), forHTTPHeaderField: "Authorization")
+        let (data, response) = try await previewSession.data(for: request)
+        guard let http = response as? HTTPURLResponse, http.statusCode == 200,
+              http.mimeType?.hasPrefix("image/") == true, let image = UIImage(data: data) else {
+            throw CustomerError(message: "Photo unavailable. Refresh the gallery or check your connection.")
+        }
+        return image
     }
     private func clearHistory() { checkouts = []; try? FileManager.default.removeItem(at: historyURL) }
     func signOut() async throws {
