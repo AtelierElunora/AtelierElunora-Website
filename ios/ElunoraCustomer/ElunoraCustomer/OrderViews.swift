@@ -363,7 +363,7 @@ struct AppLoginView: View {
 
 struct LoginSecurityCheck: View {
     @Environment(\.dismiss) private var dismiss
-    @StateObject private var browser = WebBrowserModel(url: URL(string: "https://www.atelierelunora.com/pages/client-gallery")!, session: nil, securityOnly: true)
+    @StateObject private var browser = WebBrowserModel(url: URL(string: "https://www.atelierelunora.com/pages/app-security")!, session: nil)
     @State private var reading = false
     let onToken: (String) -> Void
     var body: some View {

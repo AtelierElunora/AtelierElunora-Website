@@ -1,0 +1,37 @@
+<meta name="robots" content="noindex,nofollow">
+<style>
+html,body{overflow:hidden!important;background:#EBE5D9!important}
+body>*{visibility:hidden!important}
+#ae-app-security,#ae-app-security *{visibility:visible!important}
+#ae-app-security{position:fixed!important;inset:0!important;z-index:2147483647!important;background:#EBE5D9!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;padding:20px!important;box-sizing:border-box!important;color:#414827!important;font:16px system-ui!important}
+#ae-app-security [hidden]{display:none!important}
+#ae-app-security button{margin:16px;padding:12px 20px;background:#414827;color:#EBE5D9;border:0;border-radius:8px}
+</style>
+<section id="ae-app-security" aria-label="App security verification">
+<div id="ae-app-challenge"></div>
+<p id="ae-app-status" role="status">Loading security verification…</p>
+<button id="ae-app-retry" type="button" hidden>Retry verification</button>
+</section>
+<script>
+(function(){
+'use strict';
+window.aeAppCaptchaToken='';
+var status=document.getElementById('ae-app-status'),retry=document.getElementById('ae-app-retry'),widget=null;
+function invalid(message){window.aeAppCaptchaToken='';status.textContent=message;retry.hidden=false;}
+window.aeAppMountChallenge=function(){
+ if(!window.turnstile){invalid('Unable to load verification. Check your connection and reload.');return;}
+ retry.hidden=true;window.aeAppCaptchaToken='';status.textContent='Complete the security check.';
+ if(widget!==null){window.turnstile.reset(widget);return;}
+ widget=window.turnstile.render('#ae-app-challenge',{
+  sitekey:'0x4AAAAAAE7tigopK_0bbZOB',theme:'light',size:'flexible',action:'gallery_login','response-field':false,
+  callback:function(token){window.aeAppCaptchaToken=token;status.textContent='Verified. Tap Continue sign-in in the app.';retry.hidden=true;},
+  'expired-callback':function(){invalid('Verification expired. Please retry.');},
+  'timeout-callback':function(){invalid('Verification timed out. Please retry.');},
+  'error-callback':function(){invalid('Unable to verify. Please retry.');return true;}
+ });
+};
+retry.onclick=function(){if(window.turnstile)window.aeAppMountChallenge();else location.reload();};
+var script=document.createElement('script');script.src='https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=aeAppMountChallenge';script.async=true;script.defer=true;
+script.onerror=function(){invalid('Unable to load verification. Check your connection and retry.');};document.head.append(script);
+})();
+</script>
