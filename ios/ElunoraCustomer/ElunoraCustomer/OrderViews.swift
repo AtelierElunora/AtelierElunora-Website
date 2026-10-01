@@ -117,11 +117,15 @@ struct SelectedGalleryPhoto: Identifiable {
 struct GalleryPage: View {
     @EnvironmentObject private var commerce: CommerceModel
     @State private var open = false
+    @State private var login = false
+    @State private var magnetGallery: LoadedGallery?
     @State private var groups: [LoadedGallery] = []
     @State private var loading = false
     @State private var errorMessage: String?
     @State private var selected: SelectedGalleryPhoto?
     @State private var loadID = UUID()
+    @State private var loadedIdentity = ""
+    @State private var lastLoadedAt: Date?
     private var identity: String { commerce.session?.email?.lowercased() ?? "" }
     var body: some View {
         NavigationStack {
@@ -130,7 +134,7 @@ struct GalleryPage: View {
                     BrandHeading(title: "Your memories, together.")
                     if identity.isEmpty {
                         Text("Sign in with the email that received your gallery invitations. Your assigned galleries and photos will appear here.")
-                        Button { open = true } label: { Text("Sign in to my galleries").foregroundStyle(ivory).frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent)
+                        Button { login = true } label: { Text("Sign in to my galleries").foregroundStyle(ivory).frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent)
                     } else {
                         Text("Galleries for \(identity)").font(.footnote)
                         HStack {
@@ -148,7 +152,11 @@ struct GalleryPage: View {
                                 Divider()
                                 Text(group.gallery.name).font(.system(size: 25, design: .serif))
                                 if let date = group.gallery.event_date { Text(date).font(.footnote) }
-                                Text("\(group.photos.count) photos").font(.footnote)
+                                HStack {
+                                    Text("\(group.photos.count) photos").font(.footnote)
+                                    Spacer()
+                                    Button("Create magnets") { magnetGallery = group }.buttonStyle(.borderedProminent).foregroundStyle(ivory).disabled(group.photos.isEmpty || commerce.busy)
+                                }
                                 if let message = group.error {
                                     Text(message).font(.footnote).foregroundStyle(.red)
                                 } else if group.photos.isEmpty && !loading {
@@ -156,9 +164,14 @@ struct GalleryPage: View {
                                 }
                                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 12)], spacing: 12) {
                                     ForEach(group.photos) { photo in
-                                        Button { selected = SelectedGalleryPhoto(galleryId: group.id, photo: photo) } label: {
-                                            NativeGalleryImage(eventId: group.id, photo: photo, fullSize: false)
-                                        }.buttonStyle(.plain).accessibilityLabel("View \(photo.filename)")
+                                        VStack {
+                                            Button { selected = SelectedGalleryPhoto(galleryId: group.id, photo: photo) } label: {
+                                                NativeGalleryImage(eventId: group.id, photo: photo, fullSize: false)
+                                            }.buttonStyle(.plain).accessibilityLabel("View \(photo.filename)")
+                                            Button { commerce.toggleGalleryPhoto(photo.id, eventId: group.id) } label: {
+                                                Label(commerce.galleryOrders[group.id]?.items.contains(where: { $0.id == photo.id }) == true ? "Selected" : "Select", systemImage: commerce.galleryOrders[group.id]?.items.contains(where: { $0.id == photo.id }) == true ? "checkmark.circle.fill" : "circle")
+                                            }.buttonStyle(.bordered).disabled(commerce.busy)
+                                        }
                                     }
                                 }
                             }
@@ -168,7 +181,12 @@ struct GalleryPage: View {
             }.background(ivory).foregroundStyle(olive)
                 .navigationTitle("Galleries").navigationBarTitleDisplayMode(.inline)
                 .refreshable { await reload() }
-                .task(id: identity) { selected = nil; await reload() }
+                .task(id: identity) {
+                    if loadedIdentity != identity { selected = nil; magnetGallery = nil; groups = []; await reload() }
+                    else if lastLoadedAt == nil || Date().timeIntervalSince(lastLoadedAt ?? .distantPast) >= 60 { await reload() }
+                }
+                .sheet(isPresented: $login, onDismiss: { Task { await reload() } }) { AppLoginView().environmentObject(commerce) }
+                .sheet(item: $magnetGallery) { group in GalleryMagnetOrder(gallery: group.gallery, photos: group.photos).environmentObject(commerce) }
                 .sheet(isPresented: $open, onDismiss: { Task { await reload() } }) {
                     WebPortal(url: URL(string: "https://www.atelierelunora.com/pages/client-gallery")!, title: "Gallery account and tools", session: identity.isEmpty ? nil : commerce.session, connection: true).environmentObject(commerce)
                 }
@@ -178,8 +196,8 @@ struct GalleryPage: View {
         }
     }
     @MainActor private func reload() async {
-        let requestID = UUID(); loadID = requestID
-        groups = []; errorMessage = nil
+        let requestID = UUID(); loadID = requestID; loadedIdentity = identity; lastLoadedAt = nil
+        groups = []; errorMessage = nil; commerce.clearPreviews()
         guard !identity.isEmpty else { loading = false; return }
         loading = true
         defer { if loadID == requestID { loading = false } }
@@ -188,17 +206,25 @@ struct GalleryPage: View {
             try Task.checkCancellation()
             guard loadID == requestID else { return }
             groups = galleries.map { LoadedGallery(gallery: $0) }
-            for gallery in galleries {
-                do {
-                    let detail = try await commerce.galleryDetail(gallery.id)
-                    try Task.checkCancellation()
-                    guard loadID == requestID else { return }
-                    if let index = groups.firstIndex(where: { $0.id == gallery.id }) { groups[index].photos = detail.photos }
-                } catch {
-                    guard loadID == requestID, !Task.isCancelled else { return }
-                    if let index = groups.firstIndex(where: { $0.id == gallery.id }) { groups[index].error = error.localizedDescription }
+            let model = commerce
+            // Bound concurrent requests to four galleries; publish each result as it arrives.
+            for start in stride(from: 0, to: galleries.count, by: 4) {
+                let batch = Array(galleries[start..<min(start + 4, galleries.count)])
+                await withTaskGroup(of: (String, GalleryDetailReply?, String?).self) { tasks in
+                    for gallery in batch {
+                        tasks.addTask {
+                            do { return (gallery.id, try await model.galleryDetail(gallery.id), nil) }
+                            catch { return (gallery.id, nil, error.localizedDescription) }
+                        }
+                    }
+                    for await (id, detail, failure) in tasks {
+                        guard loadID == requestID, !Task.isCancelled else { tasks.cancelAll(); return }
+                        if let index = groups.firstIndex(where: { $0.id == id }) { groups[index].photos = detail?.photos ?? []; groups[index].error = failure }
+                    }
                 }
+                guard loadID == requestID, !Task.isCancelled else { return }
             }
+            lastLoadedAt = Date()
         } catch {
             guard loadID == requestID, !Task.isCancelled else { return }
             errorMessage = error.localizedDescription
@@ -211,12 +237,20 @@ struct NativeGalleryImage: View {
     let eventId: String
     let photo: GalleryPhoto
     let fullSize: Bool
+    var crop: PhotoDraft? = nil
     @State private var image: UIImage?
     @State private var failed = false
     @State private var retry = 0
+    private var displayedImage: UIImage? {
+        guard let image, let crop, let source = image.cgImage else { return image }
+        let width = Double(source.width), height = Double(source.height), side = min(width, height) / crop.zoom
+        let rect = CGRect(x: (width - side) * crop.x / 100, y: (height - side) * crop.y / 100, width: side, height: side)
+        guard let cropped = source.cropping(to: rect) else { return image }
+        return UIImage(cgImage: cropped)
+    }
     var body: some View {
         VStack {
-            if let image {
+            if let image = displayedImage {
                 if fullSize { Image(uiImage: image).resizable().scaledToFit() }
                 else { GeometryReader { geometry in Image(uiImage: image).resizable().scaledToFill().frame(width: geometry.size.width, height: 160).clipped().clipShape(RoundedRectangle(cornerRadius: 12)) }.frame(height: 160) }
             } else if failed {
@@ -224,7 +258,7 @@ struct NativeGalleryImage: View {
                 else { Label("Tap to retry", systemImage: "photo").font(.footnote).frame(maxWidth: .infinity, minHeight: 160) }
             } else { ProgressView().frame(maxWidth: .infinity, minHeight: 160) }
         }
-        .task(id: "\(commerce.session?.access_token ?? ""):\(eventId):\(photo.id):\(retry)") {
+        .task(id: "\(commerce.session?.email ?? ""):\(commerce.previewVersion):\(eventId):\(photo.id):\(retry)") {
             image = nil; failed = false
             do {
                 let loaded = try await commerce.galleryPreview(eventId: eventId, photoId: photo.id)
@@ -249,26 +283,220 @@ struct MorePage: View {
     @EnvironmentObject private var commerce: CommerceModel
     @State private var portal: PortalDestination?
     @State private var signOut = false
+    @State private var login = false
     @State private var error: String?
     private let links = [("Shop all keepsakes", "/collections/all"), ("Wedding packages", "/pages/packages"), ("Event experiences", "/pages/event-experience"), ("Special events", "/pages/special-events"), ("Availability and inquiries", "/pages/contact"), ("About Atelier Elunora", "/pages/about"), ("Privacy policy", "/policies/privacy-policy")]
     var body: some View { NavigationStack { List {
         Section { BrandHeading(title: "Made to be kept.") }
         Section("Account") {
             Text(commerce.session?.email?.isEmpty == false ? (commerce.session?.email ?? "") : commerce.session == nil ? "Not connected" : "Private guest workspace")
-            Button("Sign in or connect account") { portal = PortalDestination(url: URL(string: "https://www.atelierelunora.com/pages/client-gallery")!, title: "Gallery account", connect: true) }.disabled(commerce.busy)
+            Button("Sign in or switch account") { login = true }.disabled(commerce.busy)
             if commerce.session != nil { Button("Sign out", role: .destructive) { signOut = true }.disabled(commerce.busy) }
         }
+        if commerce.session?.email?.isEmpty == false { Section("Your gallery access") { AccountAccessList().environmentObject(commerce) } }
         Section("Services and store") { ForEach(links, id: \.0) { link in Button(link.0) { portal = PortalDestination(url: URL(string: "https://www.atelierelunora.com" + link.1)!, title: link.0) } } }
         if !commerce.checkouts.isEmpty { Section("Recent checkout links") {
             Text("Opening checkout is not confirmation of payment. Your Shopify confirmation email is the order record.").font(.footnote)
             ForEach(commerce.checkouts) { receipt in Button("Selection \(receipt.reference.prefix(8)) · Reopen checkout") { if let url = URL(string: receipt.checkoutUrl) { portal = PortalDestination(url: url, title: "Secure checkout") } } }
         } }
         if let error { Section { Text(error).foregroundStyle(.red) } }
-    }.scrollContentBackground(.hidden).background(ivory).navigationTitle("Atelier Elunora")
+    }.scrollContentBackground(.hidden).background(ivory).navigationTitle("Account")
+        .sheet(isPresented: $login) { AppLoginView().environmentObject(commerce) }
         .sheet(item: $portal) { target in WebPortal(url: target.url, title: target.title, connection: target.connect).environmentObject(commerce) }
         .confirmationDialog("Sign out of the app?", isPresented: $signOut, titleVisibility: .visible) { Button("Sign out", role: .destructive) { Task {
             do { try await commerce.signOut(); await WKWebsiteDataStore.default().removeData(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), modifiedSince: .distantPast); error = nil }
             catch { self.error = error.localizedDescription }
         } } } message: { Text("Your local photos and order draft stay on this phone.") }
     } }
+}
+
+struct AppLoginView: View {
+    @EnvironmentObject private var commerce: CommerceModel
+    @Environment(\.dismiss) private var dismiss
+    @State private var email = ""
+    @State private var password = ""
+    @State private var code = ""
+    @State private var emailMode = false
+    @State private var codeSent = false
+    @State private var security = false
+    @State private var working = false
+    @State private var errorMessage: String?
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section { BrandHeading(title: "Welcome back."); Text("Sign in to see your account and every gallery shared with your email.") }
+                Section("Sign in") {
+                    TextField("Email", text: $email).textContentType(.username).keyboardType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled().disabled(codeSent || working)
+                    Toggle("Use an email code", isOn: $emailMode).disabled(codeSent || working)
+                    if emailMode {
+                        if codeSent { TextField("Eight-digit code", text: $code).keyboardType(.numberPad).textContentType(.oneTimeCode) }
+                    } else { SecureField("Password", text: $password).textContentType(.password).disabled(working) }
+                    if codeSent {
+                        Button("Verify code and sign in") { Task { await verify() } }.disabled(code.count != 8 || working)
+                        Button("Request another code") { codeSent = false; code = ""; security = true }
+                    } else {
+                        Button(emailMode ? "Send sign-in code" : "Sign in") { security = true }.disabled(email.trimmingCharacters(in: .whitespaces).isEmpty || (!emailMode && password.isEmpty) || working || commerce.busy)
+                    }
+                    if working { ProgressView("Signing in…") }
+                    if let errorMessage { Text(errorMessage).foregroundStyle(.red) }
+                }
+                Section { Text("Your existing gallery password works here. If you have not set one, use an email code. The app remembers your verified session securely; it does not save your password.").font(.footnote) }
+            }.navigationTitle("Sign in").toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { password = ""; dismiss() }.disabled(working) } }
+                .sheet(isPresented: $security) { LoginSecurityCheck { token in security = false; Task { await authenticate(token) } } }
+
+        }
+    }
+    private func authenticate(_ token: String) async {
+        working = true; errorMessage = nil; defer { working = false }
+        do {
+            let address = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            if emailMode { try await commerce.requestCode(email: address, captcha: token); codeSent = true }
+            else { try await commerce.signIn(email: address, password: password, captcha: token); password = ""; dismiss() }
+        } catch { errorMessage = error.localizedDescription }
+    }
+    private func verify() async {
+        working = true; errorMessage = nil; defer { working = false }
+        do { try await commerce.verifyCode(email: email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(), code: code); dismiss() }
+        catch { errorMessage = error.localizedDescription }
+    }
+}
+
+struct LoginSecurityCheck: View {
+    @Environment(\.dismiss) private var dismiss
+    @StateObject private var browser = WebBrowserModel(url: URL(string: "https://www.atelierelunora.com/pages/client-gallery")!, session: nil)
+    @State private var reading = false
+    let onToken: (String) -> Void
+    var body: some View {
+        NavigationStack {
+            VStack {
+                Text("Complete the website security check below. Then tap Continue sign-in. Your email and password are entered in the app.").font(.footnote).padding()
+                if browser.loading { ProgressView() }
+                if let error = browser.error { Text(error).font(.footnote).foregroundStyle(.red).padding() }
+                BrowserView(model: browser)
+                Button("Continue sign-in") { Task {
+                    reading = true; defer { reading = false }
+                    do { onToken(try await browser.readCaptcha()) }
+                    catch { browser.error = error.localizedDescription }
+                } }.buttonStyle(.borderedProminent).disabled(reading || browser.loading).padding()
+            }.navigationTitle("Security check").navigationBarTitleDisplayMode(.inline)
+                .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
+        }
+    }
+}
+
+struct AccountAccessList: View {
+    @EnvironmentObject private var commerce: CommerceModel
+    @State private var galleries: [AssignedGallery] = []
+    @State private var loading = false
+    @State private var errorMessage: String?
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if loading { ProgressView("Checking gallery access…") }
+            ForEach(galleries) { gallery in Text(gallery.name).font(.headline) }
+            if !loading && galleries.isEmpty && errorMessage == nil { Text("No galleries assigned yet.").font(.footnote) }
+            if let errorMessage { Text(errorMessage).foregroundStyle(.red).font(.footnote) }
+            NavigationLink("View photos in Galleries") { GalleryPage().environmentObject(commerce) }
+        }.task(id: commerce.session?.email) {
+            galleries = []; loading = true; defer { loading = false }
+            do { let result = try await commerce.assignedGalleries(); try Task.checkCancellation(); galleries = result; errorMessage = nil }
+            catch { if !Task.isCancelled { errorMessage = error.localizedDescription } }
+        }
+    }
+}
+
+struct GalleryMagnetOrder: View {
+    @EnvironmentObject private var commerce: CommerceModel
+    @Environment(\.dismiss) private var dismiss
+    let gallery: AssignedGallery
+    let photos: [GalleryPhoto]
+    @State private var draft = OrderDraft()
+    @State private var pricing: PackPricing?
+    @State private var editing: PhotoDraft?
+    @State private var checkout: CheckoutReceipt?
+    @State private var errorMessage: String?
+    @State private var reviewed = false
+    @State private var loaded = false
+    private var pack: MagnetPack? { pricing?.packs.first { $0.count == draft.count } }
+    private var total: Int { draft.items.reduce(0) { $0 + $1.quantity } }
+    private var ready: Bool { loaded && !draft.items.isEmpty && total == draft.count && draft.consent && pricing?.enabled == true && pack != nil }
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 20) {
+                    Text(gallery.name).font(.system(size: 28, design: .serif))
+                    Text("Create magnets from this gallery. These photos are already stored securely; no upload is needed.").font(.footnote)
+                    if let pricing {
+                        ForEach(pricing.packs) { option in Button { draft.count = option.count; reviewed = false } label: { HStack { Image(systemName: draft.count == option.count ? "checkmark.circle.fill" : "circle"); Text("\(option.count) magnets"); Spacer(); Text(option.price) } }.buttonStyle(.bordered) }
+                        if !pricing.enabled { Text("Checkout is paused for this gallery.").font(.footnote) }
+                    } else { ProgressView("Loading packs…"); Button("Retry pricing") { Task { await loadPrices() } } }
+                    Text("\(total) / \(draft.count) magnets selected").font(.headline)
+                    if draft.items.isEmpty { Text("Select photos below to add them to your pack.") }
+                    ForEach(photos) { photo in
+                        HStack {
+                            NativeGalleryImage(eventId: gallery.id, photo: photo, fullSize: false, crop: draft.items.first { $0.id == photo.id }).frame(width: 100)
+                            VStack(alignment: .leading) {
+                                Button(draft.items.contains(where: { $0.id == photo.id }) ? "Remove from pack" : "Select photo") {
+                                    if draft.items.contains(where: { $0.id == photo.id }) { draft.items.removeAll { $0.id == photo.id } }
+                                    else if draft.items.count < 50 { draft.items.append(PhotoDraft(id: photo.id)) }
+                                }.buttonStyle(.bordered)
+                                if let item = draft.items.first(where: { $0.id == photo.id }) {
+                                    Stepper("\(item.quantity) copies", value: quantity(photo.id), in: 1...12)
+                                    Button("Adjust crop") { editing = item }
+                                    Text("Zoom \(Int(item.zoom * 100))% · position \(Int(item.x))/\(Int(item.y))").font(.caption)
+                                }
+                            }
+                        }
+                    }
+                    Toggle("I approve these photos and crop settings for my magnet order.", isOn: $draft.consent).font(.footnote)
+                    if reviewed {
+                        Text("Review: \(total) magnets · \(pack?.price ?? "")").font(.headline)
+                        Text("Shipping and tax are calculated at Shopify checkout. Check every crop before continuing.").font(.footnote)
+                        Button("Continue to secure checkout") { Task { await orderNow() } }.buttonStyle(.borderedProminent).foregroundStyle(ivory).disabled(!ready)
+                    } else { Button("Review magnets") { reviewed = true }.buttonStyle(.borderedProminent).foregroundStyle(ivory).disabled(!ready) }
+                    Button("Start a new gallery order") { draft = OrderDraft(); reviewed = false }
+                    if let errorMessage { Text(errorMessage).foregroundStyle(.red).font(.footnote) }
+                    if commerce.busy { ProgressView(commerce.progress) }
+                }.padding(24).disabled(commerce.busy)
+            }.background(ivory).foregroundStyle(olive).navigationTitle("Gallery magnets").navigationBarTitleDisplayMode(.inline)
+                .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() }.disabled(commerce.busy) } }
+                .task { draft = commerce.galleryOrders[gallery.id] ?? OrderDraft(); draft.items.removeAll { item in !photos.contains { $0.id == item.id } }; loaded = true; await loadPrices() }
+                .onChange(of: draft) { _, current in commerce.saveGalleryDraft(current, eventId: gallery.id); reviewed = false }
+                .sheet(item: $editing) { item in GalleryCropEditor(eventId: gallery.id, draft: item) { changed in if let index = draft.items.firstIndex(where: { $0.id == changed.id }) { draft.items[index] = changed } }.environmentObject(commerce) }
+                .sheet(item: $checkout) { receipt in if let url = URL(string: receipt.checkoutUrl) { WebPortal(url: url, title: "Secure checkout").environmentObject(commerce) } }
+        }
+    }
+    private func quantity(_ id: String) -> Binding<Int> { Binding(get: { draft.items.first { $0.id == id }?.quantity ?? 1 }, set: { value in if let index = draft.items.firstIndex(where: { $0.id == id }) { draft.items[index].quantity = value } }) }
+    private func loadPrices() async { do { pricing = try await commerce.galleryPricing(gallery.id); errorMessage = nil } catch { errorMessage = error.localizedDescription } }
+    private func orderNow() async { guard let pack else { return }; do { checkout = try await commerce.checkoutGallery(eventId: gallery.id, draft: draft, pack: pack); errorMessage = nil } catch { errorMessage = error.localizedDescription } }
+}
+
+struct GalleryCropEditor: View {
+    @EnvironmentObject private var commerce: CommerceModel
+    @Environment(\.dismiss) private var dismiss
+    let eventId: String
+    @State var draft: PhotoDraft
+    let onSave: (PhotoDraft) -> Void
+    @State private var image: UIImage?
+    @State private var errorMessage: String?
+    private var cropped: UIImage? {
+        guard let source = image?.cgImage else { return nil }
+        let width = Double(source.width), height = Double(source.height), side = min(width, height) / draft.zoom
+        let rect = CGRect(x: (width - side) * draft.x / 100, y: (height - side) * draft.y / 100, width: side, height: side)
+        guard let result = source.cropping(to: rect) else { return nil }; return UIImage(cgImage: result)
+    }
+    var body: some View {
+        NavigationStack {
+            ScrollView { VStack(spacing: 20) {
+                if let cropped { Image(uiImage: cropped).resizable().scaledToFit() } else { ProgressView("Loading preview…") }
+                Text("Zoom"); Slider(value: $draft.zoom, in: 1...3, step: 0.05)
+                Text("Horizontal position"); Slider(value: $draft.x, in: 0...100, step: 1)
+                Text("Vertical position"); Slider(value: $draft.y, in: 0...100, step: 1)
+                Button("Reset crop") { draft.x = 50; draft.y = 50; draft.zoom = 1 }
+                if let errorMessage { Text(errorMessage).foregroundStyle(.red); Button("Retry") { Task { await load() } } }
+            }.padding(24) }.background(ivory).navigationTitle("Crop magnet").navigationBarTitleDisplayMode(.inline)
+                .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }; ToolbarItem(placement: .confirmationAction) { Button("Save") { onSave(draft); dismiss() }.disabled(image == nil) } }
+                .task { await load() }
+        }
+    }
+    private func load() async { do { image = try await commerce.galleryPreview(eventId: eventId, photoId: draft.id); errorMessage = nil } catch { errorMessage = error.localizedDescription } }
 }

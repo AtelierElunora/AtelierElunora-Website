@@ -1,4 +1,4 @@
-# Atelier Elunora — native iPhone app, v3.2
+# Atelier Elunora — native iPhone app, v3.3
 
 ## Build on your phone
 
@@ -36,9 +36,13 @@ This uses production backend and Shopify checkout. For a test without purchasing
 
 Owner administrator sessions cannot connect as customer sessions. Use a customer account or guest workspace.
 
+## Sign in and use your account
+
+The Account tab has a native email/password login and an eight-digit email-code option. Sign in with the customer email already invited to your galleries. Complete the website security check in the verification sheet, then tap Continue sign-in; do not submit another login on that page. The app sends the credentials to the existing authenticated login API and saves only the verified session in Keychain. Account lists the galleries available to the current user. Owner administrator accounts still require their existing owner/MFA workflow and cannot connect as customer sessions.
+
 ## View galleries assigned to your email
 
-Open Galleries, tap Sign in to my galleries, and sign in with the invited email using your password or email code. Tap Connect to app. The app loads accessible galleries and displays each gallery name above its photo grid. Guest workspaces without an email do not receive invited galleries. Use Gallery tools for downloads and gallery magnet orders; sign out under More to change accounts. Closed, hidden, revoked, and expired-access content remains unavailable under the existing backend permissions.
+Open Galleries, tap Sign in to my galleries, and use the native password or email-code login. Alternatively, sign in from Account. The app loads accessible galleries and displays each gallery name above its photo grid. Guest workspaces without an email do not receive invited galleries. Select photos in a gallery and tap Create magnets for native ordering with pack selection, quantities, crop controls, review, and Shopify checkout. Photos remain associated with their source gallery and are never uploaded again. Orders contain photos from one gallery at a time. Use Gallery tools for downloads; sign out under More to change accounts. Closed, hidden, revoked, and expired-access content remains unavailable under the existing backend permissions.
 
 ## Phone acceptance checklist
 
@@ -58,3 +62,11 @@ Verified against live gallery API contracts and the existing website crop/export
 The workspace runs Linux: an Apple SDK compile, login inside WKWebView, physical camera, and end-to-end payment/fulfillment test could not run here. Complete the checklist before release. App Store submission, account deletion UX, social feeds, notifications, and custom camera filters remain separate work.
 
 Repository folder: ios/ElunoraCustomer on development/customer-mobile-app.
+
+## v3.3 testing and performance
+
+Gallery metadata loads in batches of four concurrent requests instead of sequentially. Preview requests reuse in-flight work and a 40 MB memory cache with a 60-second reuse window; nothing is written to a disk photo cache. Explicit refresh and session changes clear the cache. This reduces repeat requests but first-load speed still depends on connection and server processing. Actual timing has not been measured on a phone here.
+
+Test native password login, incorrect passwords, email-code delivery/verification and expired security tokens. Restart to verify remembered sessions. Test switching customer emails and sign-out to ensure gallery drafts, previews and checkout links from the prior session disappear. Select images in two different galleries, order each separately, and retry the same unchanged selection to verify it reuses its checkout reference. Check crops against fulfillment; gallery originals are unchanged. Revoked access must fail at the backend before checkout.
+
+This version adds no backend deployment or schema change. Linux grammar/project checks and mocked API contract checks do not replace an Xcode compile and physical iPhone testing of login, verification and payments.

@@ -19,7 +19,7 @@ struct CustomerHome: View {
             PhotosPage().tabItem { Label("My photos", systemImage: "photo.on.rectangle") }
             OrderPage().tabItem { Label("Order", systemImage: "bag") }
             GalleryPage().tabItem { Label("Galleries", systemImage: "rectangle.stack") }
-            MorePage().tabItem { Label("More", systemImage: "ellipsis.circle") }
+            MorePage().tabItem { Label("Account", systemImage: "person.crop.circle") }
         }
         .alert("Photo library", isPresented: Binding(get: { store.errorMessage != nil }, set: { if !$0 { store.errorMessage = nil } })) { Button("OK") { store.errorMessage = nil } } message: { Text(store.errorMessage ?? "") }
     }

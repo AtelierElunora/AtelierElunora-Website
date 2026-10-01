@@ -14,7 +14,7 @@ struct PhotoDraft: Codable, Identifiable, Equatable {
     var y: Double = 50
     var zoom: Double = 1
 }
-struct OrderDraft: Codable {
+struct OrderDraft: Codable, Equatable {
     var orderId = UUID().uuidString
     var count = 6
     var items: [PhotoDraft] = []

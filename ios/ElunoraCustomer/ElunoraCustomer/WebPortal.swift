@@ -22,6 +22,15 @@ struct SharedFile: Identifiable { let id = UUID(); let url: URL }
         guard let url else { return false }
         return url.scheme == "https" && url.user == nil && url.password == nil && ["www.atelierelunora.com", "atelierelunora.com"].contains(url.host ?? "")
     }
+    func readCaptcha() async throws -> String {
+        guard isStore(webView.url), webView.url?.path == "/pages/client-gallery" else { throw CustomerError(message: "Return to the gallery security check.") }
+        let result = try await webView.callAsyncJavaScript("""
+        if (!['https://www.atelierelunora.com','https://atelierelunora.com'].includes(location.origin) || location.pathname !== '/pages/client-gallery') return null;
+        return window.turnstile ? window.turnstile.getResponse() : null;
+        """, arguments: [:], in: nil, contentWorld: .page)
+        guard let token = result as? String, !token.isEmpty, token.count <= 2048 else { throw CustomerError(message: "Finish the security check, then tap Continue sign-in.") }
+        return token
+    }
     func readSession() async throws -> CustomerSession {
         guard isStore(webView.url), webView.url?.path == "/pages/client-gallery" else { throw CustomerError(message: "Return to the Atelier Elunora gallery page and finish the security check or sign-in.") }
         let result = try await webView.callAsyncJavaScript("""

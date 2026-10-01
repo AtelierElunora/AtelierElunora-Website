@@ -15,7 +15,7 @@ struct CustomerSession: Codable {
 struct UploadReceipt: Codable { var requestId: String; var filename: String; var photoId: String? }
 struct Workspace: Codable { var link: String; var eventId: String; var session: String }
 private struct CheckoutAttempt: Codable { var fingerprint: String; var revision: Int; var receipt: CheckoutReceipt? }
-private struct Connection: Codable { var auth: CustomerSession; var workspace: Workspace?; var uploads: [String: UploadReceipt]; var attempt: CheckoutAttempt? }
+private struct Connection: Codable { var auth: CustomerSession; var workspace: Workspace?; var uploads: [String: UploadReceipt]; var attempt: CheckoutAttempt?; var galleryOrders: [String: OrderDraft]?; var checkoutAttempts: [String: CheckoutAttempt]? }
 struct MagnetPack: Codable, Identifiable, Equatable {
     var count: Int; var cents: Int; var variant: String
     var id: String { variant }
@@ -28,15 +28,15 @@ struct CheckoutReceipt: Codable, Identifiable {
     var date: Date = Date()
     enum CodingKeys: String, CodingKey { case checkoutUrl, reference }
 }
-struct AssignedGallery: Decodable, Identifiable {
+struct AssignedGallery: Decodable, Identifiable, Sendable {
     let id: String
     let name: String
     let event_date: String?
     let is_sample: Bool?
 }
-struct GalleryPhoto: Decodable, Identifiable { let id: String; let filename: String }
+struct GalleryPhoto: Decodable, Identifiable, Sendable { let id: String; let filename: String }
 struct GalleryListReply: Decodable { let events: [AssignedGallery] }
-struct GalleryDetailReply: Decodable { let event: AssignedGallery; let photos: [GalleryPhoto]; let expiresAt: String? }
+struct GalleryDetailReply: Decodable, Sendable { let event: AssignedGallery; let photos: [GalleryPhoto]; let expiresAt: String? }
 private struct SelectionItem: Decodable { var photoId: String; var quantity: Int; var x: Double; var y: Double; var zoom: Double }
 private struct SelectionState: Decodable { var revision: Int; var items: [SelectionItem]? }
 private struct Studio: Decodable { var link: String; var eventId: String }
@@ -69,20 +69,26 @@ private enum SecureConnection {
     @Published private(set) var busy = false
     @Published private(set) var progress = ""
     @Published var message: String?
+    @Published private(set) var galleryOrders: [String: OrderDraft] = [:]
+    @Published private(set) var previewVersion = 0
+    private let previewCache = NSCache<NSString, UIImage>()
+    private var previewTimes: [String: Date] = [:]
+    private var previewTasks: [String: Task<UIImage, Error>] = [:]
     @Published private(set) var checkouts: [CheckoutReceipt] = []
     private var workspace: Workspace?
     private var uploads: [String: UploadReceipt] = [:]
     private var attempt: CheckoutAttempt?
+    private var attempts: [String: CheckoutAttempt] = [:]
     private var refreshTask: Task<CustomerSession, Error>?
     private let base = URL(string: "https://gefdlubvqymyxrguhtnc.supabase.co/functions/v1/gallery-api/")!
     private var historyURL: URL { FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("checkout-history.json") }
     init() {
-        if let data = SecureConnection.read(), let saved = try? JSONDecoder().decode(Connection.self, from: data) { session = saved.auth; workspace = saved.workspace; uploads = saved.uploads; attempt = saved.attempt }
+        if let data = SecureConnection.read(), let saved = try? JSONDecoder().decode(Connection.self, from: data) { session = saved.auth; workspace = saved.workspace; uploads = saved.uploads; attempt = saved.attempt; galleryOrders = saved.galleryOrders ?? [:]; attempts = saved.checkoutAttempts ?? [:] }
         if let data = try? Data(contentsOf: historyURL), let history = try? JSONDecoder().decode([CheckoutReceipt].self, from: data) { checkouts = history }
     }
     private func persist() throws {
         guard let session else { return }
-        try SecureConnection.write(JSONEncoder().encode(Connection(auth: session, workspace: workspace, uploads: uploads, attempt: attempt)))
+        try SecureConnection.write(JSONEncoder().encode(Connection(auth: session, workspace: workspace, uploads: uploads, attempt: attempt, galleryOrders: galleryOrders, checkoutAttempts: attempts)))
     }
     private func raw<T: Decodable>(_ path: String, body: [String: Any]?, token: String?, as type: T.Type) async throws -> T {
         let parts = path.split(separator: "?", maxSplits: 1).map(String.init)
@@ -121,7 +127,7 @@ private enum SecureConnection {
         let identity: Identity = try await raw("session", body: nil, token: candidate.access_token, as: Identity.self)
         guard !identity.owner else { throw CustomerError(message: "Use a customer session for shopping. Choose Continue without signing in in a fresh private workspace instead of connecting the owner studio account.") }
         // User changes never inherit another session's upload mappings.
-        if session?.refresh_token != candidate.refresh_token { workspace = nil; uploads = [:]; pricing = nil; attempt = nil; clearHistory() }
+        if session?.refresh_token != candidate.refresh_token { workspace = nil; uploads = [:]; pricing = nil; attempt = nil; attempts = [:]; galleryOrders = [:]; clearPreviews(); clearHistory() }
         var verified = candidate; verified.email = identity.email
         session = verified; try persist()
     }
@@ -190,9 +196,13 @@ private enum SecureConnection {
             guard let id = receipt.photoId else { throw CustomerError(message: "Could not confirm the uploaded photo.") }
             selection.append(["photoId": id, "quantity": draft.quantity, "x": draft.x, "y": draft.y, "zoom": draft.zoom])
         }
+        return try await finishSelection(eventId: workspace.eventId, selection: selection, pack: pack, orderId: orderId)
+    }
+    private func finishSelection(eventId: String, selection: [[String: Any]], pack: MagnetPack, orderId: String) async throws -> CheckoutReceipt {
+        attempt = attempts[eventId] ?? attempt
         progress = "Saving your reviewed selection…"
-        let previous: SelectionState = try await call("events/\(workspace.eventId)/selection", as: SelectionState.self)
-        let fingerprintData = try JSONSerialization.data(withJSONObject: ["event": workspace.eventId, "order": orderId, "pack": pack.variant, "items": selection], options: .sortedKeys)
+        let previous: SelectionState = try await call("events/\(eventId)/selection", as: SelectionState.self)
+        let fingerprintData = try JSONSerialization.data(withJSONObject: ["event": eventId, "order": orderId, "pack": pack.variant, "items": selection], options: .sortedKeys)
         let fingerprint = SHA256.hash(data: fingerprintData).map { String(format: "%02x", $0) }.joined()
         let matches = previous.items?.count == selection.count && (previous.items ?? []).enumerated().allSatisfy { index, item in
             let expected = selection[index]
@@ -205,18 +215,56 @@ private enum SecureConnection {
         }
         else {
             // Persist the expected revision before the write. An interrupted response can be recovered with GET.
-            attempt = CheckoutAttempt(fingerprint: fingerprint, revision: previous.revision + 1); try persist()
-            let saved: SelectionState = try await call("events/\(workspace.eventId)/selection", ["revision": previous.revision, "items": selection], as: SelectionState.self)
+            attempt = CheckoutAttempt(fingerprint: fingerprint, revision: previous.revision + 1); attempts[eventId] = attempt; try persist()
+            let saved: SelectionState = try await call("events/\(eventId)/selection", ["revision": previous.revision, "items": selection], as: SelectionState.self)
             revision = saved.revision
         }
         progress = "Preparing secure checkout…"
-        let checkout: CheckoutReceipt = try await call("events/\(workspace.eventId)/checkout", ["revision": revision, "count": pack.count, "cents": pack.cents, "variant": pack.variant], as: CheckoutReceipt.self)
+        let checkout: CheckoutReceipt = try await call("events/\(eventId)/checkout", ["revision": revision, "count": pack.count, "cents": pack.cents, "variant": pack.variant], as: CheckoutReceipt.self)
         guard let url = URL(string: checkout.checkoutUrl), url.scheme == "https", url.user == nil, url.password == nil,
               ["v0j63n-ms.myshopify.com", "www.atelierelunora.com", "atelierelunora.com"].contains(url.host ?? "") else { throw CustomerError(message: "Checkout returned an unexpected address.") }
-        attempt?.receipt = checkout; try persist()
+        attempt?.receipt = checkout; attempts[eventId] = attempt; try persist()
         checkouts.removeAll { $0.reference == checkout.reference }; checkouts.insert(checkout, at: 0)
         if let data = try? JSONEncoder().encode(Array(checkouts.prefix(30))) { try? data.write(to: historyURL, options: [.atomic, .completeFileProtection]) }
         return checkout
+    }
+    func signIn(email: String, password: String, captcha: String) async throws {
+        let candidate: CustomerSession = try await raw("password-login", body: ["email": email, "password": password, "captchaToken": captcha], token: nil, as: CustomerSession.self)
+        try await accept(candidate)
+    }
+    func requestCode(email: String, captcha: String) async throws {
+        let _: EmptyReply = try await raw("login", body: ["email": email, "captchaToken": captcha], token: nil, as: EmptyReply.self)
+    }
+    func verifyCode(email: String, code: String) async throws {
+        let candidate: CustomerSession = try await raw("verify", body: ["email": email, "token": code], token: nil, as: CustomerSession.self)
+        try await accept(candidate)
+    }
+    func saveGalleryDraft(_ draft: OrderDraft, eventId: String) {
+        galleryOrders[eventId] = draft
+        do { try persist() } catch { message = "Could not save the gallery draft. Please retry." }
+    }
+    func toggleGalleryPhoto(_ photoId: String, eventId: String) {
+        var draft = galleryOrders[eventId] ?? OrderDraft()
+        if draft.items.contains(where: { $0.id == photoId }) { draft.items.removeAll { $0.id == photoId } }
+        else if draft.items.count < 50 { draft.items.append(PhotoDraft(id: photoId)) }
+        saveGalleryDraft(draft, eventId: eventId)
+    }
+    func galleryPricing(_ eventId: String) async throws -> PackPricing {
+        try await call("events/\(eventId)/pricing", as: PackPricing.self)
+    }
+    func checkoutGallery(eventId: String, draft: OrderDraft, pack: MagnetPack) async throws -> CheckoutReceipt {
+        guard !busy, draft.consent, !draft.items.isEmpty, draft.items.count <= 50,
+              Set(draft.items.map(\.id)).count == draft.items.count,
+              draft.items.reduce(0, { $0 + $1.quantity }) == pack.count,
+              draft.items.allSatisfy({ UUID(uuidString: $0.id) != nil && (1...12).contains($0.quantity) && (0...100).contains($0.x) && (0...100).contains($0.y) && (1...3).contains($0.zoom) }) else { throw CustomerError(message: "Review your selection and choose exactly \(pack.count) magnets.") }
+        busy = true; defer { busy = false; progress = "" }
+        let prices = try await galleryPricing(eventId)
+        guard prices.enabled, prices.packs.contains(pack) else { throw CustomerError(message: "Pricing or availability changed. Refresh the packs.") }
+        let selection: [[String: Any]] = draft.items.map { ["photoId": $0.id, "quantity": $0.quantity, "x": $0.x, "y": $0.y, "zoom": $0.zoom] }
+        return try await finishSelection(eventId: eventId, selection: selection, pack: pack, orderId: draft.orderId)
+    }
+    func clearPreviews() {
+        previewCache.removeAllObjects(); previewTimes = [:]; previewTasks.values.forEach { $0.cancel() }; previewTasks = [:]; previewVersion += 1
     }
     func assignedGalleries() async throws -> [AssignedGallery] {
         guard session?.email?.isEmpty == false else { throw CustomerError(message: "Sign in with the email that received your gallery invitation.") }
@@ -229,6 +277,21 @@ private enum SecureConnection {
     }
     private let previewSession = URLSession(configuration: .ephemeral)
     func galleryPreview(eventId: String, photoId: String) async throws -> UIImage {
+        let key = "\(session?.email ?? ""):\(eventId):\(photoId)"
+        if let date = previewTimes[key], Date().timeIntervalSince(date) < 60, let image = previewCache.object(forKey: key as NSString) { return image }
+        if let task = previewTasks[key] { return try await task.value }
+        let generation = previewVersion
+        let task = Task { try await self.fetchGalleryPreview(eventId: eventId, photoId: photoId) }
+        previewTasks[key] = task
+        defer { if generation == previewVersion { previewTasks[key] = nil } }
+        let image = try await task.value
+        guard generation == previewVersion else { throw CancellationError() }
+        previewCache.totalCostLimit = 40 * 1024 * 1024
+        previewTimes[key] = Date()
+        previewCache.setObject(image, forKey: key as NSString, cost: Int(image.size.width * image.size.height * 4))
+        return image
+    }
+    private func fetchGalleryPreview(eventId: String, photoId: String) async throws -> UIImage {
         guard UUID(uuidString: eventId) != nil, UUID(uuidString: photoId) != nil else { throw CustomerError(message: "Photo unavailable.") }
         try await renew()
         var request = URLRequest(url: base.appendingPathComponent("events/\(eventId)/photos/\(photoId)"), cachePolicy: .reloadIgnoringLocalCacheData)
@@ -248,6 +311,6 @@ private enum SecureConnection {
         guard !busy else { return }
         try await renew()
         if let session { let _: EmptyReply = try await raw("logout", body: ["refresh_token": session.refresh_token], token: session.access_token, as: EmptyReply.self) }
-        SecureConnection.clear(); session = nil; workspace = nil; uploads = [:]; pricing = nil; attempt = nil; clearHistory()
+        SecureConnection.clear(); session = nil; workspace = nil; uploads = [:]; pricing = nil; attempt = nil; attempts = [:]; galleryOrders = [:]; clearPreviews(); clearHistory()
     }
 }
