@@ -40,6 +40,19 @@ rejects("oversize JPEG") { _ = try CanonPTP.jpegSize(info) }
 let response = Data([12,0,0,0,3,0,1,32,7,0,0,0])
 try CanonPTP.validate(response, transaction: 7)
 rejects("stale transaction") { try CanonPTP.validate(response, transaction: 8) }
+// ImageCaptureCore pairs the completion with the request, while its session may
+// use a different wire transaction counter. The adapter must accept this success.
+try CanonPTP.validate(response)
+var remappedResponse = response
+remappedResponse.replaceSubrange(8..<12, with: [201,0,0,0])
+try CanonPTP.validate(remappedResponse)
+var busyResponse = remappedResponse
+busyResponse[6] = 0x19
+rejects("camera busy with remapped transaction") { try CanonPTP.validate(busyResponse) }
+var wrongContainer = remappedResponse
+wrongContainer[4] = 2
+rejects("data container passed as response") { try CanonPTP.validate(wrongContainer) }
+rejects("truncated framework response") { try CanonPTP.validate(Data(remappedResponse.prefix(10))) }
 let wrapped = Data([0,0,0,0,0xff,0xd8,0xff,0xe0,1,2,0xff,0xd9,0,0])
 precondition(CanonPTP.jpeg(in: wrapped) == Data([0xff,0xd8,0xff,0xe0,1,2,0xff,0xd9]))
 precondition(CanonPTP.jpeg(in: Data([0xff,0xd8,0xff,0xe0])) == nil)

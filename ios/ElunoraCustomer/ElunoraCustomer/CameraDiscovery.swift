@@ -377,7 +377,6 @@ import UIKit
         try Task.checkCancellation()
         guard let camera, camera.capabilities.contains(ICDeviceCapability.cameraDeviceCanAcceptPTPCommands.rawValue), commandID == nil else { throw CanonPTP.Failure(message: "Camera command unavailable or already in progress.") }
         transaction &+= 1
-        let expectedTransaction = transaction
         let command = CanonPTP.command(operation, transaction: transaction, parameters: parameters)
         let id = UUID()
         return try await withCheckedThrowingContinuation { continuation in
@@ -394,7 +393,12 @@ import UIKit
                     guard let self, self.commandID == id else { return }
                     do {
                         if let error { throw error }
-                        try CanonPTP.validate(response, transaction: expectedTransaction)
+                        // ImageCaptureCore owns the camera session and delivers this reply
+                        // through this request's completion. Its wire transaction ID is not
+                        // required to equal our local counter (observed on the R100/iPad).
+                        // The commandID guard above rejects late/disconnected completions;
+                        // still require a well-formed PTP response and a success result.
+                        try CanonPTP.validate(response)
                         self.finishCommand(id, result: .success(data))
                     } catch {
                         self.finishCommand(id, result: .failure(CanonPTP.Failure(message:

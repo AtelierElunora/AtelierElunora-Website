@@ -1,4 +1,4 @@
-# Atelier Elunora — combined customer and owner iOS app, v4.1
+# Atelier Elunora — combined customer and owner iOS app, v4.1.1
 
 ## Build on your phone
 
@@ -10,6 +10,14 @@
 
 Minimum iOS 17. Use an Xcode version whose iOS SDK supports your phone. No npm, Expo, Homebrew, CocoaPods, or third-party packages are needed. This project now includes the owner booth. The original standalone capture project remains available separately.
 
+
+## v4.1.1 — R100 response compatibility fix
+
+Fixes the reported `Command 0x1001: Camera response did not match the request` error from v4.1. The ImageCaptureCore adapter now correlates replies using its per-request completion and active command UUID, rather than requiring the camera-session transaction number to match the app's local counter. Response container length/type and PTP success/error codes remain checked. Late callbacks from timed-out or disconnected requests remain rejected. This removes the reported initialization blocker; it does not establish that the subsequent live-view and capture operations have passed a hardware test.
+
+Build this project copy, disconnect/reconnect Canon in Station setup, then check for a moving preview before taking one test shot. If another error appears, capture its full command number and Connection diagnostics.
+
+Validation for this hotfix: Swift syntax and Xcode project parsing, plist and archive checks. Regression fixtures include a successful response with a different transaction number, a camera-busy reply, a wrong container type and truncated data. The Swift fixtures and iOS app still require compilation on a Mac; R100 hardware testing is still required.
 
 ## v4.1 — Canon R100 preview and capture transfer
 
