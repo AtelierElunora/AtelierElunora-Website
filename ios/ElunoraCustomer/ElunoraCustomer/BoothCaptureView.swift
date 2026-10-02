@@ -68,6 +68,7 @@ struct BoothCaptureView: View {
                             if capture.busy {
                                 ProgressView("Sending your memory…").tint(Atelier.olive)
                             }
+                            contactEntry
                             actions
                             if useCanon {
                                 Text(cameras.status).font(.callout).multilineTextAlignment(.center)
@@ -225,6 +226,7 @@ struct BoothCaptureView: View {
                 Label(testMode ? "Create test photo" : "Capture", systemImage: "camera")
             }.buttonStyle(AtelierButton()).disabled(!capture.canCapture || captureLocked || cameras.busy || (useCanon && !cameras.canOperate && !cameras.liveViewRunning))
         } else {
+            if capture.pending?.received == true { Button("Finish at booth") { capture.finishReceivedPhoto() }.buttonStyle(AtelierButton(secondary: true)) }
             if capture.pending?.attempted != true {
                 Button { capture.retake() } label: {
                     Label("Try again", systemImage: "arrow.counterclockwise")
@@ -234,6 +236,27 @@ struct BoothCaptureView: View {
                 Label(capture.pending?.attempted == true ? "Retry sending photo" : "Approve & send photo",
                       systemImage: capture.pending?.attempted == true ? "arrow.clockwise" : "checkmark")
             }.buttonStyle(AtelierButton())
+        }
+    }
+
+    @ViewBuilder private var contactEntry: some View {
+        if capture.pending != nil && !capture.invitationChannels.isEmpty {
+            VStack(alignment: .leading, spacing: 14) {
+                Toggle("Send me access to my photo", isOn: $capture.wantsInvitation)
+                if capture.wantsInvitation {
+                    Picker("Send invitation by", selection: $capture.invitationChannel) {
+                        if capture.invitationChannels.contains("email") { Text("Email").tag("email") }
+                        if capture.invitationChannels.contains("sms") { Text("Text message").tag("sms") }
+                    }.pickerStyle(.segmented)
+                    TextField(capture.invitationChannel == "email" ? "Your email address" : "Phone number with country code (+1…)", text: $capture.recipient)
+                        .keyboardType(capture.invitationChannel == "email" ? .emailAddress : .phonePad)
+                        .textInputAutocapitalization(.never).autocorrectionDisabled().textFieldStyle(.roundedBorder)
+                        .accessibilityLabel(capture.invitationChannel == "email" ? "Email address" : "Phone number with country code")
+                    Toggle("I agree to receive a private invitation for this photo. Message and data rates may apply for texts.", isOn: $capture.invitationConsent)
+                    Text("Optional. This does not subscribe you to marketing or share the full event gallery.").font(.footnote)
+                }
+            }.padding().background(Atelier.sand.opacity(0.4)).clipShape(RoundedRectangle(cornerRadius: 14))
+                .disabled(capture.busy || capture.pending?.attempted == true)
         }
     }
 

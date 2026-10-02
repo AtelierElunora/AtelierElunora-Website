@@ -5,10 +5,13 @@ import PhotosUI
 struct IncomingEventLink: Identifiable { let id = UUID(); let value: String }
 @MainActor final class CustomerJourney: ObservableObject {
     @Published var tab: CustomerTab = .capture
+    @Published var boothToken: String?
+    @Published var showingBoothPhotos = false
     @Published var eventLink: IncomingEventLink?
     func open(_ url: URL) {
         switch CustomerLink.parse(url) {
         case .event(let value): tab = .galleries; eventLink = IncomingEventLink(value: value)
+        case .booth(let token): boothToken = token; tab = .galleries; showingBoothPhotos = true
         case .galleries: tab = .galleries
         case .order: tab = .order
         case nil: break

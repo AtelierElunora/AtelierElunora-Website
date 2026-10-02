@@ -5,8 +5,10 @@ enum CustomerTab: Hashable { case capture, photos, order, galleries, account }
 enum CustomerLink: Equatable {
     case event(String)
     case galleries
+    case booth(String)
     case order
     static func parse(_ url: URL) -> CustomerLink? {
+        if let token = BoothInviteLink.token(url.absoluteString) { return .booth(token) }
         guard url.scheme == "https", url.user == nil, url.password == nil, url.port == nil,
               ["atelierelunora.com", "www.atelierelunora.com"].contains(url.host?.lowercased() ?? "") else { return nil }
         switch url.path {
