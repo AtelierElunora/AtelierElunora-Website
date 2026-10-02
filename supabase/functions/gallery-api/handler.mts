@@ -1,3 +1,4 @@
+import {customerOrders} from './customer-orders.mjs';
 import {sendInvitationEmail} from './invitation-email.mjs';
 import {stationOriginAllowed} from './station-origin.mjs';
 import {automaticRequest,ownerAutomatic} from './automatic.mjs';
@@ -182,8 +183,14 @@ export async function storefrontHandler(request:Request, factory=createClient){
    const service=factory(base,secret,{auth:{persistSession:false,autoRefreshToken:false}});
    return await auditedOwnerAction({service,actor:data.user.id,activity,run,reply});
   }
+  if(path==='customer/orders'&&request.method==='GET'){
+   const secret=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');if(!secret)return reply({error:'Order history unavailable.'},503);
+   const service=factory(base,secret,{auth:{persistSession:false,autoRefreshToken:false}});
+   return await customerOrders(client,service,data.user,reply);
+  }
   if(!path.startsWith('events'))return reply({error:'Not found.'},404);
   return await guestRoutes(request,path.split('/'),client,data.user,reply,headers);
  }catch{return reply({error:'Unable to complete this request. Please retry.'},400);}
 }
 export default async function handler(request:Request){return storefrontHandler(request);}
+

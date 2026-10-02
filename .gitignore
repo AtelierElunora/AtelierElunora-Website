@@ -19,3 +19,9 @@ backups/
 *.woff2
 *.ttf
 *.otf
+
+# Native build/user settings and machine-specific print-helper artifacts
+**/xcuserdata/
+**/DerivedData/
+**/atelier-print-state/
+**/dashboard-launch.applescript

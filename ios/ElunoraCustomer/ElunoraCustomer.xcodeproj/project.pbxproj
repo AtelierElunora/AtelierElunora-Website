@@ -1,0 +1,408 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		000000000000000000000014 /* App.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000010 /* App.swift */; };
+		000000000000000000000015 /* PhotoStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000011 /* PhotoStore.swift */; };
+		000000000000000000000016 /* Camera.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000012 /* Camera.swift */; };
+		000000000000000000000023 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000022 /* Assets.xcassets */; };
+		A0000000000000000000001F /* Commerce.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000001E /* Commerce.swift */; };
+		A00000000000000000000021 /* WebPortal.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000020 /* WebPortal.swift */; };
+		A00000000000000000000023 /* OrderViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000022 /* OrderViews.swift */; };
+		A00000000000000000000025 /* EventUploads.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000024 /* EventUploads.swift */; };
+		A00000000000000000000027 /* BrandFonts.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000026 /* BrandFonts.swift */; };
+		A00000000000000000000029 /* BrandedFonts in Resources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000028 /* BrandedFonts */; };
+		B00000000000000000000065 /* OwnerAccess.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000064 /* OwnerAccess.swift */; };
+		B00000000000000000000067 /* BoothStation.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000066 /* BoothStation.swift */; };
+		B00000000000000000000069 /* BoothCaptureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000068 /* BoothCaptureView.swift */; };
+		B0000000000000000000006B /* CameraDiscovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000006A /* CameraDiscovery.swift */; };
+		B0000000000000000000006D /* CanonPTP.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000006C /* CanonPTP.swift */; };
+		B0000000000000000000006F /* CaptureCountdown.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000006E /* CaptureCountdown.swift */; };
+		D00000000000000000000000 /* CustomerDomain.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000000 /* CustomerDomain.swift */; };
+		D00000000000000000000001 /* CustomerExperience.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000001 /* CustomerExperience.swift */; };
+		D00000000000000000000002 /* BackgroundTransfers.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000002 /* BackgroundTransfers.swift */; };
+		D00000000000000000000003 /* GalleryExperience.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000003 /* GalleryExperience.swift */; };
+		D00000000000000000000004 /* CustomerOrders.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000004 /* CustomerOrders.swift */; };
+		D00000000000000000000005 /* GuestWorkspaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000005 /* GuestWorkspaceView.swift */; };
+		E00000000000000000000002 /* Tests/Native/CustomerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E00000000000000000000001 /* Tests/Native/CustomerTests.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		E00000000000000000000007 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 000000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 000000000000000000000005;
+			remoteInfo = ElunoraCustomer;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		000000000000000000000006 /* ElunoraCustomer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; path = ElunoraCustomer.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		000000000000000000000010 /* App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };
+		000000000000000000000011 /* PhotoStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoStore.swift; sourceTree = "<group>"; };
+		000000000000000000000012 /* Camera.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Camera.swift; sourceTree = "<group>"; };
+		000000000000000000000013 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		000000000000000000000022 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A0000000000000000000001E /* Commerce.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Commerce.swift; sourceTree = "<group>"; };
+		A00000000000000000000020 /* WebPortal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebPortal.swift; sourceTree = "<group>"; };
+		A00000000000000000000022 /* OrderViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrderViews.swift; sourceTree = "<group>"; };
+		A00000000000000000000024 /* EventUploads.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventUploads.swift; sourceTree = "<group>"; };
+		A00000000000000000000026 /* BrandFonts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrandFonts.swift; sourceTree = "<group>"; };
+		A00000000000000000000028 /* BrandedFonts */ = {isa = PBXFileReference; lastKnownFileType = folder; path = BrandedFonts; sourceTree = "<group>"; };
+		B00000000000000000000064 /* OwnerAccess.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OwnerAccess.swift; sourceTree = "<group>"; };
+		B00000000000000000000066 /* BoothStation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoothStation.swift; sourceTree = "<group>"; };
+		B00000000000000000000068 /* BoothCaptureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoothCaptureView.swift; sourceTree = "<group>"; };
+		B0000000000000000000006A /* CameraDiscovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraDiscovery.swift; sourceTree = "<group>"; };
+		B0000000000000000000006C /* CanonPTP.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CanonPTP.swift; sourceTree = "<group>"; };
+		B0000000000000000000006E /* CaptureCountdown.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureCountdown.swift; sourceTree = "<group>"; };
+		C00000000000000000000000 /* CustomerDomain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomerDomain.swift; sourceTree = "<group>"; };
+		C00000000000000000000001 /* CustomerExperience.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomerExperience.swift; sourceTree = "<group>"; };
+		C00000000000000000000002 /* BackgroundTransfers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundTransfers.swift; sourceTree = "<group>"; };
+		C00000000000000000000003 /* GalleryExperience.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalleryExperience.swift; sourceTree = "<group>"; };
+		C00000000000000000000004 /* CustomerOrders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomerOrders.swift; sourceTree = "<group>"; };
+		C00000000000000000000005 /* GuestWorkspaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GuestWorkspaceView.swift; sourceTree = "<group>"; };
+		E00000000000000000000001 /* Tests/Native/CustomerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tests/Native/CustomerTests.swift; sourceTree = SOURCE_ROOT; };
+		E00000000000000000000003 /* CustomerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; path = CustomerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		000000000000000000000008 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E00000000000000000000005 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		000000000000000000000002 = {
+			isa = PBXGroup;
+			children = (
+				E00000000000000000000001 /* Tests/Native/CustomerTests.swift */,
+				000000000000000000000003 /* ElunoraCustomer */,
+				000000000000000000000004 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		000000000000000000000003 /* ElunoraCustomer */ = {
+			isa = PBXGroup;
+			children = (
+				C00000000000000000000000 /* CustomerDomain.swift */,
+				C00000000000000000000001 /* CustomerExperience.swift */,
+				C00000000000000000000002 /* BackgroundTransfers.swift */,
+				C00000000000000000000003 /* GalleryExperience.swift */,
+				C00000000000000000000004 /* CustomerOrders.swift */,
+				C00000000000000000000005 /* GuestWorkspaceView.swift */,
+				000000000000000000000010 /* App.swift */,
+				000000000000000000000011 /* PhotoStore.swift */,
+				000000000000000000000012 /* Camera.swift */,
+				A0000000000000000000001E /* Commerce.swift */,
+				A00000000000000000000020 /* WebPortal.swift */,
+				A00000000000000000000022 /* OrderViews.swift */,
+				A00000000000000000000024 /* EventUploads.swift */,
+				A00000000000000000000026 /* BrandFonts.swift */,
+				A00000000000000000000028 /* BrandedFonts */,
+				B00000000000000000000064 /* OwnerAccess.swift */,
+				B00000000000000000000066 /* BoothStation.swift */,
+				B00000000000000000000068 /* BoothCaptureView.swift */,
+				B0000000000000000000006A /* CameraDiscovery.swift */,
+				B0000000000000000000006C /* CanonPTP.swift */,
+				B0000000000000000000006E /* CaptureCountdown.swift */,
+				000000000000000000000013 /* Info.plist */,
+				000000000000000000000022 /* Assets.xcassets */,
+			);
+			path = ElunoraCustomer;
+			sourceTree = "<group>";
+		};
+		000000000000000000000004 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				E00000000000000000000003 /* CustomerTests.xctest */,
+				000000000000000000000006 /* ElunoraCustomer.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		000000000000000000000005 /* ElunoraCustomer */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 00000000000000000000000B /* Build configuration list for PBXNativeTarget "ElunoraCustomer" */;
+			buildPhases = (
+				000000000000000000000007 /* Sources */,
+				000000000000000000000008 /* Frameworks */,
+				000000000000000000000009 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ElunoraCustomer;
+			productName = ElunoraCustomer;
+			productReference = 000000000000000000000006 /* ElunoraCustomer.app */;
+			productType = "com.apple.product-type.application";
+		};
+		E00000000000000000000009 /* CustomerTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E0000000000000000000000A /* Build configuration list for PBXNativeTarget "CustomerTests" */;
+			buildPhases = (
+				E00000000000000000000004 /* Sources */,
+				E00000000000000000000005 /* Frameworks */,
+				E00000000000000000000006 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				E00000000000000000000008 /* PBXTargetDependency */,
+			);
+			name = CustomerTests;
+			productName = CustomerTests;
+			productReference = E00000000000000000000003 /* CustomerTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		000000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 1600;
+			};
+			buildConfigurationList = 00000000000000000000000A /* Build configuration list for PBXProject "ElunoraCustomer" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 000000000000000000000002;
+			productRefGroup = 000000000000000000000004 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				E00000000000000000000009 /* CustomerTests */,
+				000000000000000000000005 /* ElunoraCustomer */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		000000000000000000000009 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				000000000000000000000023 /* Assets.xcassets in Resources */,
+				A00000000000000000000029 /* BrandedFonts in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E00000000000000000000006 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		000000000000000000000007 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D00000000000000000000000 /* CustomerDomain.swift in Sources */,
+				D00000000000000000000001 /* CustomerExperience.swift in Sources */,
+				D00000000000000000000002 /* BackgroundTransfers.swift in Sources */,
+				D00000000000000000000003 /* GalleryExperience.swift in Sources */,
+				D00000000000000000000004 /* CustomerOrders.swift in Sources */,
+				D00000000000000000000005 /* GuestWorkspaceView.swift in Sources */,
+				000000000000000000000014 /* App.swift in Sources */,
+				000000000000000000000015 /* PhotoStore.swift in Sources */,
+				000000000000000000000016 /* Camera.swift in Sources */,
+				A0000000000000000000001F /* Commerce.swift in Sources */,
+				A00000000000000000000021 /* WebPortal.swift in Sources */,
+				A00000000000000000000023 /* OrderViews.swift in Sources */,
+				A00000000000000000000025 /* EventUploads.swift in Sources */,
+				A00000000000000000000027 /* BrandFonts.swift in Sources */,
+				B00000000000000000000065 /* OwnerAccess.swift in Sources */,
+				B00000000000000000000067 /* BoothStation.swift in Sources */,
+				B00000000000000000000069 /* BoothCaptureView.swift in Sources */,
+				B0000000000000000000006B /* CameraDiscovery.swift in Sources */,
+				B0000000000000000000006D /* CanonPTP.swift in Sources */,
+				B0000000000000000000006F /* CaptureCountdown.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E00000000000000000000004 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E00000000000000000000002 /* Tests/Native/CustomerTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		E00000000000000000000008 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 000000000000000000000005 /* ElunoraCustomer */;
+			targetProxy = E00000000000000000000007 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		00000000000000000000000C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				ENABLE_TESTABILITY = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				SDKROOT = iphoneos;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		00000000000000000000000D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				SDKROOT = iphoneos;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		00000000000000000000000E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = ElunoraCustomer/ElunoraCustomer.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = SQP2W75U5W;
+				ENABLE_TESTABILITY = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ElunoraCustomer/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.atelierelunora.customer.prototype;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		00000000000000000000000F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = ElunoraCustomer/ElunoraCustomer.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = SQP2W75U5W;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ElunoraCustomer/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.atelierelunora.customer.prototype;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		E0000000000000000000000B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = SQP2W75U5W;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.atelierelunora.customer.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ElunoraCustomer.app/ElunoraCustomer";
+			};
+			name = Debug;
+		};
+		E0000000000000000000000C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = SQP2W75U5W;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.atelierelunora.customer.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ElunoraCustomer.app/ElunoraCustomer";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		00000000000000000000000A /* Build configuration list for PBXProject "ElunoraCustomer" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				00000000000000000000000C /* Debug */,
+				00000000000000000000000D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		00000000000000000000000B /* Build configuration list for PBXNativeTarget "ElunoraCustomer" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				00000000000000000000000E /* Debug */,
+				00000000000000000000000F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		E0000000000000000000000A /* Build configuration list for PBXNativeTarget "CustomerTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E0000000000000000000000B /* Debug */,
+				E0000000000000000000000C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 000000000000000000000001 /* Project object */;
+}

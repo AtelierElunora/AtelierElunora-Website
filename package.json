@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "npm run verify:source && node tests/activity-log.mjs && node tests/magnet-template.mjs && node tests/photo-station.mjs && node tests/native-station.mjs && npm run test:password && npm run test:invitations",
+    "test": "npm run verify:source && node tests/activity-log.mjs && node tests/magnet-template.mjs && node tests/photo-station.mjs && node tests/native-station.mjs && npm run test:password && npm run test:invitations && npm run test:customer",
     "check:build": "node scripts/check-owner-build.mjs",
     "demo": "node scripts/preview-station.mjs",
     "test:owner": "node tests/template-preview.mjs && node tests/owner-print-progress.mjs && node tests/photo-station-owner.mjs",
@@ -19,9 +19,10 @@
     "test:automatic": "node tests/automatic-print-simulation.mjs && node tests/automatic-print-api.mjs",
     "verify:recovered": "node scripts/verify-recovered-builds.mjs",
     "test:recovered": "npm run verify:recovered && node tests/print-helper.mjs && node tests/windows-print-helper.mjs && node tests/four-six-helper.mjs && node tests/dashboard-launch.mjs && node tests/pairing-reconciliation.mjs && node tests/worker-lifecycle.mjs && node tests/automatic-print-api.mjs && node tests/automatic-print-simulation.mjs && node tests/dashboard-print-confirmation.mjs && node tests/dashboard-confirmation-ui.mjs && node tests/owner-dashboard.mjs && node tests/gallery-handoff-session.mjs",
-    "verify:source": "node scripts/verify-production.mjs --candidate",
+    "verify:source": "node scripts/verify-production.mjs",
     "test:password": "node tests/password-auth.mjs && node tests/password-browser.mjs",
-    "test:invitations": "node tests/invitation-email-db.mjs && node tests/invitation-email.mjs && node tests/invitation-routes.mjs && node tests/invitation-ui.mjs"
+    "test:invitations": "node tests/invitation-email-db.mjs && node tests/invitation-email.mjs && node tests/invitation-routes.mjs && node tests/invitation-ui.mjs",
+    "test:customer": "node --test tests/customer-backend.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.3.14",

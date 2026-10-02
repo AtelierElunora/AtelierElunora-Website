@@ -18,7 +18,19 @@ export function normalize(topic,b){
   const quantity=l.current_quantity??l.quantity;
   if(!Number.isSafeInteger(quantity)||quantity<0||quantity>10000)throw Error('Invalid quantity');
   const count=counts.length===1&&/^\d{1,4}$/.test(String(counts[0].value))?Number(counts[0].value):0;
-  lines.push({line_id:id(l.id,l.admin_graphql_api_id),variant_id:v,reference,count,quantity,unit_cents:cents(l.price),...(later?{upload_later:true}:{})});
+  const lineID=id(l.id,l.admin_graphql_api_id);
+  const tracking=[];
+  for(const f of (Array.isArray(b.fulfillments)?b.fulfillments:[]).slice(0,100)){
+   if(f.status==='cancelled'||!Array.isArray(f.line_items)||!f.line_items.some(item=>String(item.id)===lineID))continue;
+   const numbers=Array.isArray(f.tracking_numbers)?f.tracking_numbers:[f.tracking_number];
+   const urls=Array.isArray(f.tracking_urls)?f.tracking_urls:[f.tracking_url];
+   for(const [index,number] of numbers.slice(0,20).entries()){
+    if(typeof number!=='string'||!number||number.length>100)continue;
+    let url=null;try{const u=new URL(urls[index]);if(u.protocol==='https:'&&!u.username&&!u.password)url=u.href;}catch{}
+    tracking.push({number,company:typeof f.tracking_company==='string'?f.tracking_company.slice(0,100):null,url,status:typeof f.shipment_status==='string'?f.shipment_status.slice(0,40):null});
+   }
+  }
+  lines.push({line_id:lineID,variant_id:v,reference,count,quantity,unit_cents:cents(l.price),tracking,...(later?{upload_later:true}:{})});
  }
  const contact=[b.email,b.contact_email].find(v=>typeof v==='string'&&v.trim().length<=254&&/^\S+@\S+\.\S+$/.test(v.trim()));
  return {order_id:id(b.id,b.admin_graphql_api_id),customer_email:contact?contact.trim().toLowerCase():null,name:b.name.slice(0,100),financial_status:b.financial_status,cancelled:!!b.cancelled_at,is_test:b.test,currency:b.currency,total_cents:cents(b.current_total_price??b.total_price),updated_at:b.updated_at,lines};
@@ -46,3 +58,4 @@ export function makeHandler({secret,record}){return async request=>{
   return reply({received:true});
  }catch{return reply({error:'Unable to process delivery; retry required'},503);}
 };}
+
