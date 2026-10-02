@@ -1,3 +1,4 @@
+import {guestOriginal} from './guest-original.mjs';
 import {guestPreview} from './guest-preview.mts';
 import {createClient} from '@supabase/supabase-js';
 import {purgeEvent} from './purge.mjs';
@@ -223,14 +224,20 @@ export async function guestRoutes(request:Request,parts:string[],client:Supabase
    return reply({checkoutUrl,reference:snapshot.id});
   }catch(e){return reply({error:e instanceof Error?e.message:'Could not prepare checkout.'},409);}
  }
+ if(parts[2]==='photos'&&parts.length===5&&parts[4]==='original'&&request.method==='GET'){
+  return guestOriginal(client,event.id,parts[3],reply,headers,()=>{
+   const secret=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');if(!secret)throw Error('Original service unavailable');
+   return createClient(runtime.url,secret,{auth:{persistSession:false,autoRefreshToken:false}}).storage;
+  });
+ }
  if(parts.length===2&&request.method==='GET'){
   const [photos,grant,invite]=await Promise.all([
-   client.from('gallery_photos').select('id,filename').eq('event_id',event.id).eq('ready',true).eq('hidden',false).order('position').order('id'),
+   client.from('gallery_photos').select('id,filename,original_bytes,original_key').eq('event_id',event.id).eq('ready',true).eq('hidden',false).order('position').order('id'),
    client.from('gallery_access').select('expires_at').eq('event_id',event.id).eq('user_id',user.id).eq('revoked',false).gt('expires_at',new Date().toISOString()).maybeSingle(),
    client.from('gallery_invitations').select('expires_at').eq('event_id',event.id).eq('email',user.email?.toLowerCase()||'').eq('revoked',false).gt('expires_at',new Date().toISOString()).maybeSingle()
   ]);
   const dates=[grant.data?.expires_at,invite.data?.expires_at].filter(Boolean).sort();
-  return photos.error?reply({error:'Unable to load photos.'},503):reply({event,photos:photos.data,expiresAt:dates.at(-1)||null});
+  return photos.error?reply({error:'Unable to load photos.'},503):reply({event,photos:(photos.data||[]).map(p=>({id:p.id,filename:p.filename,hasOriginal:!!p.original_key&&p.original_bytes>0&&p.original_bytes<=25*1024*1024})),expiresAt:dates.at(-1)||null});
  }
  if(parts[2]==='photos'&&parts.length===4&&request.method==='GET'){
   const {data:p}=await client.from('gallery_photos').select('sample_asset,preview_key').eq('event_id',event.id).eq('id',parts[3]).eq('ready',true).eq('hidden',false).maybeSingle();
@@ -273,6 +280,7 @@ export async function guestRoutes(request:Request,parts:string[],client:Supabase
  }
  return reply({error:'Not found.'},404);
 }
+
 
 
 

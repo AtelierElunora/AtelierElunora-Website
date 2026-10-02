@@ -1,4 +1,4 @@
-# Captured production function settings, 2026-09-27. No secrets are stored here.
+# Captured production function settings, 2026-10-01. No secrets are stored here.
 project_id = "gefdlubvqymyxrguhtnc"
 
 [functions.gallery-api]

@@ -1,0 +1,11 @@
+{
+  "installedApps": {
+    "status": "unavailable",
+    "reason": "Shopify connector denied appInstallations query; third-party service implementation is external"
+  },
+  "webhookSubscriptions": {
+    "status": "app-scoped-query-only",
+    "visibleSubscriptions": [],
+    "limitation": "This connector lists only subscriptions accessible to its current app; an empty result does not mean the store has no webhooks."
+  }
+}

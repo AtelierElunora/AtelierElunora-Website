@@ -1,3 +1,5 @@
+> Superseded for current versions by [October 1 reconciliation](PRODUCTION-RECONCILIATION-2026-10-01.md). This document retains the September 27 recovery history.
+
 # Production source reconciliation — September 27, 2026
 
 **Follow-up:** The owner-dashboard and print-helper archives were subsequently supplied and verified. [Recovered authoring sources](RECOVERED-AUTHORING-SOURCES.md) supersedes the missing-source/build-pipeline notes below; the deployed theme/backend snapshot remains unchanged.

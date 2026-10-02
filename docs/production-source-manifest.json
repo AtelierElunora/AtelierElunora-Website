@@ -1,12 +1,18 @@
 {
-  "captured_at_utc": "2026-09-27T10:54:45.084780+00:00",
-  "base_commit": "f652c0fbf43ac41ff2beb1915c49f4ac6c899270",
+  "captured_at_utc": "2026-10-02T03:02:17.874887+00:00",
+  "base_commit": "9ecf54836bbe69be7d2d2a4edec56c107b99b3df",
   "theme": {
-    "id": "gid://shopify/OnlineStoreTheme/191906349344",
-    "name": "Atelier Elunora \u2014 Special Event Quotes",
+    "id": "gid://shopify/OnlineStoreTheme/191953797408",
+    "name": "Atelier Elunora \u2014 Password Login Preview",
     "role": "MAIN",
-    "file_count": 535,
+    "file_count": 536,
     "files": [
+      {
+        "filename": "AGENTS.md",
+        "checksumMd5": "5fae47f2a681b46c0f76f93a92a4e2e2",
+        "contentType": "text/markdown",
+        "size": "21936"
+      },
       {
         "filename": "assets/accordion-custom.js",
         "checksumMd5": "241e881e29c64e3ad23423f16b23d77a",
@@ -105,9 +111,9 @@
       },
       {
         "filename": "assets/atelier-owner-studio.js",
-        "checksumMd5": "7a8668bd01c876f800826d8c43afaaf1",
+        "checksumMd5": "22fd87a6b0ac8d3952ccc855d138a250",
         "contentType": "application/javascript",
-        "size": "140221"
+        "size": "145761"
       },
       {
         "filename": "assets/atelier-product-upload.js",
@@ -1827,9 +1833,9 @@
       },
       {
         "filename": "sections/atelier-client-gallery.liquid",
-        "checksumMd5": "e5d355198687d0586631e318f3f58cca",
+        "checksumMd5": "f5f001abab6892d78da9071b853b6c9d",
         "contentType": "application/x-liquid",
-        "size": "44010"
+        "size": "47741"
       },
       {
         "filename": "sections/atelier-experience.liquid",
@@ -3217,17 +3223,16 @@
         "contentType": "application/json",
         "size": "5711"
       }
-    ],
-    "export_note": "Text bodies are exactly as returned by Shopify Admin GraphQL. Shopify may add JSON comments/formatting or serve transformed CDN assets; upstream checksumMd5 is retained as metadata and is not asserted equal to exported text. Unchanged existing files were matched against live checksumMd5."
+    ]
   },
   "functions": [
     {
       "slug": "gallery-api",
-      "version": 53,
+      "version": 58,
       "status": "ACTIVE",
       "verify_jwt": false,
-      "updated_at": 1790472266109,
-      "ezbr_sha256": "57aeb61304aed47c08c5a12263e74a2d5b8dc2ebb82899b4ba8994089fd0660b",
+      "updated_at": 1790909043977,
+      "ezbr_sha256": "882035ec6479ac41fe48c4aa93b232387342007b962f1aef73cbf4fdf146046b",
       "files": [
         {
           "name": "index.ts",
@@ -3239,7 +3244,15 @@
         },
         {
           "name": "handler.mts",
-          "sha256": "954a3f509d413e83cdd51b55cab644fa6198609581fe1feabf001adefdf86d32"
+          "sha256": "7ebe56e411addea9891b7cbcdcd18c239ca879c5333c9bf67691f8e1b342ef47"
+        },
+        {
+          "name": "customer-orders.mjs",
+          "sha256": "8275a45ec545dbbd42987e4a607a593400d1c2a1c05ad04c2cab44ec6719daa7"
+        },
+        {
+          "name": "invitation-email.mjs",
+          "sha256": "24da06802bb0a72d4088bf33d36d0d48054f02e1b034e444b04f966451e5cace"
         },
         {
           "name": "station-origin.mjs",
@@ -3287,11 +3300,15 @@
         },
         {
           "name": "activity.mjs",
-          "sha256": "bdbf1a76804020d1151defc3b26a6605e2d4ab51591345ba78f1f071dd5dacc3"
+          "sha256": "ea23634f1837e5dec3c753f5aeff2a1a60ed19cbe30a0eb0fdd4bf36c4bc732e"
         },
         {
           "name": "gallery.mts",
-          "sha256": "95fb2bf736d19e06a72a2adf0c55dcf3bb4e07886e90e4b9405bef5f3640ab75"
+          "sha256": "035ec817febaf7f9a4407c50439c033b542e138e2946137c1c65c880b488af40"
+        },
+        {
+          "name": "guest-original.mjs",
+          "sha256": "5509dcc8e304d7b33c747789531411d902a62b3b8d0b6116cc240969dd150266"
         },
         {
           "name": "guest-preview.mts",
@@ -3319,7 +3336,7 @@
         },
         {
           "name": "login.mts",
-          "sha256": "8d281462810c570058716a26d91de27ad8d1e958dd1f450bc82e964271e23239"
+          "sha256": "7753040333c6667ecc396f947c1ceb552c25d4dcd297bbab7dc266bd73a00ffb"
         },
         {
           "name": "server-preview.mts",
@@ -3333,11 +3350,11 @@
     },
     {
       "slug": "shopify-gallery-payments",
-      "version": 9,
+      "version": 10,
       "status": "ACTIVE",
       "verify_jwt": false,
-      "updated_at": 1790268666213,
-      "ezbr_sha256": "ffca3fe5439c51cf7afef2d259bb54d6bde9c4d2126b975424a0dd675ab9692b",
+      "updated_at": 1790907540128,
+      "ezbr_sha256": "e088baa4c53a2f6d739b16b8b69b3fd561b075391fc17f0b15ebed9b20fb1ffa",
       "files": [
         {
           "name": "index.ts",
@@ -3349,7 +3366,7 @@
         },
         {
           "name": "handler.mjs",
-          "sha256": "35d3739855563b6b05d9f0f2be57a50f5538b6edf069d6baa325cf2f7dbcddc0"
+          "sha256": "142bd7373d6bc66ca77d7a8830cad7577f9663fc6017afadf7cd1f0466960aaf"
         },
         {
           "name": "deno.json",
@@ -3496,6 +3513,10 @@
     {
       "version": "20260924223807",
       "name": "four_six_single_print_profile"
+    },
+    {
+      "version": "20260927121048",
+      "name": "gallery_invitation_emails"
     }
   ],
   "native_capture": {
@@ -3506,41 +3527,625 @@
     {
       "filename": "assets/brown-carolina-sans.woff",
       "checksumMd5": "ff1bcae4328332c0a7edd09ea7ae2eb5",
-      "contentType": "font/woff",
       "size": "14998"
     },
     {
       "filename": "assets/brown-carolina-sans.woff2",
       "checksumMd5": "9d2a79d954f38cef56269586cc0e7faf",
-      "contentType": "font/woff2",
       "size": "7336"
     },
     {
       "filename": "assets/gallery-brown-carolina.woff",
       "checksumMd5": "d6c1bc0de5a810d7dbb0da75ce62257e",
-      "contentType": "font/woff",
       "size": "32000"
     },
     {
       "filename": "assets/gallery-edwardian.woff",
       "checksumMd5": "0a5d6730935904f70fa34f0213f85caa",
-      "contentType": "font/woff",
       "size": "69596"
     },
     {
       "filename": "assets/itc-edwardian-regular.woff",
       "checksumMd5": "620b6172ecd1abf37594dd55b4369d21",
-      "contentType": "font/woff",
       "size": "14998"
     },
     {
       "filename": "assets/itc-edwardian-regular.woff2",
       "checksumMd5": "6a599a1a5b3f3f3037e7ac5cfed45ddc",
-      "contentType": "font/woff2",
       "size": "11156"
     }
   ],
   "files": [
+    {
+      "path": "docs/production-database-schema.json",
+      "sha256": "247009b8ca29454e96b731e1aa34bd477e1ab2f8c9975c91378d1b215c847fab",
+      "bytes": 208785
+    },
+    {
+      "path": "ios/ElunoraCapture/ElunoraCapture.xcodeproj/project.pbxproj",
+      "sha256": "67052e57f8472831b4a82a8edcf8303f8b3a5ccf5a8a57e3c36ddb3f0eaf0dc2",
+      "bytes": 5468
+    },
+    {
+      "path": "ios/ElunoraCapture/ElunoraCapture.xcodeproj/xcshareddata/xcschemes/ElunoraCapture.xcscheme",
+      "sha256": "0911a5391ddd9fa869b3fb39e9333208078321058bf801c7f5d4d3d17ff82495",
+      "bytes": 1550
+    },
+    {
+      "path": "ios/ElunoraCapture/ElunoraCapture/App.swift",
+      "sha256": "bac66356b68c5e012724c90b40c06e689f5ba38844040ad47a7e1ff66c68dbb6",
+      "bytes": 14946
+    },
+    {
+      "path": "ios/ElunoraCapture/ElunoraCapture/Assets.xcassets/AEMonogram.imageset/AEMonogram.png",
+      "sha256": "cde22a891fe4b7c7282f19e81a31df0d00fe0947f83ee2dfa5a7163c3b8c6223",
+      "bytes": 51121
+    },
+    {
+      "path": "ios/ElunoraCapture/ElunoraCapture/Assets.xcassets/AEMonogram.imageset/Contents.json",
+      "sha256": "b65f4556e25c093ec131a2134c3ad4658f9fc2957de5d6e458ad84a8dec53dcb",
+      "bytes": 154
+    },
+    {
+      "path": "ios/ElunoraCapture/ElunoraCapture/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
+      "sha256": "c1b8f301efe8b68ee97f9fac72c25e7be3bbedc4f5a45f6a91db690ada4b06ff",
+      "bytes": 100916
+    },
+    {
+      "path": "ios/ElunoraCapture/ElunoraCapture/Assets.xcassets/AppIcon.appiconset/Contents.json",
+      "sha256": "852920cb36e95beb53771138a4b8195a16fcce1cc31250632f246081cc638f9a",
+      "bytes": 203
+    },
+    {
+      "path": "ios/ElunoraCapture/ElunoraCapture/Assets.xcassets/Contents.json",
+      "sha256": "f5fb0e1f3a8142892ed092efb5955c1c2cc537003a89ad7bbdb9dade7fe8985f",
+      "bytes": 60
+    },
+    {
+      "path": "ios/ElunoraCapture/ElunoraCapture/BrandFonts/.gitignore",
+      "sha256": "0352efbd08c9f57a0c2885296350f0708597d6c11a0fcb04da52aee3b0ce0404",
+      "bytes": 27
+    },
+    {
+      "path": "ios/ElunoraCapture/ElunoraCapture/BrandFonts/README.md",
+      "sha256": "9bef0da88e710a274a62a57bc5c039f3592e713302e4dbcaf1b5110e715ca36f",
+      "bytes": 256
+    },
+    {
+      "path": "ios/ElunoraCapture/ElunoraCapture/CameraDiscovery.swift",
+      "sha256": "34116053031cd503027a66d5ea8dc09e85c17014b0edb1b0b705e49a894d5129",
+      "bytes": 2043
+    },
+    {
+      "path": "ios/ElunoraCapture/ElunoraCapture/Info.plist",
+      "sha256": "bbf1e3bdbaa1e2a507b0c251fec1d12b0f40be8788f944da752ba000a04b1072",
+      "bytes": 1201
+    },
+    {
+      "path": "ios/ElunoraCapture/ElunoraCapture/Station.swift",
+      "sha256": "e8459416884c39416ff505be26554854b3001a13856bf21b275e8bb7ba685f60",
+      "bytes": 9137
+    },
+    {
+      "path": "ios/ElunoraCapture/README.md",
+      "sha256": "4db2aa292d0dd1e03f8aab22cefee80cfdd0e0455a18985f87bf630c121e602d",
+      "bytes": 1533
+    },
+    {
+      "path": "ios/ElunoraCustomer/DEVICE-TESTING.md",
+      "sha256": "f5a71ce7060f87132e78d4f0cafa21551371dcbb4792b6254fc13cec426b2c68",
+      "bytes": 3112
+    },
+    {
+      "path": "ios/ElunoraCustomer/ElunoraCustomer.xcodeproj/project.pbxproj",
+      "sha256": "be03ca5f5e559c2fd1c5c4c2afc66ce6e6d20a213b17ad47e49b634810063d46",
+      "bytes": 20359
+    },
+    {
+      "path": "ios/ElunoraCustomer/ElunoraCustomer.xcodeproj/project.xcworkspace/contents.xcworkspacedata",
+      "sha256": "7f3b00b5c3fdb45242d7b87e1e5c4e25d1fa8129a16c94295ecc4e8ea2235c5f",
+      "bytes": 135
+    },
+    {
+      "path": "ios/ElunoraCustomer/ElunoraCustomer.xcodeproj/xcshareddata/xcschemes/ElunoraCustomer.xcscheme",
+      "sha256": "dcd29fc723410a568a4f0f5a72010a05d7cc53268a45c9452b5e8416626378b3",
+      "bytes": 2358
+    },
+    {
+      "path": "ios/ElunoraCustomer/ElunoraCustomer/App.swift",
+      "sha256": "870625c5f235f92e3705d9f44850ddcce0de018d78364cea244d9a49a301ec4d",
+      "bytes": 9593
+    },
+    {
+      "path": "ios/ElunoraCustomer/ElunoraCustomer/Assets.xcassets/AEMonogram.imageset/AEMonogram.png",
+      "sha256": "cde22a891fe4b7c7282f19e81a31df0d00fe0947f83ee2dfa5a7163c3b8c6223",
+      "bytes": 51121
+    },
+    {
+      "path": "ios/ElunoraCustomer/ElunoraCustomer/Assets.xcassets/AEMonogram.imageset/Contents.json",
+      "sha256": "34dfc1fa752e89cace3b3a97b87b1b19ec9b318ee021f54f526e9932d3a5a8bd",
+      "bytes": 174
+    },
+    {
+      "path": "ios/ElunoraCustomer/ElunoraCustomer/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
+      "sha256": "c1b8f301efe8b68ee97f9fac72c25e7be3bbedc4f5a45f6a91db690ada4b06ff",
+      "bytes": 100916
+    },
+    {
+      "path": "ios/ElunoraCustomer/ElunoraCustomer/Assets.xcassets/AppIcon.appiconset/Contents.json",
+      "sha256": "1b2cc6b6e1ad340faeaae5f07d292eb20c7a22c9995ac8795ea6aa604efa491d",
+      "bytes": 146
+    },
+    {
+      "path": "ios/ElunoraCustomer/ElunoraCustomer/Assets.xcassets/Contents.json",
+      "sha256": "e8e8ef4b27126d62305af321d12a6e64b866ca0b160f0f83efae90111f0ee576",
+      "bytes": 43
+    },
+    {
+      "path": "ios/ElunoraCustomer/ElunoraCustomer/BackgroundTransfers.swift",
+      "sha256": "6c24810d9e7f1c7cb113982d3f4366179bcf5f79d4e83b2199652642c4812652",
+      "bytes": 6083
+    },
+    {
+      "path": "ios/ElunoraCustomer/ElunoraCustomer/BoothCaptureView.swift",
+      "sha256": "1443202a037614a71c7276298ec11879a98c177a23b4288d9dd91f92a38b887e",
+      "bytes": 29917
+    },
+    {
+      "path": "ios/ElunoraCustomer/ElunoraCustomer/BoothStation.swift",
+      "sha256": "f1f4226e7fed243dcdd02e56de101f97f3f3453f60b6cb2ce8bbba3824f353cc",
+      "bytes": 10311
+    },
+    {
+      "path": "ios/ElunoraCustomer/ElunoraCustomer/BrandFonts.swift",
+      "sha256": "b7ff27a18032ac87899e98d445a499e210b2cc4f6af2326c90da2d941bae8db0",
+      "bytes": 7321
+    },
+    {
+      "path": "ios/ElunoraCustomer/ElunoraCustomer/BrandedFonts/ADD-FONTS-HERE.md",
+      "sha256": "0738e61c04bdd02cb4d1b52a3318649e1968186cd16a9ddd70eca4e3deff0430",
+      "bytes": 1244
+    },
+    {
+      "path": "ios/ElunoraCustomer/ElunoraCustomer/Camera.swift",
+      "sha256": "1021e9ea7b9a5b33a51a67c78c98b094d5d71baf341eb0b3d012d2543ebb5f2d",
+      "bytes": 1473
+    },
+    {
+      "path": "ios/ElunoraCustomer/ElunoraCustomer/CameraDiscovery.swift",
+      "sha256": "6838041dda5c2e11fadbf08c32554191cb5bb9e6afc81db84a901131dea371a3",
+      "bytes": 18216
+    },
+    {
+      "path": "ios/ElunoraCustomer/ElunoraCustomer/CanonPTP.swift",
+      "sha256": "0a73a9391b4fb2142b08dbc7d7a276256c0be8abb47fc989d766e4a123fbcb2d",
+      "bytes": 3237
+    },
+    {
+      "path": "ios/ElunoraCustomer/ElunoraCustomer/CaptureCountdown.swift",
+      "sha256": "66bbd66866bcba18a227923a782eeaeab1b980cbf6aec27e35291447887fcc54",
+      "bytes": 1597
+    },
+    {
+      "path": "ios/ElunoraCustomer/ElunoraCustomer/Commerce.swift",
+      "sha256": "c95ede71ffa19a0e5240ae3ba1904ed95d52295eec46fcde908e8c2c689035ed",
+      "bytes": 38207
+    },
+    {
+      "path": "ios/ElunoraCustomer/ElunoraCustomer/CustomerDomain.swift",
+      "sha256": "684b87bbb9c605c19fc2d3aa079dbab18046a44bc4d4bd179af15050b68e28c5",
+      "bytes": 2427
+    },
+    {
+      "path": "ios/ElunoraCustomer/ElunoraCustomer/CustomerExperience.swift",
+      "sha256": "0624aaceed03882f14c7a399b43e1f44ee4f4abf753a8ddb208114b0b2526f88",
+      "bytes": 10560
+    },
+    {
+      "path": "ios/ElunoraCustomer/ElunoraCustomer/CustomerOrders.swift",
+      "sha256": "9756b46bfb32cb5539482d3c5ffc3133d5a49c1a16daddf3c1e648694a1563b7",
+      "bytes": 8094
+    },
+    {
+      "path": "ios/ElunoraCustomer/ElunoraCustomer/ElunoraCustomer.entitlements",
+      "sha256": "97704a8960b4facceef54397a08fb5d0a456247c3627359215aa2a27df22656c",
+      "bytes": 181
+    },
+    {
+      "path": "ios/ElunoraCustomer/ElunoraCustomer/EventUploads.swift",
+      "sha256": "4ffaebddf623e36efc4fd0a520bde5bff971908a00a7bce92812bb6cfcee150b",
+      "bytes": 28905
+    },
+    {
+      "path": "ios/ElunoraCustomer/ElunoraCustomer/GalleryExperience.swift",
+      "sha256": "c30fc5413b35c0b47543881e84e5af5efe50283a0d855a694908717ec00572f6",
+      "bytes": 6293
+    },
+    {
+      "path": "ios/ElunoraCustomer/ElunoraCustomer/GuestWorkspaceView.swift",
+      "sha256": "c5eca1c7e9edff996ac93f96382c042c4fbcb184b79e51444df62a6c00625d58",
+      "bytes": 2285
+    },
+    {
+      "path": "ios/ElunoraCustomer/ElunoraCustomer/Info.plist",
+      "sha256": "8f113455f1bdf27d1f63714a4e7e0b0c9b8294e78ac6ecc7a49a1817f861258d",
+      "bytes": 1600
+    },
+    {
+      "path": "ios/ElunoraCustomer/ElunoraCustomer/OrderViews.swift",
+      "sha256": "6f0cf023a768c837e4aba85e8ef79ccd19c244bb01be08a22cd9c103c45fb872",
+      "bytes": 43064
+    },
+    {
+      "path": "ios/ElunoraCustomer/ElunoraCustomer/OwnerAccess.swift",
+      "sha256": "b9b8c5609503180248c4ff65fae0f188d0a8eb3681e3ad30bdf4af62edd1fbaa",
+      "bytes": 10254
+    },
+    {
+      "path": "ios/ElunoraCustomer/ElunoraCustomer/PhotoStore.swift",
+      "sha256": "345146e87e68d7157a468104bd1cf5ba5902cbe5228075f6b1c535011516755a",
+      "bytes": 8560
+    },
+    {
+      "path": "ios/ElunoraCustomer/ElunoraCustomer/WebPortal.swift",
+      "sha256": "1659dc6b19a418c48ca878893e06ed16d10edd6db283256b61498b6c384b9c07",
+      "bytes": 10952
+    },
+    {
+      "path": "ios/ElunoraCustomer/README.md",
+      "sha256": "764e7bc56c7f970f008c28ffbcd6d0e5abdee5b674a7af2406372ea3bf600087",
+      "bytes": 1185
+    },
+    {
+      "path": "ios/ElunoraCustomer/START-HERE.md",
+      "sha256": "533aafef13428d9ee7d2c8337899c97e163a5cca581538e48b02c6e9d7e50a1e",
+      "bytes": 12489
+    },
+    {
+      "path": "ios/ElunoraCustomer/Tests/Native/CustomerTests.swift",
+      "sha256": "05d5cbffbfd80d4524b8804c717b1c9568173b50cac7ac7b9d2532e1d77333b4",
+      "bytes": 23887
+    },
+    {
+      "path": "shopify/content/integration-inventory.json",
+      "sha256": "7c20c41a6949d431cf16b8ac6240a67c37d3fc5626555e84c73156b586a85e83",
+      "bytes": 422
+    },
+    {
+      "path": "shopify/content/pages.json",
+      "sha256": "0b4f9dd7d4fa4eeafee6f4e90dd851886b97d99c4c97329bf02fbf54b00b09c5",
+      "bytes": 41881
+    },
+    {
+      "path": "supabase/functions/gallery-api-photo-station-check/deno.json",
+      "sha256": "511ad3cbe225fcdcf4947a23554c76ef9856a805a191217456c1db50ce3fe87c",
+      "bytes": 14
+    },
+    {
+      "path": "supabase/functions/gallery-api-photo-station-check/index.ts",
+      "sha256": "54319bdabcd19f5525188529c2c88e4a7d808ca226157a92878964f8e5bd55cb",
+      "bytes": 136
+    },
+    {
+      "path": "supabase/functions/gallery-api/activity.mjs",
+      "sha256": "ea23634f1837e5dec3c753f5aeff2a1a60ed19cbe30a0eb0fdd4bf36c4bc732e",
+      "bytes": 2381
+    },
+    {
+      "path": "supabase/functions/gallery-api/automatic.mjs",
+      "sha256": "93b81caf58d27cdf08ace0b66b3473dc025ee4bcedae2d9c7bac42f025bc8b16",
+      "bytes": 6824
+    },
+    {
+      "path": "supabase/functions/gallery-api/commerce.mts",
+      "sha256": "9a5759ecb601f0428945fcab329d04f17792ac21d098e2bbee76880ecfbd7c6c",
+      "bytes": 3869
+    },
+    {
+      "path": "supabase/functions/gallery-api/customer-orders.mjs",
+      "sha256": "8275a45ec545dbbd42987e4a607a593400d1c2a1c05ad04c2cab44ec6719daa7",
+      "bytes": 3374
+    },
+    {
+      "path": "supabase/functions/gallery-api/deno.json",
+      "sha256": "d95edfa4481aac7c1416b2b27bc3202de50d2abe712ca742c1489b31f07d7466",
+      "bytes": 216
+    },
+    {
+      "path": "supabase/functions/gallery-api/experience.mjs",
+      "sha256": "4370bf1e8c8c9aa370a0587367b7e2e9341147c490be1cf64f1c71b6f88db383",
+      "bytes": 14347
+    },
+    {
+      "path": "supabase/functions/gallery-api/gallery.mts",
+      "sha256": "035ec817febaf7f9a4407c50439c033b542e138e2946137c1c65c880b488af40",
+      "bytes": 24081
+    },
+    {
+      "path": "supabase/functions/gallery-api/guest-original.mjs",
+      "sha256": "5509dcc8e304d7b33c747789531411d902a62b3b8d0b6116cc240969dd150266",
+      "bytes": 2202
+    },
+    {
+      "path": "supabase/functions/gallery-api/guest-preview.mts",
+      "sha256": "73e6bb762b139751ad652548eff8ce1932f73f3db020b0d7c51b83a3272cdc8e",
+      "bytes": 1817
+    },
+    {
+      "path": "supabase/functions/gallery-api/handler.mts",
+      "sha256": "7ebe56e411addea9891b7cbcdcd18c239ca879c5333c9bf67691f8e1b342ef47",
+      "bytes": 16591
+    },
+    {
+      "path": "supabase/functions/gallery-api/index.ts",
+      "sha256": "f81cf659db6e46826fad1dcd4aa59e9a814bf97434e8ba5e068839bfe0e6f599",
+      "bytes": 791
+    },
+    {
+      "path": "supabase/functions/gallery-api/invitation-email.mjs",
+      "sha256": "24da06802bb0a72d4088bf33d36d0d48054f02e1b034e444b04f966451e5cace",
+      "bytes": 8976
+    },
+    {
+      "path": "supabase/functions/gallery-api/later-email.mjs",
+      "sha256": "54cf051669104ed4bb5d096842b41be9608ebbad0b602ae4cd1f20157ac8f767",
+      "bytes": 8346
+    },
+    {
+      "path": "supabase/functions/gallery-api/login.mts",
+      "sha256": "7753040333c6667ecc396f947c1ceb552c25d4dcd297bbab7dc266bd73a00ffb",
+      "bytes": 5407
+    },
+    {
+      "path": "supabase/functions/gallery-api/magnet-template.mjs",
+      "sha256": "79f56db9880da7d8db1fab56c4a0dc6e08b4adbab952c38008124248f7787597",
+      "bytes": 2383
+    },
+    {
+      "path": "supabase/functions/gallery-api/ninemags.mts",
+      "sha256": "3b31a1e1965390877cccef4c7774c1c799f041850dc5d291f63ab913c143cf49",
+      "bytes": 2657
+    },
+    {
+      "path": "supabase/functions/gallery-api/owner-commerce.mjs",
+      "sha256": "009cb4c5917a84c23293ed7bfd1a3a623568337af82f00751510c7674a349d78",
+      "bytes": 1047
+    },
+    {
+      "path": "supabase/functions/gallery-api/owner-mfa.mts",
+      "sha256": "6ee89fb05dd9497dbad05155f86e42cfe2875489060d45da9eda72c9239254f3",
+      "bytes": 5038
+    },
+    {
+      "path": "supabase/functions/gallery-api/process-upload.mts",
+      "sha256": "c496010d2c794ab94bbcf1c2456bafd989ffa8fc332b83a0dd108cb4e39ae7ac",
+      "bytes": 2760
+    },
+    {
+      "path": "supabase/functions/gallery-api/product-packs.mjs",
+      "sha256": "392d64f1cbbdc12b811e8b86e253fe1a0cdb892c2bed1b6a921fda98e00a164a",
+      "bytes": 421
+    },
+    {
+      "path": "supabase/functions/gallery-api/purge.mjs",
+      "sha256": "2d84541f58286970ce33a81c666a71dfcd821fd16b2192a58a1bd4abf6401c06",
+      "bytes": 3258
+    },
+    {
+      "path": "supabase/functions/gallery-api/runtime.mts",
+      "sha256": "0b75d0b376a19fb2ca96ee09015008bb89b9096dbdc051f3d192019aba34c094",
+      "bytes": 385
+    },
+    {
+      "path": "supabase/functions/gallery-api/samples.mjs",
+      "sha256": "2cef8662111d7c82705052964831fa51f37eab3dd76e5ea16116d3fbf17ad0bb",
+      "bytes": 126
+    },
+    {
+      "path": "supabase/functions/gallery-api/server-preview.mts",
+      "sha256": "7fdba72f3b9374dede41bd2c9cafca21637c16bc6c27f9b68d0f486a61a340a6",
+      "bytes": 2672
+    },
+    {
+      "path": "supabase/functions/gallery-api/station-origin.mjs",
+      "sha256": "dba0ee74899185450098e4b6ab3c4316bdf943533b57b8baffe4962b1554c3bc",
+      "bytes": 738
+    },
+    {
+      "path": "supabase/functions/gallery-api/station-rollout.mts",
+      "sha256": "efb17d0e036b4fa574167bd712aaa6efb83f8af751b08156807505ae0ade9edf",
+      "bytes": 190
+    },
+    {
+      "path": "supabase/functions/gallery-api/station.mjs",
+      "sha256": "776017c8549a54791640e0a59af64e5c4f125e640e8c0a18f8ae9a415c35afcc",
+      "bytes": 12943
+    },
+    {
+      "path": "supabase/functions/gallery-api/upload-later.mjs",
+      "sha256": "fc8fe1b1318eaf5d94e9e8cc7ada29ec83e81246a7a95686889a129d773f29e3",
+      "bytes": 2845
+    },
+    {
+      "path": "supabase/functions/shopify-gallery-payments/deno.json",
+      "sha256": "ad66d93be2c08554d0ca6cdf87bbd0768db359b1bd99c2afc02995c602a38cb8",
+      "bytes": 138
+    },
+    {
+      "path": "supabase/functions/shopify-gallery-payments/handler.mjs",
+      "sha256": "142bd7373d6bc66ca77d7a8830cad7577f9663fc6017afadf7cd1f0466960aaf",
+      "bytes": 5629
+    },
+    {
+      "path": "supabase/functions/shopify-gallery-payments/index.ts",
+      "sha256": "60a108d7b8b8f1e1f55721df167cab8842ed4da4299c2583a7f61140fe041703",
+      "bytes": 1525
+    },
+    {
+      "path": "supabase/functions/shopify-gallery-payments/later-email.mjs",
+      "sha256": "0c1112d3cacfd99f3881186e035c8d651ac1d55480a593464c44645543b34887",
+      "bytes": 8345
+    },
+    {
+      "path": "supabase/migrations/20260916195045_private_guest_gallery.sql",
+      "sha256": "710d54ca053db11264d4f8f070218abab99b99d5ad197d96263cc12383ae1750",
+      "bytes": 4794
+    },
+    {
+      "path": "supabase/migrations/20260916200848_owner_uploads_and_requests.sql",
+      "sha256": "3356c50d0468d4c210469add0e2a546a2d058370920e3c22113c2d0c35f5f8fc",
+      "bytes": 8654
+    },
+    {
+      "path": "supabase/migrations/20260916212345_gallery_payment_tracking.sql",
+      "sha256": "178b8730eee3398142cd85c9a07eeffb85baa4b32ac0d9d9f11cedd2e0683f44",
+      "bytes": 7744
+    },
+    {
+      "path": "supabase/migrations/20260917001950_owner_order_photo_exports.sql",
+      "sha256": "9815f2609a5c3862e4e65b2239e89e155283da41c08e829ff2bd230409cd469f",
+      "bytes": 1223
+    },
+    {
+      "path": "supabase/migrations/20260917030524_gallery_trash.sql",
+      "sha256": "f42cd4fe949561dbdb1f95f8acd07ec17c5f4b67fbb46109afd90af2387ec508",
+      "bytes": 341
+    },
+    {
+      "path": "supabase/migrations/20260918002026_gallery_permanent_delete.sql",
+      "sha256": "3a165f24ac57659bdbe0aab9887c0ff635f5522c673f1c94c494f891cf0d36de",
+      "bytes": 5871
+    },
+    {
+      "path": "supabase/migrations/20260918141146_gallery_session_and_preview_security.sql",
+      "sha256": "f8022b0019e080874c60220fd2746fe0adab9f059bdfcff19b919fcade3f18f3",
+      "bytes": 2842
+    },
+    {
+      "path": "supabase/migrations/20260918143709_gallery_remove_all_guest_access.sql",
+      "sha256": "3c016c287b2652e2919809f23c1084e3f4fc32af6a9c190f746f14cfa18ded92",
+      "bytes": 3090
+    },
+    {
+      "path": "supabase/migrations/20260918190719_bound_gallery_selection_payloads.sql",
+      "sha256": "fe0234c1aa68586eb9d82b5689ad681310aef5fb0426a19d5ac99e4d31c9f5ca",
+      "bytes": 2200
+    },
+    {
+      "path": "supabase/migrations/20260918191635_limit_gallery_request_frequency.sql",
+      "sha256": "634da2d414bcbc94c1a078f2436b4c7128fc347ccac771b34cc0d1b4090cd921",
+      "bytes": 2235
+    },
+    {
+      "path": "supabase/migrations/20260919192709_add_protected_gallery_activity_log.sql",
+      "sha256": "c708a02165df152729c68807760a84176978078cd5c43aabb6d894c012cca96c",
+      "bytes": 4625
+    },
+    {
+      "path": "supabase/migrations/20260920025307_event_photo_station.sql",
+      "sha256": "f7e685dfc1c5051b7e3cb8ce16b2dec8d5c64bc48cc2c59876ec4be83418ac4d",
+      "bytes": 7502
+    },
+    {
+      "path": "supabase/migrations/20260920025317_photo_station_zoom.sql",
+      "sha256": "45fe5db307b02c171bafeb7be167806c6951f452c4a8a95fbe0891798d2cf30f",
+      "bytes": 2001
+    },
+    {
+      "path": "supabase/migrations/20260920183216_magnet_wrap_template.sql",
+      "sha256": "710c346dab3de4e878ab660654558cbd8285c0563b12d0e1e8fc878848efcb14",
+      "bytes": 2669
+    },
+    {
+      "path": "supabase/migrations/20260920202808_letter_print_batches.sql",
+      "sha256": "9c767d8a0e2016e1794ae22ed41b0e1b9053079998fc01aa041f51ede8625a9d",
+      "bytes": 6577
+    },
+    {
+      "path": "supabase/migrations/20260921184929_unified_owner_studio_production_launch.sql",
+      "sha256": "2f5ab9c4359606b27dc879db43039391b6158f6df4c2c1b2377a7dd12e1ba9d5",
+      "bytes": 30627
+    },
+    {
+      "path": "supabase/migrations/20260921195629_product_upload_payment_packs.sql",
+      "sha256": "6d5e124aa47c7b37737383ad68e3c2dfd613fafd2abdee4b968d9ce0d7988ae8",
+      "bytes": 5795
+    },
+    {
+      "path": "supabase/migrations/20260921201140_anonymous_product_uploads.sql",
+      "sha256": "b275eaccefa867b6d1372adb5bfaaec3d0c63bed2e103de16e95b19e1b036cf4",
+      "bytes": 8345
+    },
+    {
+      "path": "supabase/migrations/20260921221910_apply_saved_template_to_pending_jobs.sql",
+      "sha256": "cc3247fafeaff32b68d793929571a4aa263bc69c61cd8a4b2b32b7cfc0f49113",
+      "bytes": 744
+    },
+    {
+      "path": "supabase/migrations/20260921222635_name_upload_workspaces_from_orders.sql",
+      "sha256": "345f27b1a75460686c1765187ee6173def174699f17782bb0d77c20da2dcca0b",
+      "bytes": 2596
+    },
+    {
+      "path": "supabase/migrations/20260921232207_post_purchase_photo_uploads.sql",
+      "sha256": "692e2c859d214acf962bc330ad67a45e1ae67d13ba739f9b596ff9de20dc3598",
+      "bytes": 14088
+    },
+    {
+      "path": "supabase/migrations/20260921232319_upload_later_frame_counts.sql",
+      "sha256": "0ba43dc6dd08d719683f7dda3c232e1fab1786fb1fbc13752e08815aa68d2d31",
+      "bytes": 3119
+    },
+    {
+      "path": "supabase/migrations/20260921232557_upload_later_large_order_review.sql",
+      "sha256": "8fb56446321aa957c02332881caeb5e2a28906a0aa867f60e9012d33bf187858",
+      "bytes": 3544
+    },
+    {
+      "path": "supabase/migrations/20260922003831_auto_queue_submitted_upload_orders.sql",
+      "sha256": "3eb65e46d4952dcb376a09841e4fbdc952237ef564c9aab2b05e709d78258aa1",
+      "bytes": 2975
+    },
+    {
+      "path": "supabase/migrations/20260922012905_print_runs_and_crop_workbench.sql",
+      "sha256": "0fec90ac1aaf8165e97ebebc08395a79df327bee692ffdb4f7bc54c8b9edbbfc",
+      "bytes": 11128
+    },
+    {
+      "path": "supabase/migrations/20260922031323_persistent_event_qr.sql",
+      "sha256": "3893fc233d63161a26863a5ff407787a7608a27f7ccbc5a5208f48e90d178e8d",
+      "bytes": 311
+    },
+    {
+      "path": "supabase/migrations/20260922195602_hands_free_printing_dashboard_confirmation.sql",
+      "sha256": "e241b9411a0b4d6fff7c5e45524d1e057b2fd1838c9f29e06fd8092fac882577",
+      "bytes": 21617
+    },
+    {
+      "path": "supabase/migrations/20260923010557_approved_guest_auto_queue.sql",
+      "sha256": "e7b54d132280369108498fe1a7e0735492e4f74d15efe6fe3f470abb7f6b9744",
+      "bytes": 2127
+    },
+    {
+      "path": "supabase/migrations/20260924010246_explicit_gallery_service_grants.sql",
+      "sha256": "de0f3be78efdc5bfac64f3afde001870d1e3f0f3c6f6f6e25db94c618841f858",
+      "bytes": 389
+    },
+    {
+      "path": "supabase/migrations/20260924223807_four_six_single_print_profile.sql",
+      "sha256": "2e277277a80e990f185180764393932894c85735a2d75694e6c8fc993646ef0f",
+      "bytes": 14648
+    },
+    {
+      "path": "supabase/migrations/20260927121048_gallery_invitation_emails.sql",
+      "sha256": "83c92afa6e985d2b0d21979d7ebdf689329d95ba821f97c5651fa16129dc40a9",
+      "bytes": 4936
+    },
+    {
+      "path": "theme/AGENTS.md",
+      "sha256": "68d13757ef95e73bd79144ad3d951321ef4514877f0248fd9347dd5a478f3201",
+      "bytes": 21936
+    },
     {
       "path": "theme/assets/accordion-custom.js",
       "sha256": "10d7cc759db4cd9da5b99f122aec3ccdd98c38ca604b23c0354377ebb2f525a8",
@@ -3623,8 +4228,8 @@
     },
     {
       "path": "theme/assets/atelier-owner-studio.js",
-      "sha256": "5a8cf8b0cf9dd3b80dcc38b324385aa014574138300e48d8feda2e8316533131",
-      "bytes": 141950
+      "sha256": "efbbe9b91b5f62c3c53b10f1a272ab6ae44364c65de6fff433d79a3b95a861d4",
+      "bytes": 145761
     },
     {
       "path": "theme/assets/atelier-product-upload.js",
@@ -5033,8 +5638,8 @@
     },
     {
       "path": "theme/sections/atelier-client-gallery.liquid",
-      "sha256": "51845c154e6bb039ecf6017fc99e8ceaa74f173774e00505f8d95174c89c89dc",
-      "bytes": 44010
+      "sha256": "92522d43ba6c61171b1fde1317f02898bd0df5d7c5aaca2a2a267dd925e0daa0",
+      "bytes": 47741
     },
     {
       "path": "theme/sections/atelier-experience.liquid",
@@ -6185,386 +6790,18 @@
       "path": "theme/templates/search.json",
       "sha256": "a5e0f9a7f2a2e20743f01a51fe36a306fa693a075c3b39cb2cff344d70f8308e",
       "bytes": 5711
-    },
-    {
-      "path": "supabase/functions/gallery-api/activity.mjs",
-      "sha256": "bdbf1a76804020d1151defc3b26a6605e2d4ab51591345ba78f1f071dd5dacc3",
-      "bytes": 2135
-    },
-    {
-      "path": "supabase/functions/gallery-api/automatic.mjs",
-      "sha256": "93b81caf58d27cdf08ace0b66b3473dc025ee4bcedae2d9c7bac42f025bc8b16",
-      "bytes": 6824
-    },
-    {
-      "path": "supabase/functions/gallery-api/commerce.mts",
-      "sha256": "9a5759ecb601f0428945fcab329d04f17792ac21d098e2bbee76880ecfbd7c6c",
-      "bytes": 3869
-    },
-    {
-      "path": "supabase/functions/gallery-api/deno.json",
-      "sha256": "d95edfa4481aac7c1416b2b27bc3202de50d2abe712ca742c1489b31f07d7466",
-      "bytes": 216
-    },
-    {
-      "path": "supabase/functions/gallery-api/experience.mjs",
-      "sha256": "4370bf1e8c8c9aa370a0587367b7e2e9341147c490be1cf64f1c71b6f88db383",
-      "bytes": 14347
-    },
-    {
-      "path": "supabase/functions/gallery-api/gallery.mts",
-      "sha256": "95fb2bf736d19e06a72a2adf0c55dcf3bb4e07886e90e4b9405bef5f3640ab75",
-      "bytes": 22307
-    },
-    {
-      "path": "supabase/functions/gallery-api/guest-preview.mts",
-      "sha256": "73e6bb762b139751ad652548eff8ce1932f73f3db020b0d7c51b83a3272cdc8e",
-      "bytes": 1817
-    },
-    {
-      "path": "supabase/functions/gallery-api/handler.mts",
-      "sha256": "954a3f509d413e83cdd51b55cab644fa6198609581fe1feabf001adefdf86d32",
-      "bytes": 15342
-    },
-    {
-      "path": "supabase/functions/gallery-api/index.ts",
-      "sha256": "f81cf659db6e46826fad1dcd4aa59e9a814bf97434e8ba5e068839bfe0e6f599",
-      "bytes": 791
-    },
-    {
-      "path": "supabase/functions/gallery-api/later-email.mjs",
-      "sha256": "54cf051669104ed4bb5d096842b41be9608ebbad0b602ae4cd1f20157ac8f767",
-      "bytes": 8346
-    },
-    {
-      "path": "supabase/functions/gallery-api/login.mts",
-      "sha256": "8d281462810c570058716a26d91de27ad8d1e958dd1f450bc82e964271e23239",
-      "bytes": 1465
-    },
-    {
-      "path": "supabase/functions/gallery-api/magnet-template.mjs",
-      "sha256": "79f56db9880da7d8db1fab56c4a0dc6e08b4adbab952c38008124248f7787597",
-      "bytes": 2383
-    },
-    {
-      "path": "supabase/functions/gallery-api/ninemags.mts",
-      "sha256": "3b31a1e1965390877cccef4c7774c1c799f041850dc5d291f63ab913c143cf49",
-      "bytes": 2657
-    },
-    {
-      "path": "supabase/functions/gallery-api/owner-commerce.mjs",
-      "sha256": "009cb4c5917a84c23293ed7bfd1a3a623568337af82f00751510c7674a349d78",
-      "bytes": 1047
-    },
-    {
-      "path": "supabase/functions/gallery-api/owner-mfa.mts",
-      "sha256": "6ee89fb05dd9497dbad05155f86e42cfe2875489060d45da9eda72c9239254f3",
-      "bytes": 5038
-    },
-    {
-      "path": "supabase/functions/gallery-api/process-upload.mts",
-      "sha256": "c496010d2c794ab94bbcf1c2456bafd989ffa8fc332b83a0dd108cb4e39ae7ac",
-      "bytes": 2760
-    },
-    {
-      "path": "supabase/functions/gallery-api/product-packs.mjs",
-      "sha256": "392d64f1cbbdc12b811e8b86e253fe1a0cdb892c2bed1b6a921fda98e00a164a",
-      "bytes": 421
-    },
-    {
-      "path": "supabase/functions/gallery-api/purge.mjs",
-      "sha256": "2d84541f58286970ce33a81c666a71dfcd821fd16b2192a58a1bd4abf6401c06",
-      "bytes": 3258
-    },
-    {
-      "path": "supabase/functions/gallery-api/runtime.mts",
-      "sha256": "0b75d0b376a19fb2ca96ee09015008bb89b9096dbdc051f3d192019aba34c094",
-      "bytes": 385
-    },
-    {
-      "path": "supabase/functions/gallery-api/samples.mjs",
-      "sha256": "2cef8662111d7c82705052964831fa51f37eab3dd76e5ea16116d3fbf17ad0bb",
-      "bytes": 126
-    },
-    {
-      "path": "supabase/functions/gallery-api/server-preview.mts",
-      "sha256": "7fdba72f3b9374dede41bd2c9cafca21637c16bc6c27f9b68d0f486a61a340a6",
-      "bytes": 2672
-    },
-    {
-      "path": "supabase/functions/gallery-api/station-origin.mjs",
-      "sha256": "dba0ee74899185450098e4b6ab3c4316bdf943533b57b8baffe4962b1554c3bc",
-      "bytes": 738
-    },
-    {
-      "path": "supabase/functions/gallery-api/station-rollout.mts",
-      "sha256": "efb17d0e036b4fa574167bd712aaa6efb83f8af751b08156807505ae0ade9edf",
-      "bytes": 190
-    },
-    {
-      "path": "supabase/functions/gallery-api/station.mjs",
-      "sha256": "776017c8549a54791640e0a59af64e5c4f125e640e8c0a18f8ae9a415c35afcc",
-      "bytes": 12943
-    },
-    {
-      "path": "supabase/functions/gallery-api/upload-later.mjs",
-      "sha256": "fc8fe1b1318eaf5d94e9e8cc7ada29ec83e81246a7a95686889a129d773f29e3",
-      "bytes": 2845
-    },
-    {
-      "path": "supabase/functions/gallery-api-photo-station-check/deno.json",
-      "sha256": "511ad3cbe225fcdcf4947a23554c76ef9856a805a191217456c1db50ce3fe87c",
-      "bytes": 14
-    },
-    {
-      "path": "supabase/functions/gallery-api-photo-station-check/index.ts",
-      "sha256": "54319bdabcd19f5525188529c2c88e4a7d808ca226157a92878964f8e5bd55cb",
-      "bytes": 136
-    },
-    {
-      "path": "supabase/functions/shopify-gallery-payments/deno.json",
-      "sha256": "ad66d93be2c08554d0ca6cdf87bbd0768db359b1bd99c2afc02995c602a38cb8",
-      "bytes": 138
-    },
-    {
-      "path": "supabase/functions/shopify-gallery-payments/handler.mjs",
-      "sha256": "35d3739855563b6b05d9f0f2be57a50f5538b6edf069d6baa325cf2f7dbcddc0",
-      "bytes": 4746
-    },
-    {
-      "path": "supabase/functions/shopify-gallery-payments/index.ts",
-      "sha256": "60a108d7b8b8f1e1f55721df167cab8842ed4da4299c2583a7f61140fe041703",
-      "bytes": 1525
-    },
-    {
-      "path": "supabase/functions/shopify-gallery-payments/later-email.mjs",
-      "sha256": "0c1112d3cacfd99f3881186e035c8d651ac1d55480a593464c44645543b34887",
-      "bytes": 8345
-    },
-    {
-      "path": "supabase/migrations/20260916195045_private_guest_gallery.sql",
-      "sha256": "710d54ca053db11264d4f8f070218abab99b99d5ad197d96263cc12383ae1750",
-      "bytes": 4794
-    },
-    {
-      "path": "supabase/migrations/20260916200848_owner_uploads_and_requests.sql",
-      "sha256": "3356c50d0468d4c210469add0e2a546a2d058370920e3c22113c2d0c35f5f8fc",
-      "bytes": 8654
-    },
-    {
-      "path": "supabase/migrations/20260916212345_gallery_payment_tracking.sql",
-      "sha256": "178b8730eee3398142cd85c9a07eeffb85baa4b32ac0d9d9f11cedd2e0683f44",
-      "bytes": 7744
-    },
-    {
-      "path": "supabase/migrations/20260917001950_owner_order_photo_exports.sql",
-      "sha256": "9815f2609a5c3862e4e65b2239e89e155283da41c08e829ff2bd230409cd469f",
-      "bytes": 1223
-    },
-    {
-      "path": "supabase/migrations/20260917030524_gallery_trash.sql",
-      "sha256": "f42cd4fe949561dbdb1f95f8acd07ec17c5f4b67fbb46109afd90af2387ec508",
-      "bytes": 341
-    },
-    {
-      "path": "supabase/migrations/20260918002026_gallery_permanent_delete.sql",
-      "sha256": "3a165f24ac57659bdbe0aab9887c0ff635f5522c673f1c94c494f891cf0d36de",
-      "bytes": 5871
-    },
-    {
-      "path": "supabase/migrations/20260918141146_gallery_session_and_preview_security.sql",
-      "sha256": "f8022b0019e080874c60220fd2746fe0adab9f059bdfcff19b919fcade3f18f3",
-      "bytes": 2842
-    },
-    {
-      "path": "supabase/migrations/20260918143709_gallery_remove_all_guest_access.sql",
-      "sha256": "3c016c287b2652e2919809f23c1084e3f4fc32af6a9c190f746f14cfa18ded92",
-      "bytes": 3090
-    },
-    {
-      "path": "supabase/migrations/20260918190719_bound_gallery_selection_payloads.sql",
-      "sha256": "fe0234c1aa68586eb9d82b5689ad681310aef5fb0426a19d5ac99e4d31c9f5ca",
-      "bytes": 2200
-    },
-    {
-      "path": "supabase/migrations/20260918191635_limit_gallery_request_frequency.sql",
-      "sha256": "634da2d414bcbc94c1a078f2436b4c7128fc347ccac771b34cc0d1b4090cd921",
-      "bytes": 2235
-    },
-    {
-      "path": "supabase/migrations/20260919192709_add_protected_gallery_activity_log.sql",
-      "sha256": "c708a02165df152729c68807760a84176978078cd5c43aabb6d894c012cca96c",
-      "bytes": 4625
-    },
-    {
-      "path": "supabase/migrations/20260920025307_event_photo_station.sql",
-      "sha256": "f7e685dfc1c5051b7e3cb8ce16b2dec8d5c64bc48cc2c59876ec4be83418ac4d",
-      "bytes": 7502
-    },
-    {
-      "path": "supabase/migrations/20260920025317_photo_station_zoom.sql",
-      "sha256": "45fe5db307b02c171bafeb7be167806c6951f452c4a8a95fbe0891798d2cf30f",
-      "bytes": 2001
-    },
-    {
-      "path": "supabase/migrations/20260920183216_magnet_wrap_template.sql",
-      "sha256": "710c346dab3de4e878ab660654558cbd8285c0563b12d0e1e8fc878848efcb14",
-      "bytes": 2669
-    },
-    {
-      "path": "supabase/migrations/20260920202808_letter_print_batches.sql",
-      "sha256": "9c767d8a0e2016e1794ae22ed41b0e1b9053079998fc01aa041f51ede8625a9d",
-      "bytes": 6577
-    },
-    {
-      "path": "supabase/migrations/20260921184929_unified_owner_studio_production_launch.sql",
-      "sha256": "2f5ab9c4359606b27dc879db43039391b6158f6df4c2c1b2377a7dd12e1ba9d5",
-      "bytes": 30627
-    },
-    {
-      "path": "supabase/migrations/20260921195629_product_upload_payment_packs.sql",
-      "sha256": "6d5e124aa47c7b37737383ad68e3c2dfd613fafd2abdee4b968d9ce0d7988ae8",
-      "bytes": 5795
-    },
-    {
-      "path": "supabase/migrations/20260921201140_anonymous_product_uploads.sql",
-      "sha256": "b275eaccefa867b6d1372adb5bfaaec3d0c63bed2e103de16e95b19e1b036cf4",
-      "bytes": 8345
-    },
-    {
-      "path": "supabase/migrations/20260921221910_apply_saved_template_to_pending_jobs.sql",
-      "sha256": "cc3247fafeaff32b68d793929571a4aa263bc69c61cd8a4b2b32b7cfc0f49113",
-      "bytes": 744
-    },
-    {
-      "path": "supabase/migrations/20260921222635_name_upload_workspaces_from_orders.sql",
-      "sha256": "345f27b1a75460686c1765187ee6173def174699f17782bb0d77c20da2dcca0b",
-      "bytes": 2596
-    },
-    {
-      "path": "supabase/migrations/20260921232207_post_purchase_photo_uploads.sql",
-      "sha256": "692e2c859d214acf962bc330ad67a45e1ae67d13ba739f9b596ff9de20dc3598",
-      "bytes": 14088
-    },
-    {
-      "path": "supabase/migrations/20260921232319_upload_later_frame_counts.sql",
-      "sha256": "0ba43dc6dd08d719683f7dda3c232e1fab1786fb1fbc13752e08815aa68d2d31",
-      "bytes": 3119
-    },
-    {
-      "path": "supabase/migrations/20260921232557_upload_later_large_order_review.sql",
-      "sha256": "8fb56446321aa957c02332881caeb5e2a28906a0aa867f60e9012d33bf187858",
-      "bytes": 3544
-    },
-    {
-      "path": "supabase/migrations/20260922003831_auto_queue_submitted_upload_orders.sql",
-      "sha256": "3eb65e46d4952dcb376a09841e4fbdc952237ef564c9aab2b05e709d78258aa1",
-      "bytes": 2975
-    },
-    {
-      "path": "supabase/migrations/20260922012905_print_runs_and_crop_workbench.sql",
-      "sha256": "0fec90ac1aaf8165e97ebebc08395a79df327bee692ffdb4f7bc54c8b9edbbfc",
-      "bytes": 11128
-    },
-    {
-      "path": "supabase/migrations/20260922031323_persistent_event_qr.sql",
-      "sha256": "3893fc233d63161a26863a5ff407787a7608a27f7ccbc5a5208f48e90d178e8d",
-      "bytes": 311
-    },
-    {
-      "path": "supabase/migrations/20260922195602_hands_free_printing_dashboard_confirmation.sql",
-      "sha256": "e241b9411a0b4d6fff7c5e45524d1e057b2fd1838c9f29e06fd8092fac882577",
-      "bytes": 21617
-    },
-    {
-      "path": "supabase/migrations/20260923010557_approved_guest_auto_queue.sql",
-      "sha256": "e7b54d132280369108498fe1a7e0735492e4f74d15efe6fe3f470abb7f6b9744",
-      "bytes": 2127
-    },
-    {
-      "path": "supabase/migrations/20260924010246_explicit_gallery_service_grants.sql",
-      "sha256": "de0f3be78efdc5bfac64f3afde001870d1e3f0f3c6f6f6e25db94c618841f858",
-      "bytes": 389
-    },
-    {
-      "path": "supabase/migrations/20260924223807_four_six_single_print_profile.sql",
-      "sha256": "2e277277a80e990f185180764393932894c85735a2d75694e6c8fc993646ef0f",
-      "bytes": 14648
-    },
-    {
-      "path": "ios/ElunoraCapture/ElunoraCapture/App.swift",
-      "sha256": "bac66356b68c5e012724c90b40c06e689f5ba38844040ad47a7e1ff66c68dbb6",
-      "bytes": 14946
-    },
-    {
-      "path": "ios/ElunoraCapture/ElunoraCapture/Assets.xcassets/AEMonogram.imageset/AEMonogram.png",
-      "sha256": "cde22a891fe4b7c7282f19e81a31df0d00fe0947f83ee2dfa5a7163c3b8c6223",
-      "bytes": 51121
-    },
-    {
-      "path": "ios/ElunoraCapture/ElunoraCapture/Assets.xcassets/AEMonogram.imageset/Contents.json",
-      "sha256": "b65f4556e25c093ec131a2134c3ad4658f9fc2957de5d6e458ad84a8dec53dcb",
-      "bytes": 154
-    },
-    {
-      "path": "ios/ElunoraCapture/ElunoraCapture/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
-      "sha256": "c1b8f301efe8b68ee97f9fac72c25e7be3bbedc4f5a45f6a91db690ada4b06ff",
-      "bytes": 100916
-    },
-    {
-      "path": "ios/ElunoraCapture/ElunoraCapture/Assets.xcassets/AppIcon.appiconset/Contents.json",
-      "sha256": "852920cb36e95beb53771138a4b8195a16fcce1cc31250632f246081cc638f9a",
-      "bytes": 203
-    },
-    {
-      "path": "ios/ElunoraCapture/ElunoraCapture/Assets.xcassets/Contents.json",
-      "sha256": "f5fb0e1f3a8142892ed092efb5955c1c2cc537003a89ad7bbdb9dade7fe8985f",
-      "bytes": 60
-    },
-    {
-      "path": "ios/ElunoraCapture/ElunoraCapture/BrandFonts/.gitignore",
-      "sha256": "0352efbd08c9f57a0c2885296350f0708597d6c11a0fcb04da52aee3b0ce0404",
-      "bytes": 27
-    },
-    {
-      "path": "ios/ElunoraCapture/ElunoraCapture/BrandFonts/README.md",
-      "sha256": "9bef0da88e710a274a62a57bc5c039f3592e713302e4dbcaf1b5110e715ca36f",
-      "bytes": 256
-    },
-    {
-      "path": "ios/ElunoraCapture/ElunoraCapture/CameraDiscovery.swift",
-      "sha256": "34116053031cd503027a66d5ea8dc09e85c17014b0edb1b0b705e49a894d5129",
-      "bytes": 2043
-    },
-    {
-      "path": "ios/ElunoraCapture/ElunoraCapture/Info.plist",
-      "sha256": "bbf1e3bdbaa1e2a507b0c251fec1d12b0f40be8788f944da752ba000a04b1072",
-      "bytes": 1201
-    },
-    {
-      "path": "ios/ElunoraCapture/ElunoraCapture/Station.swift",
-      "sha256": "e8459416884c39416ff505be26554854b3001a13856bf21b275e8bb7ba685f60",
-      "bytes": 9137
-    },
-    {
-      "path": "ios/ElunoraCapture/ElunoraCapture.xcodeproj/project.pbxproj",
-      "sha256": "67052e57f8472831b4a82a8edcf8303f8b3a5ccf5a8a57e3c36ddb3f0eaf0dc2",
-      "bytes": 5468
-    },
-    {
-      "path": "ios/ElunoraCapture/ElunoraCapture.xcodeproj/xcshareddata/xcschemes/ElunoraCapture.xcscheme",
-      "sha256": "0911a5391ddd9fa869b3fb39e9333208078321058bf801c7f5d4d3d17ff82495",
-      "bytes": 1550
-    },
-    {
-      "path": "ios/ElunoraCapture/README.md",
-      "sha256": "4db2aa292d0dd1e03f8aab22cefee80cfdd0e0455a18985f87bf630c121e602d",
-      "bytes": 1533
-    },
-    {
-      "path": "docs/production-database-schema.json",
-      "sha256": "21fdc1b6924201b9ea68ef8ee5e0bcfa4ae1ba052197ea50723c014c5b4b9c51",
-      "bytes": 198145
     }
-  ]
+  ],
+  "native_customer": {
+    "path": "ios/ElunoraCustomer",
+    "version": "0.2.2",
+    "build": 4,
+    "source": "Current source used for user-confirmed phone build; device executable SHA not independently inspected",
+    "confirmed_workflows": [
+      "Capture to My photos",
+      "Shopify checkout",
+      "Larger Text fit",
+      "Order status loads after API v58"
+    ]
+  }
 }

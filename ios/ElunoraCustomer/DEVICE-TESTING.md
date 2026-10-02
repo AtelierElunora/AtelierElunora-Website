@@ -1,0 +1,15 @@
+# Device testing — 0.2.2 (build 4)
+
+Install from this updated Xcode project over the existing app, with the same bundle identifier and your Personal Team. Do not delete the installed app: that removes its local photos and pending uploads. This build keeps Associated Domains disabled.
+
+Your previous-build results are recorded: Larger Text fits, Capture saves into My photos, and Order reaches Shopify checkout. The new checks below target the updated button styling and checkout recovery.
+
+1. Readability: inspect Capture, My photos, Order, Galleries, Account, sign-in, event sharing and crop editing at normal text size and your preferred Larger Text size. Filled buttons should have cream labels on dark olive; disabled actions remain readable. At accessibility sizes, photo grids use one column and order rows stack. Scroll to check controls near the bottom. Report the screen, button label and font size if anything clips.
+2. Offline local access: save a test photo, enable Airplane Mode, reopen the app, view My photos and adjust a local crop. Photos and the local draft should remain available. Online pricing, gallery refresh and checkout may show connection errors. Re-enable networking afterward.
+3. Checkout recovery: with test photos you are comfortable uploading to your private workspace, select a pack and approve the crops. Start checkout, interrupt networking while uploading, then reopen Order. Use Resume saved checkout after restoring networking. It must retain the approved crops and pack and reach Shopify checkout without duplicating the selection. Stop before paying unless you intend to place an actual order. If the small test photos finish too quickly, try more photos or a slower connection.
+4. Background recovery: start another authorized test upload, lock the phone or switch apps, then return to Order. File PUTs can continue under iOS scheduling; reservation, finalization and Shopify checkout resume in the foreground. Explicit force quitting stops automatic background relaunch until the app is opened. Resume saved checkout should be available after an interruption. Cancelling a saved upload keeps local photos; uploaded private-workspace photos may remain. It does not cancel an existing paid order.
+5. Event queue: in a designated test event, consent and enqueue a test photo, interrupt connectivity, then restore networking and reopen the app. Verify the queued request finishes once, allowance updates correctly, and the host receives one photo. Do not use an event with automatic printing unless you intend to trigger that print.
+
+Verified order status, tracking and original downloads need the included backend deployment. After deployment, use two authorized test customers to verify each sees only their own orders/gallery access, and confirm a revoked invitation cannot download an original. Test actual fulfillment only with a designated test order.
+
+Reply with the build number, screen, steps, and what you expected versus what happened. The simulator build and 12 native tests pass; physical locked-device/network and real fulfillment testing is still pending.
