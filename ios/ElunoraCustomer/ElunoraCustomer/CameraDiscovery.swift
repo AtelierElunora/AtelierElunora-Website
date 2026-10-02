@@ -56,6 +56,9 @@ private actor CanonPreviewDecoder {
     private var eosInitialized = false
     private var eosValues: [UInt32: UInt32] = [:]
     private var eosChoices: [UInt32: [UInt32]] = [:]
+    private var collectingCaptureEvents = false
+    private var captureEventHandles: Set<UInt32> = []
+    private var captureEventTypes: Set<UInt32> = []
     private var restoreLiveOutput: UInt32?
 
     override init() { super.init(); browser.delegate = self }
@@ -93,6 +96,7 @@ private actor CanonPreviewDecoder {
         camera?.requestCloseSession(); camera?.delegate = nil; camera = nil
         browser.stop(); devices = []; knownFiles = []; operations = []; eosInitialized = false
         eosValues = [:]; eosChoices = [:]; restoreLiveOutput = nil
+        collectingCaptureEvents = false; captureEventHandles = []; captureEventTypes = []
         // A transferred image awaiting review is retained until the view consumes it.
         note("Canon disconnected. The iPad camera is available.")
     }
@@ -220,12 +224,22 @@ private actor CanonPreviewDecoder {
         }
         busy = true
         let epoch = generation
+        defer {
+            if generation == epoch {
+                collectingCaptureEvents = false; captureEventHandles = []; captureEventTypes = []
+                busy = false
+            }
+        }
         do {
             try await prepareEOS()
             guard operations.contains(0x9128), operations.contains(0x9129) else { throw CanonPTP.Failure(message: "This camera does not advertise EOS remote release.") }
             try await selectCardDestination()
             // Snapshot immediately before this shot: never import an older guest's photo.
             let before = try CanonPTP.handles(await send(0x1007, [0xffffffff, 0, 0]))
+            // Discard pre-shot events before arming discovery for this single exposure.
+            try await readEOSChanges()
+            captureEventHandles = []; captureEventTypes = []; collectingCaptureEvents = true
+            note("Capture baseline: \(before.count) card objects. Listening for Canon new-photo events.")
             note("Focusing Canon…")
             do {
                 _ = try await send(0x9128, [1, 0]) // half press: autofocus
@@ -286,6 +300,14 @@ private actor CanonPreviewDecoder {
         let changes = try CanonPTP.changes(await send(0x9116))
         eosValues.merge(changes.values) { _, new in new }
         eosChoices.merge(changes.choices) { _, new in new }
+        if collectingCaptureEvents {
+            let newHandles = changes.addedObjects.subtracting(captureEventHandles)
+            captureEventHandles.formUnion(changes.addedObjects)
+            captureEventTypes.formUnion(changes.eventTypes)
+            for handle in newHandles.sorted() {
+                note(String(format: "Canon new-photo event: object 0x%08X.", handle))
+            }
+        }
     }
     private func setEOS(_ property: UInt32, _ value: UInt32) async throws {
         _ = try await send(0x9110, outData: CanonPTP.property(property, value: value))
@@ -304,12 +326,32 @@ private actor CanonPreviewDecoder {
         let deadline = Date().addingTimeInterval(35)
         var ignored = Set<UInt32>()
         var lastError: String?
+        var inspected = Set<UInt32>()
+        var nextDiagnostic: TimeInterval = 0
         while Date() < deadline, generation == epoch, !Task.isCancelled {
             do {
                 try await readEOSChanges()
-                let handles = try CanonPTP.handles(await send(0x1007, [0xffffffff, 0, 0]))
-                for handle in handles.subtracting(before).subtracting(ignored).sorted() {
+                // An event can identify a new object before the standard catalog lists it.
+                // Catalog failures must not discard a handle already announced by Canon.
+                var handles = Set<UInt32>()
+                do { handles = try CanonPTP.handles(await send(0x1007, [0xffffffff, 0, 0])) }
+                catch {
+                    lastError = error.localizedDescription
+                    if captureEventHandles.isEmpty { throw error }
+                }
+                let candidates = handles.union(captureEventHandles).subtracting(before).subtracting(ignored)
+                let now = ProcessInfo.processInfo.systemUptime
+                if now >= nextDiagnostic {
+                    let types = captureEventTypes.sorted().map { String(format: "0x%04X", $0) }.joined(separator: ", ")
+                    note("Photo discovery: \(handles.count) catalog objects, \(captureEventHandles.count) event objects, \(candidates.count) new candidates. EOS events: \(types.isEmpty ? "none" : types).")
+                    nextDiagnostic = now + 5
+                }
+                for handle in candidates.sorted() {
                     let info = try await send(0x1008, [handle])
+                    if inspected.insert(handle).inserted {
+                        let format = try CanonPTP.u16([UInt8](info), 4)
+                        note(String(format: "Photo metadata: object 0x%08X, format 0x%04X.", handle, format))
+                    }
                     guard let size = try CanonPTP.jpegSize(info) else { ignored.insert(handle); continue }
                     note("New Canon JPEG found. Receiving photo…")
                     var data = Data()
@@ -339,7 +381,7 @@ private actor CanonPreviewDecoder {
             }
             try await Task.sleep(nanoseconds: 500_000_000)
         }
-        throw CanonPTP.Failure(message: "No new JPEG could be received. Check the SD card, JPEG image quality, single-shot drive and autofocus. No second shot was triggered." + (lastError.map { " Last camera response: \($0)" } ?? ""))
+        throw CanonPTP.Failure(message: "Canon photo transfer did not complete. The photo may be saved on the card; see Connection diagnostics for discovery and download details. No second shot was triggered." + (lastError.map { " Last camera response: \($0)" } ?? ""))
     }
     func startLiveView() async {
         guard canOperate, experimentalEOS else { return }

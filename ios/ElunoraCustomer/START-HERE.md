@@ -1,4 +1,4 @@
-# Atelier Elunora — combined customer and owner iOS app, v4.1.2
+# Atelier Elunora — combined customer and owner iOS app, v4.1.3
 
 ## Build on your phone
 
@@ -10,6 +10,16 @@
 
 Minimum iOS 17. Use an Xcode version whose iOS SDK supports your phone. No npm, Expo, Homebrew, CocoaPods, or third-party packages are needed. This project now includes the owner booth. The original standalone capture project remains available separately.
 
+
+## v4.1.3 — discover saved photos from Canon EOS events
+
+Addresses the reported shutter-success/card-playback case where the app never found a new JPEG. Earlier versions consumed EOS GetEvent responses but discarded ObjectAddedEx and ObjectAddedEx64 notifications, relying only on changes in the standard card listing. The parser now retains those new card-object handles during an armed capture, and discovery combines them with the standard listing. Metadata and download remain serialized and size-limited. Existing handles from the pre-shot snapshot are excluded, pre-shot events are discarded, capture-event state clears at completion/disconnect, and no shutter retries or card deletions are introduced. Host-RAM transfer events are not treated as card objects.
+
+Diagnostics now show baseline/catalog/event object counts, observed EOS event codes, candidate metadata format codes, and download errors. This also distinguishes a missing discovery notification from a non-JPEG object or failed transfer. The preview improvements from v4.1.2 are retained.
+
+Build this copy, reconnect the R100, leave Large/Fine JPEG selected, then take one new photo using the app. Expect the still in the review box before approving. If it fails, send the expanded Connection diagnostics immediately after the attempt. Do not format the card: this build does not automatically import earlier test photos.
+
+Validation: all Swift files passed syntax parsing; project/plist/ZIP structure checked. New Foundation-only fixtures cover Canon 32/64-bit new-object events, duplicate events, stale catalog discovery, malformed events, and exclusion of host-RAM transfer events. These fixtures were not executed here because no Swift compiler is available. Xcode compilation and a physical R100 transfer remain required. Protocol reference: upstream libgphoto2 ptp.h and ptp-pack.c.
 
 ## v4.1.2 — reduce Canon preview lag
 

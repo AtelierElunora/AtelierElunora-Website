@@ -47,6 +47,8 @@ enum CanonPTP {
     struct EOSChanges {
         var values: [UInt32: UInt32] = [:]
         var choices: [UInt32: [UInt32]] = [:]
+        var addedObjects: Set<UInt32> = []
+        var eventTypes: Set<UInt32> = []
     }
     static func changes(_ data: Data) throws -> EOSChanges {
         let b = [UInt8](data)
@@ -57,7 +59,16 @@ enum CanonPTP {
             guard size >= 8, size <= b.count - offset else { throw Failure(message: "Invalid EOS event length.") }
             let event = try u32(b, offset + 4)
             if event == 0 { break }
-            if event == 0xc189, size >= 14 {
+            result.eventTypes.insert(event)
+            if event == 0xc181 || event == 0xc1a7 {
+                // ObjectAddedEx / ObjectAddedEx64 use the same 32-bit handle at +8.
+                // These are card objects, not RequestObjectTransfer (host RAM) events.
+                guard size >= (event == 0xc181 ? 41 : 45) else {
+                    throw Failure(message: "Incomplete Canon new-object event.")
+                }
+                let handle = try u32(b, offset + 8)
+                if handle != 0, handle != UInt32.max { result.addedObjects.insert(handle) }
+            } else if event == 0xc189, size >= 14 {
                 // Only these scalar properties are consumed; other EOS properties have variable layouts.
                 let code = try u32(b, offset + 8)
                 if code == 0xd1b1 {

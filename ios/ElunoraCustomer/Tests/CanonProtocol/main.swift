@@ -57,3 +57,16 @@ let wrapped = Data([0,0,0,0,0xff,0xd8,0xff,0xe0,1,2,0xff,0xd9,0,0])
 precondition(CanonPTP.jpeg(in: wrapped) == Data([0xff,0xd8,0xff,0xe0,1,2,0xff,0xd9]))
 precondition(CanonPTP.jpeg(in: Data([0xff,0xd8,0xff,0xe0])) == nil)
 print("Canon wire-format fixtures passed")
+
+// A new card photo may exist only in EOS events while GetObjectHandles stays stale.
+var added = words([48,0xc181,30]); added.append(Data(repeating: 0, count: 36))
+var added64 = words([48,0xc1a7,40]); added64.append(Data(repeating: 0, count: 36))
+let objectEvents = try CanonPTP.changes(added + added64 + added + words([8,0]))
+precondition(objectEvents.addedObjects == [30,40])
+precondition(objectEvents.eventTypes == [0xc181,0xc1a7])
+let staleCatalog = try CanonPTP.handles(words([2,10,20]))
+precondition(staleCatalog.union(objectEvents.addedObjects).subtracting(prior) == [30,40])
+rejects("truncated new-object event") { _ = try CanonPTP.changes(words([12,0xc181,30])) }
+let unrelated = try CanonPTP.changes(words([12,0xc186,99]))
+precondition(unrelated.addedObjects.isEmpty) // host-RAM transfer requires a different protocol
+print("Canon event discovery fixtures passed")
