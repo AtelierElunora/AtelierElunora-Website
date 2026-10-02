@@ -1,0 +1,33 @@
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {PGlite} from '@electric-sql/pglite';
+const db=new PGlite();
+await db.exec(`create role anon;create role authenticated;create role service_role bypassrls;
+create schema auth;grant usage on schema public,auth to service_role;
+create table auth.users(id uuid primary key,email text,email_confirmed_at timestamptz,phone_confirmed_at timestamptz,is_anonymous boolean default false);
+create table gallery_events(id uuid primary key,name text,active boolean,deleted_at timestamptz);
+create table gallery_stations(id uuid primary key,event_id uuid references gallery_events(id),token_hash text);
+create table gallery_photos(id uuid primary key,event_id uuid references gallery_events(id),filename text,ready boolean,hidden boolean,original_key text,preview_key text,original_bytes bigint,preview_bytes bigint);
+create table gallery_capture_receipts(station_id uuid,request_id uuid,photo_id uuid);
+create function gallery_station_check(h text,a text) returns gallery_stations language plpgsql as $$declare s public.gallery_stations;begin select * into s from public.gallery_stations where token_hash=h;if not found then raise exception 'Invalid station';end if;return s;end$$;
+grant all on all tables in schema public,auth to service_role;`);
+await db.exec(await readFile('supabase/migrations/20261002122316_booth_photo_invitations.sql','utf8'));
+const id=n=>`00000000-0000-4000-8000-${String(n).padStart(12,'0')}`,event=id(1),station=id(2),photo=id(3),request=id(4),user=id(5),other=id(6),unverified=id(7),token='a'.repeat(64),digest='b'.repeat(64);
+await db.query("insert into gallery_events values($1,'Test booth',true,null)",[event]);await db.query("insert into gallery_stations values($1,$2,'station')",[station,event]);
+await db.query("insert into gallery_photos values($1,$2,'photo.jpg',true,false,$3,$4,100,50)",[photo,event,event+'/'+photo+'/original.jpg',event+'/'+photo+'/preview.jpg']);await db.query('insert into gallery_capture_receipts values($1,$2,$3)',[station,request,photo]);
+await db.query("insert into auth.users values($1,'guest@example.test',now(),null,false),($2,'other@example.test',now(),null,false),($3,'guest@example.test',null,null,false)",[user,other,unverified]);
+const prepare=async(channel='email',recipient='guest@example.test',req=request)=> (await db.query('select gallery_booth_prepare($1,$2,$3,$4,$5,$6,$7) as r',['station',req,channel,recipient,token,digest,crypto.randomUUID()])).rows[0].r;
+const claim=async(uid=user)=>(await db.query('select gallery_booth_claim($1,$2) as r',[digest,uid])).rows[0].r;
+const photos=async(uid=user)=>(await db.query('select gallery_booth_photos($1) as r',[uid])).rows[0].r;
+for(const role of ['anon','authenticated']){await db.exec('set role '+role);await assert.rejects(prepare(),/permission denied/);await assert.rejects(claim(),/permission denied/);await assert.rejects(photos(),/permission denied/);await assert.rejects(db.query('select recipient,link_token from gallery_booth_invitations'),/permission denied/);await db.exec('reset role');}
+await db.exec('set role service_role');await assert.rejects(prepare('email','guest@example.test',id(999)),/Photo unavailable/);
+assert.equal((await prepare()).status,'send');assert.equal((await prepare()).status,'busy');assert.equal((await prepare('email','changed@example.test')).status,'unavailable');
+await db.exec("update gallery_booth_invitations set status='uncertain',lease_until=null,last_attempt_at=now()-interval '61 seconds'");const retry=await prepare();assert.equal(retry.status,'send');assert.equal(retry.delivery.link_token,token);assert.equal(retry.delivery.token_hash,digest);
+await db.exec("update gallery_booth_invitations set status='accepted',lease_until=null");assert.equal((await prepare()).status,'accepted');
+await assert.rejects(claim(other),/Invitation unavailable/);await assert.rejects(claim(unverified),/Sign in required/);assert.equal((await claim()).claimed,true);assert.equal((await claim()).claimed,true);await assert.rejects(claim(other),/Invitation unavailable/);assert.equal((await photos()).length,1);assert.equal((await photos(other)).length,0);
+assert.equal((await db.query('select link_token from gallery_booth_invitations')).rows[0].link_token,null);
+for(const [change,undo] of [["update gallery_booth_invitations set revoked=true","update gallery_booth_invitations set revoked=false"],["update gallery_events set active=false","update gallery_events set active=true"],["update gallery_events set deleted_at=now()","update gallery_events set deleted_at=null"],["update gallery_photos set hidden=true","update gallery_photos set hidden=false"],["update gallery_booth_invitations set expires_at=now()-interval '1 second'","update gallery_booth_invitations set expires_at=now()+interval '14 days'"]]){await db.exec(change);assert.equal((await photos()).length,0);await assert.rejects(claim(),/unavailable/);await db.exec(undo);}
+await db.exec('delete from gallery_booth_invitations');assert.equal((await prepare('sms','+15555555555')).status,'send');await db.exec("update gallery_booth_invitations set status='uncertain',lease_until=null,last_attempt_at=now()-interval '61 seconds'");assert.equal((await prepare('sms','+15555555555')).status,'review');
+await db.exec("update gallery_booth_invitations set status='failed'");assert.equal((await prepare('sms','+15555555555')).status,'send');await db.exec("update gallery_booth_invitations set status='failed',lease_until=null,last_attempt_at=now()-interval '61 seconds',attempts=3");assert.equal((await prepare('sms','+15555555555')).status,'review');
+await db.exec('delete from gallery_photos');assert.equal((await db.query('select count(*)::int as n from gallery_booth_invitations')).rows[0].n,0);await db.close();
+console.log('PASS: booth migration executes; contacts/tokens are service-only; capture binding, immutable contact, email retries, SMS ambiguity, verified matching email, single-account photo grant, expiry/revocation/event hiding and deletion cascade.');

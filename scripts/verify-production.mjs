@@ -15,7 +15,7 @@ if(candidateMode){
  assert.ok(['not-deployed','preview'].includes(candidate.status));
  for(const added of candidate.additions||[]){
   assert.ok(!manifest.files.some(f=>f.path===added.path)&&!additions.some(f=>f.path===added.path));
-  assert.ok(added.path.startsWith('supabase/functions/')||added.path.startsWith('supabase/migrations/'));
+  assert.ok(added.path.startsWith('supabase/functions/')||added.path.startsWith('supabase/migrations/')||added.path.startsWith('ios/ElunoraCustomer/ElunoraCustomer/'));
   assert.ok(!added.path.includes('..'));
   assert.equal(hash(await readFile(resolve(root,added.path))),added.sha256,`Candidate addition differs: ${added.path}`);
   additions.push(added);

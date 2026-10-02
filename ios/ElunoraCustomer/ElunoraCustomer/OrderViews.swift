@@ -164,6 +164,7 @@ struct SelectedGalleryPhoto: Identifiable {
 }
 
 struct GalleryPage: View {
+    @EnvironmentObject private var journey: CustomerJourney
     @EnvironmentObject private var commerce: CommerceModel
     @State private var open = false
     @State private var login = false
@@ -183,6 +184,7 @@ struct GalleryPage: View {
                 LazyVStack(alignment: .leading, spacing: 24) {
                     BrandHeading(title: "Your memories, together.")
                     NavigationLink("Your event uploads", destination: EventUploadPage())
+                    NavigationLink("My booth photos", destination: BoothPhotosPage())
                     if identity.isEmpty {
                         Text("Sign in with the email that received your gallery invitations. Your assigned galleries and photos will appear here.")
                         Button { login = true } label: { Text("Sign in to my galleries").foregroundStyle(ivory).frame(maxWidth: .infinity) }.buttonStyle(CustomerPrimaryButtonStyle())
@@ -241,6 +243,7 @@ struct GalleryPage: View {
                     if loadedIdentity != identity { selected = nil; magnetGallery = nil; groups = []; await reload() }
                     else if lastLoadedAt == nil || Date().timeIntervalSince(lastLoadedAt ?? .distantPast) >= 60 { await reload() }
                 }
+                .sheet(isPresented: $journey.showingBoothPhotos) { NavigationStack { BoothPhotosPage().toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { journey.showingBoothPhotos = false } } } } }
                 .sheet(isPresented: $login, onDismiss: { Task { await reload() } }) { AppLoginView().environmentObject(commerce) }
                 .sheet(item: $magnetGallery) { group in GalleryMagnetOrder(gallery: group.gallery, photos: group.photos).environmentObject(commerce) }
                 .sheet(isPresented: $open, onDismiss: { Task { await reload() } }) {

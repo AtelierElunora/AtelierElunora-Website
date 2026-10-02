@@ -1,3 +1,5 @@
+import {boothContact,boothConfig,boothChannels,sendBoothInvitation,boothPhotoRoutes} from './booth-photos.mjs';
+import {hash as stationHash} from './station.mjs';
 import {customerOrders} from './customer-orders.mjs';
 import {sendInvitationEmail} from './invitation-email.mjs';
 import {stationOriginAllowed} from './station-origin.mjs';
@@ -69,7 +71,19 @@ export async function storefrontHandler(request:Request, factory=createClient){
    const secret=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
    if(!secret)return reply({error:'Station unavailable.'},503);
    const service=factory(base,secret,{auth:{persistSession:false,autoRefreshToken:false}});
-   return await stationRequest(await jsonBody(request,5700000),service,reply,makeServerPreview);
+   const body=await jsonBody(request,5700000);
+   let contact;try{contact=boothContact(body.contact);}catch(e){return reply({error:(e as Error).message},400);}
+   const result=await stationRequest(body,service,reply,makeServerPreview);
+   if(!result.ok)return result;
+   const data=await result.json();const config=boothConfig();
+   if(body.action==='info')return reply({...data,invitationChannels:boothChannels(config)});
+   if(body.action==='submit'&&data.received&&contact){
+    let invitation;
+    try{invitation=await sendBoothInvitation(service,await stationHash(body.token),body.requestId,contact,config);}
+    catch{invitation={status:'uncertain',message:'Your photo is saved. Invitation acceptance could not be confirmed; ask the attendant.'};}
+    return reply({...data,invitation});
+   }
+   return reply(data);
   }
   if(['login','verify','password-login','refresh','logout'].includes(path)&&request.method==='POST'){
    const b=await jsonBody(request,8192);
@@ -182,6 +196,11 @@ export async function storefrontHandler(request:Request, factory=createClient){
    if(!secret)return reply({error:'Activity logging is temporarily unavailable. No action was started. Please retry.'},503);
    const service=factory(base,secret,{auth:{persistSession:false,autoRefreshToken:false}});
    return await auditedOwnerAction({service,actor:data.user.id,activity,run,reply});
+  }
+  if(path.startsWith('customer/booth/')){
+   const secret=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');if(!secret)return reply({error:'Booth photos unavailable.'},503);
+   const service=factory(base,secret,{auth:{persistSession:false,autoRefreshToken:false}});
+   return await boothPhotoRoutes(request,path.split('/'),client,service,data.user,reply,headers,request.method==='POST'?await jsonBody(request,2048):null);
   }
   if(path==='customer/orders'&&request.method==='GET'){
    const secret=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');if(!secret)return reply({error:'Order history unavailable.'},503);
