@@ -1,7 +1,27 @@
 import Combine
 import Foundation
 import UIKit
+import ImageIO
 @preconcurrency import ImageCaptureCore
+
+// CGImage is immutable. This wrapper transfers the decoded frame between actors;
+// UIKit image construction/publication remains on the main actor.
+private struct CanonPreviewFrame: @unchecked Sendable { let image: CGImage }
+private actor CanonPreviewDecoder {
+    func decode(_ payload: Data) -> CanonPreviewFrame? {
+        autoreleasepool {
+            guard let jpeg = CanonPTP.jpeg(in: payload),
+                  let source = CGImageSourceCreateWithData(jpeg as CFData, [kCGImageSourceShouldCache: false] as CFDictionary),
+                  let image = CGImageSourceCreateThumbnailAtIndex(source, 0, [
+                    kCGImageSourceCreateThumbnailFromImageAlways: true,
+                    kCGImageSourceCreateThumbnailWithTransform: true,
+                    kCGImageSourceThumbnailMaxPixelSize: 1280,
+                    kCGImageSourceShouldCacheImmediately: true
+                  ] as CFDictionary) else { return nil }
+            return CanonPreviewFrame(image: image)
+        }
+    }
+}
 
 @MainActor final class CameraDiscovery: NSObject, ObservableObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate {
     @Published var devices: [String] = []
@@ -21,6 +41,9 @@ import UIKit
     private var awaitingJPEG = false
     private var captureTimer: Task<Void, Never>?
     private var liveTask: Task<Void, Never>?
+    private let previewDecoder = CanonPreviewDecoder()
+    private var previewWatchdog: Task<Void, Never>?
+    private var lastPreviewTime: TimeInterval = 0
     private var liveViewStopping = false
     private var operations = Set<UInt16>()
     private var transaction: UInt32 = 0
@@ -62,6 +85,7 @@ import UIKit
     func stop() {
         generation = UUID(); scanning = false; ready = false; busy = false
         captureTimer?.cancel(); liveTask?.cancel(); liveViewRunning = false; liveViewStopping = false; liveImage = nil
+        previewWatchdog?.cancel(); previewWatchdog = nil
         awaitingJPEG = false; transfer?.cancel(); transfer = nil
         if let directory = transferDirectory { try? FileManager.default.removeItem(at: directory) }
         transferDirectory = nil
@@ -332,26 +356,71 @@ import UIKit
             note("Starting Canon live preview…")
             liveViewRunning = true; busy = false
             let epoch = generation
+            lastPreviewTime = ProcessInfo.processInfo.systemUptime
+            previewWatchdog?.cancel()
+            previewWatchdog = Task { [weak self] in
+                while !Task.isCancelled {
+                    try? await Task.sleep(nanoseconds: 500_000_000)
+                    guard !Task.isCancelled, let self, self.generation == epoch, self.liveViewRunning else { return }
+                    if self.liveImage != nil, ProcessInfo.processInfo.systemUptime - self.lastPreviewTime > 2 {
+                        self.liveImage = nil
+                        self.note("Canon preview is delayed. Waiting for a fresh frame…")
+                    }
+                }
+            }
             liveTask = Task { [weak self] in
                 guard let self else { return }
                 var failures = 0
+                var nextEventPoll = ProcessInfo.processInfo.systemUptime + 1
+                var sampleStart = ProcessInfo.processInfo.systemUptime
+                var frameCount = 0
+                var transferSeconds: TimeInterval = 0
+                var decodeSeconds: TimeInterval = 0
                 while !Task.isCancelled, self.generation == epoch, self.liveViewRunning {
+                    let cycleStart = ProcessInfo.processInfo.systemUptime
+                    var failed = false
                     do {
-                        try await self.readEOSChanges()
+                        if cycleStart >= nextEventPoll {
+                            try await self.readEOSChanges()
+                            nextEventPoll = ProcessInfo.processInfo.systemUptime + 1
+                        }
+                        let requestStart = ProcessInfo.processInfo.systemUptime
                         let data = try await self.send(0x9153, [0x00200000, 0, 0])
-                        guard let jpeg = CanonPTP.jpeg(in: data), let image = UIImage(data: jpeg) else {
+                        let receivedAt = ProcessInfo.processInfo.systemUptime
+                        guard !Task.isCancelled, self.generation == epoch, self.liveViewRunning else { break }
+                        guard let frame = await self.previewDecoder.decode(data) else {
                             throw CanonPTP.Failure(message: "No decodable live-view frame.")
                         }
+                        guard !Task.isCancelled, self.generation == epoch, self.liveViewRunning else { break }
+                        let decodedAt = ProcessInfo.processInfo.systemUptime
+                        // Never queue frames: one request, one decode, then publish the latest.
+                        self.lastPreviewTime = decodedAt
                         if self.liveImage == nil { self.note("Canon live preview ready.") }
-                        self.liveImage = image; failures = 0
+                        self.liveImage = UIImage(cgImage: frame.image); failures = 0
+                        frameCount += 1
+                        transferSeconds += receivedAt - requestStart
+                        decodeSeconds += decodedAt - receivedAt
+                        if decodedAt - sampleStart >= 5 {
+                            self.diagnostics.append(String(format: "Preview: %.1f fps; camera %.0f ms/frame; decode %.0f ms/frame",
+                                Double(frameCount) / (decodedAt - sampleStart),
+                                transferSeconds * 1000 / Double(frameCount), decodeSeconds * 1000 / Double(frameCount)))
+                            if self.diagnostics.count > 40 { self.diagnostics.removeFirst(self.diagnostics.count - 40) }
+                            sampleStart = decodedAt; frameCount = 0; transferSeconds = 0; decodeSeconds = 0
+                        }
                     } catch {
+                        guard !Task.isCancelled, self.generation == epoch, self.liveViewRunning else { break }
+                        failed = true
                         failures += 1
                         if failures >= 20 { self.note("Live-view error: \(error.localizedDescription)") }
                     }
                     if failures >= 20 { break }
-                    try? await Task.sleep(nanoseconds: 350_000_000)
+                    // Target at most 10 fps, counting transfer/decode time rather than
+                    // adding a fixed delay after every frame. Back off briefly on errors.
+                    let pause = failed ? 0.1 : max(0, 0.1 - (ProcessInfo.processInfo.systemUptime - cycleStart))
+                    if pause > 0 { try? await Task.sleep(nanoseconds: UInt64(pause * 1_000_000_000)) }
                 }
                 guard self.generation == epoch else { return }
+                self.previewWatchdog?.cancel(); self.previewWatchdog = nil
                 self.liveViewStopping = true; self.liveViewRunning = false
                 // Task cancellation stops polling, but cleanup commands must still run.
                 let cleanup = Task { @MainActor in

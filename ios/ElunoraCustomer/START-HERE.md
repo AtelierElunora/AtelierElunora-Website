@@ -1,4 +1,4 @@
-# Atelier Elunora — combined customer and owner iOS app, v4.1.1
+# Atelier Elunora — combined customer and owner iOS app, v4.1.2
 
 ## Build on your phone
 
@@ -10,6 +10,14 @@
 
 Minimum iOS 17. Use an Xcode version whose iOS SDK supports your phone. No npm, Expo, Homebrew, CocoaPods, or third-party packages are needed. This project now includes the owner booth. The original standalone capture project remains available separately.
 
+
+## v4.1.2 — reduce Canon preview lag
+
+Removes the extra 350 ms delay after every preview frame. The loop now targets up to 10 frames per second, including camera-transfer and decode time in that interval; actual speed depends on the camera/USB connection. EOS status polling runs approximately once per second instead of before every frame. JPEG extraction and decoding run on a separate actor, with a maximum 1280-pixel preview; still-photo capture resolution is unchanged. Requests and decoding remain sequential, so frames cannot accumulate in an app queue. Stop/disconnect/capture checks discard in-flight preview results before publication. A watchdog clears an unchanged displayed frame after about two seconds without a new result.
+
+Build this copy, reconnect Canon, and move your hand in front of the lens for at least 10 seconds. Check framing and countdown responsiveness, take one photo, and confirm the still appears for review. Test Try again and disconnect during preview. If lag remains, send Station setup → Connection diagnostics, including the new `Preview: … fps; camera … ms/frame; decode … ms/frame` lines. These timings measure app delivery and processing, not camera-to-screen latency inside the camera.
+
+Validation: Swift syntax, Xcode project structure and ZIP/plist checks only. This environment cannot compile the Apple SDK target or measure R100 performance; no hardware frame-rate claim has been verified.
 
 ## v4.1.1 — R100 response compatibility fix
 
