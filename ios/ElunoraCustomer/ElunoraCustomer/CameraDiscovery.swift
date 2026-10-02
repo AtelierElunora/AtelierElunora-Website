@@ -11,7 +11,7 @@ import UIKit
     @Published var liveImage: UIImage?
     @Published var receivedImage: UIImage?
     @Published var diagnostics: [String] = []
-    @Published var experimentalEOS = false
+    @Published var experimentalEOS = true
     @Published var liveViewRunning = false
     private let browser = ICDeviceBrowser()
     private var camera: ICCameraDevice?
@@ -31,6 +31,9 @@ import UIKit
     private var transferDirectory: URL?
     var canOperate: Bool { ready && !busy && !liveViewRunning && !liveViewStopping && commandID == nil && receivedImage == nil }
     private var eosInitialized = false
+    private var eosValues: [UInt32: UInt32] = [:]
+    private var eosChoices: [UInt32: [UInt32]] = [:]
+    private var restoreLiveOutput: UInt32?
 
     override init() { super.init(); browser.delegate = self }
     private func note(_ message: String) {
@@ -65,6 +68,7 @@ import UIKit
         if let id = commandID { finishCommand(id, result: .failure(CanonPTP.Failure(message: "Camera session ended."))) }
         camera?.requestCloseSession(); camera?.delegate = nil; camera = nil
         browser.stop(); devices = []; knownFiles = []; operations = []; eosInitialized = false
+        eosValues = [:]; eosChoices = [:]; restoreLiveOutput = nil
         // A transferred image awaiting review is retained until the view consumes it.
         note("Canon disconnected. The iPad camera is available.")
     }
@@ -137,7 +141,8 @@ import UIKit
     nonisolated func cameraDevice(_ camera: ICCameraDevice, didReceiveThumbnail thumbnail: CGImage?, for item: ICCameraItem, error: Error?) {}
     nonisolated func cameraDevice(_ camera: ICCameraDevice, didReceiveMetadata metadata: [AnyHashable: Any]?, for item: ICCameraItem, error: Error?) {}
     nonisolated func cameraDevice(_ camera: ICCameraDevice, didReceivePTPEvent eventData: Data) {
-        // ImageCaptureCore owns object discovery. Do not race it with EOS GetEvent polling.
+        // EOS commands are serialized by send(). EOS capture discovers new card handles
+        // directly; ICCameraFile downloads are used only by the physical/standard path.
     }
     nonisolated func cameraDeviceDidChangeCapability(_ camera: ICCameraDevice) {
         Task { @MainActor [weak self] in
@@ -190,19 +195,32 @@ import UIKit
             return
         }
         busy = true
+        let epoch = generation
         do {
             try await prepareEOS()
             guard operations.contains(0x9128), operations.contains(0x9129) else { throw CanonPTP.Failure(message: "This camera does not advertise EOS remote release.") }
-            armTransfer()
-            do { _ = try await send(0x9128, [3, 0]) }
-            catch { _ = try? await send(0x9129, [3]); throw error }
-            _ = try await send(0x9129, [3])
-            note("EOS autofocus/shutter requested. Waiting for the new JPEG…")
+            try await selectCardDestination()
+            // Snapshot immediately before this shot: never import an older guest's photo.
+            let before = try CanonPTP.handles(await send(0x1007, [0xffffffff, 0, 0]))
+            note("Focusing Canon…")
+            do {
+                _ = try await send(0x9128, [1, 0]) // half press: autofocus
+                _ = try await send(0x9128, [2, 0]) // full press: one exposure
+                _ = try await send(0x9129, [2])
+                _ = try await send(0x9129, [1])
+            } catch {
+                // Never retry a shutter command: a failed reply can still mean a photo was taken.
+                guard generation == epoch else { return }
+                _ = try? await send(0x9129, [2]); _ = try? await send(0x9129, [1])
+                note("Shutter reply uncertain. Checking the card without taking another photo…")
+            }
+            guard generation == epoch else { return }
+            note("Shutter requested. Looking for the new JPEG on the card…")
+            try await receiveCardPhoto(excluding: before, epoch: epoch)
         } catch {
-            // Leave an armed transfer waiting: shutter outcome can be uncertain.
-            if !awaitingJPEG && transfer == nil { busy = false }
-            note(error.localizedDescription)
+            if generation == epoch { note(error.localizedDescription) }
         }
+        if generation == epoch { busy = false }
     }
     func autofocus() async {
         guard canOperate, experimentalEOS else { return }
@@ -222,18 +240,96 @@ import UIKit
         operations = try CanonPTP.operations(from: info)
         guard operations.contains(0x9114) else { throw CanonPTP.Failure(message: "EOS remote mode is not advertised.") }
         _ = try await send(0x9114, [1])
+        operations = try CanonPTP.operations(from: await send(0x1001))
+        guard operations.contains(0x9115), operations.contains(0x9116), operations.contains(0x9110) else {
+            throw CanonPTP.Failure(message: "Canon EOS event/property commands are unavailable. Reconnect in still-photo mode.")
+        }
+        _ = try await send(0x9115, [1])
+        if operations.contains(0x9127) {
+            for property in [UInt32(0xd11c), 0xd1b0, 0xd1b1] {
+                _ = try? await send(0x9127, [property])
+            }
+        }
+        for _ in 0..<10 {
+            try await readEOSChanges()
+            if eosValues[0xd1b0] != nil, eosValues[0xd11c] != nil { break }
+            try await Task.sleep(nanoseconds: 100_000_000)
+        }
         eosInitialized = true
-        note("Experimental EOS remote mode enabled. Power-cycle the camera after testing if local controls remain locked.")
+        note("Canon remote session initialized.")
+    }
+    private func readEOSChanges() async throws {
+        let changes = try CanonPTP.changes(await send(0x9116))
+        eosValues.merge(changes.values) { _, new in new }
+        eosChoices.merge(changes.choices) { _, new in new }
+    }
+    private func setEOS(_ property: UInt32, _ value: UInt32) async throws {
+        _ = try await send(0x9110, outData: CanonPTP.property(property, value: value))
+        eosValues[property] = value
+    }
+    private func selectCardDestination() async throws {
+        try await readEOSChanges()
+        let current = eosValues[0xd11c]
+        // 4 is host RAM. Require a reported card destination; do not guess or lose originals.
+        let card = eosChoices[0xd11c]?.first(where: { $0 > 0 && $0 < 4 })
+            ?? current.flatMap { $0 > 0 && $0 < 4 ? $0 : nil }
+        guard let card else { throw CanonPTP.Failure(message: "Canon has no available card destination. Insert an unlocked SD card with free space, then reconnect.") }
+        if current != card { try await setEOS(0xd11c, card) }
+    }
+    private func receiveCardPhoto(excluding before: Set<UInt32>, epoch: UUID) async throws {
+        let deadline = Date().addingTimeInterval(35)
+        var ignored = Set<UInt32>()
+        var lastError: String?
+        while Date() < deadline, generation == epoch, !Task.isCancelled {
+            do {
+                try await readEOSChanges()
+                let handles = try CanonPTP.handles(await send(0x1007, [0xffffffff, 0, 0]))
+                for handle in handles.subtracting(before).subtracting(ignored).sorted() {
+                    let info = try await send(0x1008, [handle])
+                    guard let size = try CanonPTP.jpegSize(info) else { ignored.insert(handle); continue }
+                    note("New Canon JPEG found. Receiving photo…")
+                    var data = Data()
+                    // Bounded chunks keep transfers responsive; no deletion or vendor RAM acknowledgement.
+                    if operations.contains(0x101b) {
+                        let transferDeadline = Date().addingTimeInterval(60)
+                        while data.count < Int(size) {
+                            guard Date() < transferDeadline, generation == epoch else {
+                                throw CanonPTP.Failure(message: "Canon JPEG transfer timed out. The original remains on the card.")
+                            }
+                            let count = min(UInt32(1024 * 1024), size - UInt32(data.count))
+                            let chunk = try await send(0x101b, [handle, UInt32(data.count), count])
+                            guard !chunk.isEmpty, chunk.count <= Int(count) else { throw CanonPTP.Failure(message: "Incomplete Canon JPEG transfer.") }
+                            data.append(chunk)
+                        }
+                    } else { data = try await send(0x1009, [handle]) }
+                    guard generation == epoch, !Task.isCancelled else { throw CancellationError() }
+                    guard data.count == Int(size), let image = UIImage(data: data) else {
+                        throw CanonPTP.Failure(message: "Canon JPEG could not be decoded. The original remains on the card.")
+                    }
+                    receivedImage = image; note("Canon photo received. Review it before submitting.")
+                    return
+                }
+            } catch {
+                guard generation == epoch, !Task.isCancelled else { throw error }
+                lastError = error.localizedDescription
+            }
+            try await Task.sleep(nanoseconds: 500_000_000)
+        }
+        throw CanonPTP.Failure(message: "No new JPEG could be received. Check the SD card, JPEG image quality, single-shot drive and autofocus. No second shot was triggered." + (lastError.map { " Last camera response: \($0)" } ?? ""))
     }
     func startLiveView() async {
         guard canOperate, experimentalEOS else { return }
         busy = true
         do {
             try await prepareEOS()
-            guard [UInt16(0x9151), 0x9152, 0x9153].allSatisfy({ operations.contains($0) }) else {
+            guard operations.contains(0x9153), let output = eosValues[0xd1b0] else {
                 throw CanonPTP.Failure(message: "The camera does not advertise this live-view protocol. Use its own screen for framing.")
             }
-            _ = try await send(0x9151)
+            // Modern EOS bodies use EVF properties, and need not advertise InitiateViewfinder.
+            if eosValues[0xd1b1] == 0 { try await setEOS(0xd1b1, 1) }
+            restoreLiveOutput = output
+            try await setEOS(0xd1b0, output | 2) // route preview to USB host
+            note("Starting Canon live preview…")
             liveViewRunning = true; busy = false
             let epoch = generation
             liveTask = Task { [weak self] in
@@ -241,24 +337,30 @@ import UIKit
                 var failures = 0
                 while !Task.isCancelled, self.generation == epoch, self.liveViewRunning {
                     do {
+                        try await self.readEOSChanges()
                         let data = try await self.send(0x9153, [0x00200000, 0, 0])
                         guard let jpeg = CanonPTP.jpeg(in: data), let image = UIImage(data: jpeg) else {
                             throw CanonPTP.Failure(message: "No decodable live-view frame.")
                         }
+                        if self.liveImage == nil { self.note("Canon live preview ready.") }
                         self.liveImage = image; failures = 0
                     } catch {
                         failures += 1
-                        if failures >= 3 { self.note("Live-view error: \(error.localizedDescription)") }
+                        if failures >= 20 { self.note("Live-view error: \(error.localizedDescription)") }
                     }
-                    if failures >= 3 { break }
+                    if failures >= 20 { break }
                     try? await Task.sleep(nanoseconds: 350_000_000)
                 }
                 guard self.generation == epoch else { return }
-                if failures >= 3 { self.note("Live view unavailable on this configuration. Camera-side framing remains available.") }
                 self.liveViewStopping = true; self.liveViewRunning = false
-                _ = try? await self.send(0x9152)
+                // Task cancellation stops polling, but cleanup commands must still run.
+                let cleanup = Task { @MainActor in
+                    guard self.generation == epoch else { return }
+                    if let output = self.restoreLiveOutput { try? await self.setEOS(0xd1b0, output) }
+                }
+                await cleanup.value
                 guard self.generation == epoch else { return }
-                self.liveImage = nil; self.liveViewStopping = false
+                self.restoreLiveOutput = nil; self.liveImage = nil; self.liveViewStopping = false
             }
         } catch { busy = false; note(error.localizedDescription) }
     }
@@ -271,9 +373,11 @@ import UIKit
         guard liveViewRunning else { return }
         liveViewStopping = true; liveTask?.cancel(); liveViewRunning = false
     }
-    private func send(_ operation: UInt16, _ parameters: [UInt32] = []) async throws -> Data {
+    private func send(_ operation: UInt16, _ parameters: [UInt32] = [], outData: Data? = nil) async throws -> Data {
+        try Task.checkCancellation()
         guard let camera, camera.capabilities.contains(ICDeviceCapability.cameraDeviceCanAcceptPTPCommands.rawValue), commandID == nil else { throw CanonPTP.Failure(message: "Camera command unavailable or already in progress.") }
         transaction &+= 1
+        let expectedTransaction = transaction
         let command = CanonPTP.command(operation, transaction: transaction, parameters: parameters)
         let id = UUID()
         return try await withCheckedThrowingContinuation { continuation in
@@ -283,15 +387,19 @@ import UIKit
                 guard !Task.isCancelled, let self, self.commandID == id else { return }
                 self.finishCommand(id, result: .failure(CanonPTP.Failure(message: "Camera command timed out. Reconnect before trying again.")))
                 self.stop()
+                self.note(String(format: "Canon command 0x%04X timed out. Reconnect and check the SD card before taking another photo.", operation))
             }
-            camera.requestSendPTPCommand(command, outData: nil) { [weak self] data, response, error in
+            camera.requestSendPTPCommand(command, outData: outData) { [weak self] data, response, error in
                 Task { @MainActor in
                     guard let self, self.commandID == id else { return }
                     do {
                         if let error { throw error }
-                        try CanonPTP.validate(response)
+                        try CanonPTP.validate(response, transaction: expectedTransaction)
                         self.finishCommand(id, result: .success(data))
-                    } catch { self.finishCommand(id, result: .failure(error)) }
+                    } catch {
+                        self.finishCommand(id, result: .failure(CanonPTP.Failure(message:
+                            String(format: "Command 0x%04X: ", operation) + error.localizedDescription)))
+                    }
                 }
             }
         }

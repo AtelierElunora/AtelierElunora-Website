@@ -73,9 +73,13 @@ struct BoothCaptureView: View {
                                 Text(cameras.status).font(.callout).multilineTextAlignment(.center)
                                 if cameras.liveViewRunning {
                                     Button("Stop live view") { cameras.stopLiveView() }
+                                        .disabled(captureLocked)
+                                } else if capture.canCapture {
+                                    Button("Start live preview") { Task { await cameras.startLiveView() } }
+                                        .disabled(!cameras.canOperate || captureLocked)
                                 }
                                 Button("Use iPad camera") { cameras.stop(); useCanon = false }
-                                    .disabled(capture.busy)
+                                    .disabled(capture.busy || captureLocked || cameras.busy)
                             }
                             Text(capture.notice)
                                 .font(.callout).multilineTextAlignment(.center)
@@ -102,6 +106,16 @@ struct BoothCaptureView: View {
         }
         .onChange(of: cameras.ready) { _, ready in
             if !ready { cancelCountdown(); useCanon = false }
+            else if capture.canCapture { useCanon = true }
+        }
+        .onChange(of: useCanon) { _, enabled in
+            if enabled {
+                testMode = false
+                Task { await cameras.startLiveView() }
+            } else { cameras.stopLiveView() }
+        }
+        .onChange(of: capture.pending == nil) { _, empty in
+            if empty, useCanon, scenePhase == .active { Task { await cameras.startLiveView() } }
         }
         .sheet(isPresented: $showingSetup) { if !locked { setupSheet.interactiveDismissDisabled(captureLocked) } }
         .onChange(of: locked) { _, value in if value { showingSetup = false } }
@@ -125,7 +139,7 @@ struct BoothCaptureView: View {
         .overlay {
             if countdown.isRunning || preparingCapture {
                 ZStack {
-                    Atelier.cream.opacity(0.96).ignoresSafeArea()
+                    Atelier.cream.opacity(useCanon && cameras.liveImage != nil ? 0.30 : 0.96).ignoresSafeArea()
                     VStack(spacing: 24) {
                         Text("ATELIER ELUNORA").brandFont(.emphasis, size: 26, relativeTo: .title2).tracking(3)
                         Text(preparingCapture ? "Getting ready…" : "A moment to keep.")
@@ -137,7 +151,8 @@ struct BoothCaptureView: View {
                         } else { ProgressView() }
                         Text("Look at the camera and smile.")
                         Button("Cancel") { cancelCountdown() }.buttonStyle(AtelierButton(secondary: true))
-                    }.foregroundStyle(Atelier.olive)
+                    }.padding(24).background(Atelier.cream.opacity(0.88), in: RoundedRectangle(cornerRadius: 16))
+                        .foregroundStyle(Atelier.olive)
                 }
             }
         }
@@ -183,14 +198,14 @@ struct BoothCaptureView: View {
             } else if useCanon, let image = cameras.liveImage {
                 Image(uiImage: image).resizable().scaledToFit()
                     .frame(maxWidth: .infinity).frame(maxHeight: maxHeight).padding(16)
-                    .accessibilityLabel("Experimental Canon live preview")
+                    .accessibilityLabel("Canon live preview")
             } else {
                 VStack(spacing: 18) {
                     Image(systemName: "camera.aperture")
                         .font(.system(size: 54, weight: .ultraLight)).accessibilityHidden(true)
-                    Text("Every celebration has a story.")
+                    Text(useCanon ? "Canon preview" : "Every celebration has a story.")
                         .brandFont(.heading, size: 26, relativeTo: .title2).multilineTextAlignment(.center)
-                    Text("Let’s make a little piece of yours.")
+                    Text(useCanon ? cameras.status : "Let’s make a little piece of yours.")
                         .font(.body).multilineTextAlignment(.center)
                 }
                 .padding(32).frame(maxWidth: .infinity)
@@ -263,26 +278,24 @@ struct BoothCaptureView: View {
         let canon = useCanon && !testMode
         let epoch = UUID(); captureAttempt = epoch; preparingCapture = true
         prepareTask = Task { @MainActor in
-            if canon {
-                let ready = await cameras.prepareForCapture()
-                guard captureAttempt == epoch, !Task.isCancelled else { return }
-                guard ready else {
-                    preparingCapture = false
-                    cameraError = "Canon is not ready. Reconnect it or select the iPad camera."
-                    return
-                }
-            }
             guard captureAttempt == epoch, !Task.isCancelled, scenePhase == .active else { return }
             preparingCapture = false
             countdown.start(seconds: countdownSeconds) {
                 guard captureAttempt == epoch, scenePhase == .active, capture.canCapture else { return }
                 if canon {
-                    guard useCanon, cameras.canOperate else { return }
+                    guard useCanon else { return }
                     // Reserve the UI until capture() marks the camera busy.
                     preparingCapture = true
                     prepareTask = Task { @MainActor in
+                        // Keep preview visible through the countdown. Drain its last command
+                        // and restore camera output immediately before the still exposure.
+                        let ready = await cameras.prepareForCapture()
                         guard captureAttempt == epoch, !Task.isCancelled else { return }
                         preparingCapture = false
+                        guard ready else {
+                            cameraError = "Canon is not ready. Reconnect it or select the iPad camera."
+                            return
+                        }
                         await cameras.capture()
                     }
                 } else { capture.makeTestPhoto() }
@@ -320,9 +333,6 @@ struct BoothCaptureView: View {
                 Section("Capture camera") {
                     Toggle("Use connected Canon (experimental)", isOn: $useCanon)
                         .disabled(!cameras.ready || cameras.busy || capture.pending != nil || capture.busy)
-                        .onChange(of: useCanon) { _, enabled in
-                            if enabled { testMode = false } else { cameras.stopLiveView() }
-                        }
                     Label("iPad camera · Default and backup", systemImage: "ipad")
                     Picker("iPad lens", selection: $frontCamera) {
                         Text("Front (selfie)").tag(true)
@@ -334,7 +344,7 @@ struct BoothCaptureView: View {
                         Text("5 seconds").tag(5)
                         Text("10 seconds").tag(10)
                     }
-                    Text("Tap Capture once. The iPad preview opens, counts down, and takes the photo automatically. Canon live view stops before its countdown. You can cancel before the shutter fires.").font(.footnote)
+                    Text("Canon preview starts in the photo box when connected and stays on during the countdown. Tap Capture once to focus, take one photo, and receive the JPEG for review. The iPad camera opens its own preview and countdown.").font(.footnote)
                     Toggle("Use generated test photos", isOn: $testMode)
                         .disabled(capture.busy || capture.pending != nil || useCanon)
                 }
@@ -357,9 +367,9 @@ struct BoothCaptureView: View {
                     ForEach(Array(cameras.devices.enumerated()), id: \.offset) { _, name in
                         Label(name, systemImage: "camera")
                     }
-                    Button("Connect Canon") { cameras.start() }
+                    Button("Connect Canon") { cameras.start() }.disabled(cameras.busy)
                     Button("Disconnect Canon / use iPad") { cameras.stop(); useCanon = false }
-                    Toggle("Experimental EOS commands", isOn: $cameras.experimentalEOS)
+                    Toggle("Canon EOS control (recommended for R100)", isOn: $cameras.experimentalEOS)
                         .disabled(cameras.busy || cameras.liveViewRunning)
                     Button("Receive next JPEG from physical shutter") { useCanon = true; testMode = false; cameras.receiveNextPhoto() }
                         .disabled(!cameras.canOperate || !capture.canCapture)
@@ -369,7 +379,7 @@ struct BoothCaptureView: View {
                         if cameras.liveViewRunning { cameras.stopLiveView() }
                         else { Task { await cameras.startLiveView() } }
                     }.disabled(cameras.busy || !cameras.ready || !cameras.experimentalEOS || !capture.canCapture)
-                    Text("Use JPEG or RAW+JPEG, a memory card, and single-shot mode. Start with physical-shutter transfer. EOS control and live view require R100 testing. Live view stops automatically before the countdown.").font(.footnote)
+                    Text("Use still-photo mode, JPEG or RAW+JPEG, an unlocked SD card with space, and single-shot drive. EOS capture keeps the original on the card. If no JPEG arrives, check the card and Connection diagnostics before trying another shot. This build needs R100 hardware verification.").font(.footnote)
                     if cameras.receivedImage != nil {
                         Button("Retry loading received photo") {
                             if let image = cameras.receivedImage, capture.acceptPhoto(image) { cameras.consumeImage() }

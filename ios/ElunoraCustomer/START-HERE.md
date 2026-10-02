@@ -1,4 +1,4 @@
-# Atelier Elunora — combined customer and owner iOS app, v4.0
+# Atelier Elunora — combined customer and owner iOS app, v4.1
 
 ## Build on your phone
 
@@ -10,6 +10,32 @@
 
 Minimum iOS 17. Use an Xcode version whose iOS SDK supports your phone. No npm, Expo, Homebrew, CocoaPods, or third-party packages are needed. This project now includes the owner booth. The original standalone capture project remains available separately.
 
+
+## v4.1 — Canon R100 preview and capture transfer
+
+Connect Canon in Station setup. EOS control is enabled by default and the app selects the connected camera and starts live preview in the photo box. Preview remains active during the countdown, pauses for the still photo, and restarts after Try again or a successful submission. If preview fails, its status is shown in the box; Start live preview retries it without taking a photo.
+
+The remote session now enables EOS events, reads camera properties, routes EVF output to the USB host, and no longer requires the legacy InitiateViewfinder command. Capture uses separate autofocus half-press and full-press/release commands. Before firing it selects an available SD-card destination and snapshots card object handles. It polls for a new JPEG and downloads it directly, so transfer no longer depends solely on an ImageCaptureCore didAdd notification. Existing card photos are excluded. RAW files are skipped; originals are not deleted. A lost shutter reply never automatically triggers another shot.
+
+### R100 device check
+
+1. Use still-photo mode, JPEG or RAW+JPEG, single-shot drive, an unlocked SD card with free space, and a charged battery. Connect the camera through the USB data adapter; allow camera permissions.
+2. Open a test event booth, Station setup → Connect Canon. Leave Canon EOS control enabled. Tap Done and confirm a moving preview appears **before** Capture.
+3. Tap Capture once. Confirm the countdown, one exposure, then the full still photo in the review box. Try again should restart preview.
+4. Approve a test photo only when ready to send it to that event's gallery/print queue. After sending, confirm preview returns.
+5. Test disconnect and backgrounding during preview and transfer. Reconnect explicitly; a partial transfer must not submit a photo or trigger a replacement exposure.
+6. If you hear the shutter but no review photo arrives, check whether the camera's playback shows a new JPEG. Send that result and Station setup → Connection diagnostics. Do not repeatedly press Capture to troubleshoot an uncertain shot.
+
+Validation limits: no R100 or Apple SDK is available in this workspace. Device behavior and an Xcode build remain required; these changes address identified protocol and discovery gaps, not a hardware-certified result. No live photos or prints were created.
+
+Foundation-only wire-format fixtures are included for a Mac check (from this folder):
+
+```sh
+swiftc ElunoraCustomer/CanonPTP.swift Tests/CanonProtocol/main.swift -o /tmp/elunora-canon-tests
+/tmp/elunora-canon-tests
+```
+
+Protocol reference: [upstream libgphoto2 EOS implementation](https://github.com/gphoto/libgphoto2/tree/master/camlibs/ptp2), particularly library.c (capture/live view), config.c (remote initialization/output), ptp.c and ptp-pack.c (wire formats). This app implements the commands independently; it does not bundle libgphoto2.
 
 ## v4.0 — one app, owner and customer experiences
 
