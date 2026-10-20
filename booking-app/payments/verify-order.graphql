@@ -1,0 +1,9 @@
+query ElunoraVerifyPaymentOrder($id: ID!) {
+  order(id: $id) {
+    id
+    updatedAt
+    customAttributes { key value }
+    totalReceivedSet { presentmentMoney { amount currencyCode } }
+    totalRefundedSet { presentmentMoney { amount currencyCode } }
+  }
+}

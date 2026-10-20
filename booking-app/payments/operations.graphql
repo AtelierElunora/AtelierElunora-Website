@@ -1,0 +1,5 @@
+mutation ElunoraCreateInvoice($input: DraftOrderInput!) { draftOrderCreate(input:$input) { draftOrder { id invoiceUrl totalPriceSet { presentmentMoney { amount currencyCode } } } userErrors { field message } } }
+query ElunoraDraftPayment($id: ID!) { draftOrder(id:$id) { id order { id } } }
+query ElunoraVerifyPayment($id: ID!) { order(id:$id) { id updatedAt customAttributes { key value } totalReceivedSet { presentmentMoney { amount currencyCode } } totalRefundedSet { presentmentMoney { amount currencyCode } } } }
+mutation ElunoraPaymentWebhook($topic: WebhookSubscriptionTopic!, $webhookSubscription: WebhookSubscriptionInput!) { webhookSubscriptionCreate(topic:$topic,webhookSubscription:$webhookSubscription) { webhookSubscription { id topic uri } userErrors { field message } } }
+mutation ElunoraVoidInvoice($input: DraftOrderDeleteInput!) { draftOrderDelete(input:$input) { deletedId userErrors { field message } } }

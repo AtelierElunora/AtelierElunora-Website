@@ -1,5 +1,7 @@
 # Atelier Elunora — production source
 
+**Booking app update — October 20, 2026:** the Azure-hosted Shopify booking service source is in [booking-app/](booking-app/README.md). See [booking source scope and verification](docs/BOOKING-PRODUCTION-SOURCE.md). The October 1 reconciliation below is historical for its other components; this booking source import does not deploy the website or update the separate native app/gallery API.
+
 Main source is reconciled with the running Shopify theme and Supabase backend on **October 1, 2026**. Start with [current reconciliation](docs/PRODUCTION-RECONCILIATION-2026-10-01.md), [production reconciliation](docs/PRODUCTION-RECONCILIATION.md) and [recovered source verification](docs/RECOVERED-AUTHORING-SOURCES.md) for provenance and validation.
 
 | Folder | Contents |

@@ -1,0 +1,10 @@
+mutation ElunoraCreatePaymentInvoice($input: DraftOrderInput!) {
+  draftOrderCreate(input: $input) {
+    draftOrder {
+      id
+      invoiceUrl
+      totalPriceSet { presentmentMoney { amount currencyCode } }
+    }
+    userErrors { field message }
+  }
+}

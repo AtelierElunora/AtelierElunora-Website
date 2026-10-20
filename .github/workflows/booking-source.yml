@@ -1,0 +1,37 @@
+name: Booking source checks
+on:
+  pull_request:
+    paths: ['booking-app/**', '.github/workflows/booking-source.yml']
+  push:
+    branches: [main]
+    paths: ['booking-app/**', '.github/workflows/booking-source.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  booking:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: booking-app
+    env:
+      NODE_ENV: test
+      SHOPIFY_API_KEY: ci-placeholder
+      SHOPIFY_API_SECRET: ci-placeholder-not-a-real-secret
+      SHOPIFY_APP_URL: https://example.invalid
+      SCOPES: write_draft_orders,read_orders
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: booking-app/package-lock.json
+      - run: npm ci --include=dev
+      - run: npm run db:generate
+      - name: Initialize disposable SQLite test database
+        run: npx prisma migrate deploy
+      - name: Mocked booking and payment tests
+        run: node --test azure/booking-config.test.mjs azure/schema.test.mjs payments/ledger.test.mjs tests/*.test.mjs
+      - run: npm run typecheck
+      - run: npm run build

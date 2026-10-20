@@ -1,0 +1,5 @@
+.elunora-booking-trigger{width:100%;padding:16px;background:#4a4b36;color:#fff;border:0;letter-spacing:2px;cursor:pointer}.elunora-booking-block p{font-size:13px;line-height:1.6}.elunora-booking-dialog{padding:0;border:0;width:min(1100px,98vw);max-width:98vw;height:94vh;background:#f4f2ef}.elunora-booking-dialog::backdrop{background:#24271dcc}.elunora-booking-dialog iframe{width:100%;height:100%;border:0}.elunora-booking-dismiss{position:absolute;top:6px;right:6px;z-index:5;width:44px;height:44px;border:0;background:#4a4b36;color:white;font-size:26px;cursor:pointer}
+
+.elunora-booking-dialog{overflow:hidden}.elunora-booking-dialog iframe{display:block}
+
+.elunora-booking-block button.elunora-booking-trigger,.elunora-booking-block button.elunora-booking-dismiss{color:#f4f2ef!important;-webkit-text-fill-color:#f4f2ef!important}
