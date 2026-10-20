@@ -1,5 +1,9 @@
 # Atelier Elunora Bookings
 
+## Contract feature in source
+
+New code generates a personalized contract for review and typed-name electronic signing before new online invoices. Owners can prepare contracts for older unsigned bookings. See [contract behavior and release status](../docs/booking-contracts.md). This feature still needs Azure deployment; the historical deployment manifest below describes the earlier production baseline.
+
 Source for the Shopify booking app used by atelierelunora.com. The running server is Azure App Service `app-elunora-bookings-nvo32m3ban2cc`, in `rg-elunora-production-central`. It uses the existing PostgreSQL database `elunora_production`, isolated to schema `elunora_booking`.
 
 This app is separate from the historical `shopify-owner-app/` dashboard. The native iPhone app and gallery Function App are separate deployments. Adding this folder does not redeploy any service or update those other source snapshots.

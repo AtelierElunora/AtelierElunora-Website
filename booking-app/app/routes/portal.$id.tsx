@@ -1,6 +1,8 @@
 import { useEffect, useRef } from "react";
+import {ContractCopy,ContractSigning} from "../BookingContract";
+import {currentContract} from "../booking-contract.server";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
-import { data, Form, useActionData, useLoaderData } from "react-router";
+import { data, Form, useActionData, useLoaderData, useNavigation } from "react-router";
 import {
   details,
   acceptQuote,
@@ -9,6 +11,7 @@ import {
   portalBooking,
   requireOrigin,
   updateBooking,
+  signBookingContract,
 } from "../booking.server";
 import db from "../db.server";
 import { unauthenticated } from "../shopify.server";
@@ -76,6 +79,8 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
         currency: d.currency,
         percent: d.prepaymentPercent,
         agreement: d.agreement,
+        contract: currentContract(b,d),
+        contractHistory: d.agreement?.contractHistory || [],
         package: d.package,
         addons: d.addons,
         checklist: d.checklist,
@@ -104,7 +109,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
       return data({success:"Request saved. Your current date remains reserved until Atelier Elunora reviews it."},{headers:privateHeaders});
     }
     if (op === "accept_quote") {
-      await acceptQuote(b.shop,b.id,f);
+      await acceptQuote(b.shop,b.id,f,t,request.headers.get("User-Agent")||"");
       return data({success:"Quote accepted and date held for 15 minutes. Choose a payment option below."},{headers:privateHeaders});
     }
     if (op === "invoice") {
@@ -130,33 +135,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
       );
     }
     if (op === "agreement") {
-      await locked(b.shop, async (tx) => {
-        const current = await tx.weddingBooking.findFirstOrThrow({
-            where: { id: b.id, shop: b.shop },
-          }),
-          d = details(current);
-        if (!d.agreement?.text) throw Error("Agreement is not ready.");
-        d.agreement = {
-          ...d.agreement,
-          acceptedAt: d.agreement.acceptedAt || new Date().toISOString(),
-        };
-        await tx.weddingBooking.update({
-          where: { id: b.id },
-          data: { detailsJson: JSON.stringify(d) },
-        });
-        await tx.bookingEvent.create({
-          data: {
-            shop: b.shop,
-            bookingId: b.id,
-            kind: "agreement",
-            text: "Customer accepted the saved booking agreement.",
-          },
-        });
-      });
-      return data(
-        { success: "Agreement accepted." },
-        { headers: privateHeaders },
-      );
+      const signed=await signBookingContract(b.shop,b.id,f,t,request.headers.get("User-Agent")||"");
+      return data({success:signed.alreadySigned?"Your contract is already signed.":"Your signed contract is saved. You can now choose your payment option."},{headers:privateHeaders});
     }
     if (op === "message") {
       const text = String(f.get("text") || "").trim();
@@ -212,7 +192,7 @@ export default function Portal() {
       events,
       payments,
     } = useLoaderData<typeof loader>(),
-    result = useActionData<typeof action>();
+    result = useActionData<typeof action>(), navigation=useNavigation();
   const d = JSON.parse(b.detailsJson);
   const money = (n: number) =>
       new Intl.NumberFormat("en", {
@@ -222,7 +202,7 @@ export default function Portal() {
     remaining = Math.max(0, b.totalCents - b.paidCents);
   return (
     <main className="customer-portal" ref={portalRef}>
-      <link rel="stylesheet" href="/portal.css"/>
+      <link rel="stylesheet" href="/portal.css"/><link rel="stylesheet" href="/contract.css"/>
       <img
         src="/elunora-logo.png"
         alt="Atelier Elunora"
@@ -237,17 +217,9 @@ export default function Portal() {
       <p className="status-badge">{({confirmed:"Booking confirmed",quote_offered:"Your quote is ready",quote_review:"Quote in review",waitlist:"On the waitlist",hold:"Awaiting payment",cancelled:"Booking cancelled",paid_review:"Payment in review"} as Record<string,string>)[b.status] || "Booking in progress"}</p>
       {b.status === "waitlist" && <p>Your waitlist request has been saved. Your date is not reserved and payment is unavailable until Atelier Elunora invites you to book.</p>}
       {b.status==="quote_review" && <p>Your quote is being reviewed, including travel and event requirements. Your date is not held and payment is unavailable.</p>}
-      {b.status==="quote_offered" && <section className="portal-card"><h2>Your wedding quote</h2><p>Experience {money(terms.quoteReview.baseCents)} · Travel {money(terms.quoteReview.travelCents)} · Total {money(b.totalCents)}</p><p style={{whiteSpace:"pre-wrap"}}>{terms.quoteReview.notes}</p><p>We’ll check availability when you accept. Your date is not yet reserved.</p><Form method="post"><input type="hidden" name="revision" value={terms.quoteReview.revision}/><label><input type="checkbox" name="accepted" value="yes" required/> I accept this quote and the saved booking agreement below.</label><button name="op" value="accept_quote">Accept quote and check availability</button></Form></section>}
-      {d.changeRequest?.status==="offered" && <section className="portal-card"><h2>A new date for your celebration</h2><p>We can offer <strong>{d.changeRequest.offeredDate}</strong>. Your current date, {b.weddingDate}, stays reserved until you accept.</p><Form method="post"><input type="hidden" name="requestId" value={d.changeRequest.id}/><button name="op" value="accept_date">Accept offered date</button></Form><p className="muted">Availability is checked when you accept. Contact us if this date doesn’t suit you.</p></section>}
-      <section className="portal-card"><h2>At a glance</h2><div className="payment-summary">
-        <div><span>Experience total</span><strong>{money(b.totalCents)}</strong></div>
-        <div><span>Paid toward booking</span><strong>{money(b.paidCents)}</strong></div>
-        <div><span>{["quote_review","quote_offered","waitlist"].includes(b.status)?"Proposed balance":"Remaining balance"}</span><strong>{money(remaining)}</strong></div>
-      </div>
-      {!["quote_review","quote_offered","waitlist","cancelled"].includes(b.status) && <p className="muted">{b.status==="paid_review"?"Your payment is being reviewed.":remaining===0?"Paid in full — thank you.":b.paidCents>0?`Balance due ${b.balanceDueDate}`:"Choose prepayment or pay in full below."}</p>}
-      </section>
+      {b.status==="quote_offered" && <section className="portal-card"><h2>Your wedding quote</h2><p>Experience {money(terms.quoteReview.baseCents)} · Travel {money(terms.quoteReview.travelCents)} · Total {money(b.totalCents)}</p><p style={{whiteSpace:"pre-wrap"}}>{terms.quoteReview.notes}</p><p>We’ll check availability when you accept. Your date is not yet reserved.</p><p>Review and sign your personalized contract below to accept this quote.</p></section>}
       {result && (
-        <p role="status">
+        <p role={"error" in result?"alert":"status"}>
           {"error" in result ? (
             result.error
           ) : "success" in result ? (
@@ -259,7 +231,22 @@ export default function Portal() {
           )}
         </p>
       )}
-      {remaining > 0 && !["cancelled", "paid_review", "waitlist", "quote_review", "quote_offered"].includes(b.status) && (
+      {terms.contract && !["waitlist","quote_review"].includes(b.status) && <section id="booking-contract" aria-label="Your booking contract">
+        <p className="contract-status">{terms.contract.signature?"Your signed contract is saved.":terms.agreement?.acceptedAt && !terms.agreement?.signatureRequired?"Your earlier agreement acceptance is recorded. An electronic signature has not been recorded for this copy.":"Review and sign your contract before payment."}</p>
+        <ContractCopy contract={terms.contract}/>
+        {!terms.contract.signature && ["hold","confirmed","paid_review","quote_offered"].includes(b.status) &&
+          <ContractSigning key={terms.contract.hash} contract={terms.contract} quoteRevision={b.status==="quote_offered"?terms.quoteReview.revision:undefined} busy={navigation.state!=="idle"}/>}
+      </section>}
+      {terms.contractHistory.length>0 && <details className="portal-card contract-history"><summary>Earlier signed contracts ({terms.contractHistory.length})</summary>{terms.contractHistory.map((copy:any)=><details key={copy.hash}><summary>Signed revision {copy.revision} · {copy.document.weddingDate}</summary><ContractCopy contract={copy}/></details>)}</details>}
+      {d.changeRequest?.status==="offered" && <section className="portal-card"><h2>A new date for your celebration</h2><p>We can offer <strong>{d.changeRequest.offeredDate}</strong>. Your current date, {b.weddingDate}, stays reserved until you accept.</p><Form method="post"><input type="hidden" name="requestId" value={d.changeRequest.id}/><button name="op" value="accept_date">Accept offered date</button></Form><p className="muted">Availability is checked when you accept. Contact us if this date doesn’t suit you.</p></section>}
+      <section className="portal-card"><h2>At a glance</h2><div className="payment-summary">
+        <div><span>Experience total</span><strong>{money(b.totalCents)}</strong></div>
+        <div><span>Paid toward booking</span><strong>{money(b.paidCents)}</strong></div>
+        <div><span>{["quote_review","quote_offered","waitlist"].includes(b.status)?"Proposed balance":"Remaining balance"}</span><strong>{money(remaining)}</strong></div>
+      </div>
+      {!["quote_review","quote_offered","waitlist","cancelled"].includes(b.status) && <p className="muted">{b.status==="paid_review"?"Your payment is being reviewed.":remaining===0?"Paid in full — thank you.":b.paidCents>0?`Balance due ${b.balanceDueDate}`:"Choose prepayment or pay in full below."}</p>}
+      </section>
+      {remaining > 0 && (!terms.agreement?.signatureRequired || !!terms.contract?.signature) && !["cancelled", "paid_review", "waitlist", "quote_review", "quote_offered"].includes(b.status) && (
         <Form method="post">
           <input type="hidden" name="op" value="invoice" />
           {!b.paidCents && (
@@ -300,22 +287,9 @@ export default function Portal() {
           {money(p.refundedCents)}
         </p>
       ))}
-      </details><details className="portal-card" open={!terms.agreement?.acceptedAt}><summary>Booking agreement{terms.agreement?.acceptedAt ? " · accepted" : " · review required"}</summary>
-      <p style={{ whiteSpace: "pre-wrap" }}>
-        {terms.agreement?.text || "Your agreement is being prepared."}
-      </p>
-      {terms.agreement?.acceptedAt ? (
-        <p>Accepted {terms.agreement.acceptedAt}</p>
-      ) : (
-        terms.agreement?.text && (
-          <Form method="post">
-            <button name="op" value="agreement">
-              I accept this booking agreement
-            </button>
-          </Form>
-        )
-      )}
-      </details><details className="portal-card"><summary>Your wedding details</summary>
+      </details>
+      {!terms.contract && <details className="portal-card"><summary>Saved booking agreement</summary><p style={{whiteSpace:"pre-wrap"}}>{terms.agreement?.text || "Your contract is being prepared."}</p>{terms.agreement?.acceptedAt && <p>Earlier acceptance recorded {terms.agreement.acceptedAt}. No electronic signature is recorded.</p>}</details>}
+      <details className="portal-card"><summary>Your wedding details</summary>
       <Form method="post">
         <input type="hidden" name="op" value="details" />
         {[

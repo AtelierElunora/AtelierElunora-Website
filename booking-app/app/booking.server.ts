@@ -1,3 +1,4 @@
+import {currentContract,refreshContract,applyContractSignature} from "./booking-contract.server";
 import { validPortalLink } from "./portal-links";
 import { randomBytes, createHash } from "node:crypto";
 import db from "./db.server";
@@ -68,6 +69,7 @@ export async function createBooking(
     totalCents?: number;
     accepted: boolean;
     source: string;
+    contractRequested?: boolean;
     phone?: string;
     preferredStartTime?: string;
     customerNotes?: string;
@@ -105,7 +107,7 @@ export async function createBooking(
       throw Error("Enter a positive booking total.");
     if (
       input.source === "customer" && !input.waitlist && !input.quoteRequest &&
-      (!s.agreementText.trim() || !input.accepted)
+      (!s.agreementText.trim() || (!input.accepted && !input.contractRequested))
     )
       throw Error("Accept the booking agreement to continue.");
     const bookings = await tx.weddingBooking.findMany({
@@ -153,6 +155,11 @@ export async function createBooking(
         }),
       },
     });
+    const contractDetails=details(b);
+    contractDetails.agreement.signatureRequired=input.contractRequested===true;
+    if(input.contractRequested || input.waitlist || needsQuote) contractDetails.agreement.acceptedAt=null;
+    refreshContract(b,contractDetails);
+    const savedBooking=await tx.weddingBooking.update({where:{id:b.id},data:{detailsJson:JSON.stringify(contractDetails)}});
     await tx.bookingEvent.create({
       data: {
         shop,
@@ -161,7 +168,7 @@ export async function createBooking(
         text: input.waitlist ? "Waitlist request received; no date hold or payment." : needsQuote ? "Quote review requested; no date held or payment available." : "Booking created; date held for 15 minutes pending payment.",
       },
     });
-    return { booking: b, portalToken: rawToken };
+    return { booking: savedBooking, portalToken: rawToken };
   });
 }
 export async function reservePayment(shop: string, id: string, kind: string) {
@@ -170,6 +177,10 @@ export async function reservePayment(shop: string, id: string, kind: string) {
       d = details(b);
     if (["cancelled", "paid_review", "waitlist", "quote_review", "quote_offered"].includes(b.status))
       throw Error("This booking requires owner review.");
+    if(d.agreement?.signatureRequired){
+      const contract=currentContract(b,d);
+      if(!contract?.signature || contract.signature.documentHash!==contract.hash) throw Error("Sign your current booking contract before payment.");
+    }
     if (b.status === "hold") {
       const s = await tx.bookingSettings.findUniqueOrThrow({ where: { shop } });
       d.resources = allocate(
@@ -232,7 +243,16 @@ export async function updateBooking(
       d = details(b);
     let data: Prisma.WeddingBookingUpdateInput = {};
     let text = "";
-    if (op === "offer_quote") {
+    if (op === "prepare_contract") {
+      if(b.status==="cancelled" || d.agreement?.contract?.signature)throw Error("This contract is already signed or the booking is cancelled.");
+      if(await tx.bookingPayment.count({where:{shop,bookingId:id,status:{in:["creating","ready","review"]}}}))throw Error("Void pending invoices before requiring a new signature.");
+      const settings=await tx.bookingSettings.findUniqueOrThrow({where:{shop}});
+      const saved=d.agreement||{}, agreementText=saved.text?.trim()?saved.text:settings.agreementText;
+      if(!agreementText?.trim())throw Error("Add your booking agreement in settings before preparing a contract.");
+      const previousAcceptance=saved.previousAcceptance || (saved.acceptedAt?{text:saved.text,version:saved.version,acceptedAt:saved.acceptedAt}:null);
+      d.agreement={...saved,text:agreementText,version:saved.text?.trim()?saved.version:parseConfig(settings.configJson).agreementVersion,previousAcceptance,acceptedAt:null,signatureRequired:true};
+      text="Owner prepared a personalized contract for customer signature; no signature or payment recorded.";
+    } else if (op === "offer_quote") {
       if (!["quote_review", "quote_offered"].includes(b.status) || b.paidCents) throw Error("Only unpaid quote requests can be priced.");
       if (await tx.bookingPayment.count({where:{bookingId:id,shop,status:{in:["creating","ready","review"]}}})) throw Error("Void pending invoices before changing a quote.");
       const baseCents=amount(form.get("base")), travelCents=amount(form.get("travel")), total=baseCents+travelCents;
@@ -350,6 +370,12 @@ export async function updateBooking(
       if (!text || text.length > 4000)
         throw Error("Enter a note of up to 4,000 characters.");
     } else throw Error("Unknown action.");
+    const previousContract=d.agreement?.contract;
+    const revisedContract=refreshContract({...b,...data} as typeof b,d);
+    if(previousContract?.signature && revisedContract?.hash!==previousContract.hash &&
+       await tx.bookingPayment.count({where:{shop,bookingId:id,status:{in:["creating","ready","review"]}}}))
+      throw Error("Void pending invoices before changing signed contract details.");
+
     await tx.weddingBooking.update({
       where: { id },
       data: { ...data, detailsJson: JSON.stringify(d) },
@@ -382,7 +408,7 @@ export async function requestBookingChange(shop: string, id: string, form: FormD
   });
 }
 
-export async function acceptQuote(shop: string,id: string,form:FormData) {
+export async function acceptQuote(shop: string,id: string,form:FormData,portalToken?:string,userAgent="") {
   return locked(shop,async tx=>{
     const b=await tx.weddingBooking.findFirstOrThrow({where:{shop,id}}), d=details(b);
     if(b.status!=="quote_offered" || d.quoteReview?.status!=="offered" || Number(form.get("revision"))!==d.quoteReview.revision) throw Error("The quote changed or is unavailable. Refresh before accepting.");
@@ -391,9 +417,25 @@ export async function acceptQuote(shop: string,id: string,form:FormData) {
     const settings=await tx.bookingSettings.findUniqueOrThrow({where:{shop}});
     d.resources=allocate(parseConfig(settings.configJson),settings.dailyCapacity,await tx.weddingBooking.findMany({where:{shop,weddingDate:b.weddingDate}}),b.weddingDate,id);
     d.holdExpiresAt=new Date(Date.now()+15*60000).toISOString();
+    if(d.agreement?.signatureRequired || form.has("contractHash")){
+      if(!portalToken || !validPortalLink(d,hash(portalToken)))throw Error("Your private booking link is unavailable or expired.");
+      applyContractSignature(b,d,form,userAgent);
+    } else d.agreement={...d.agreement,acceptedAt:new Date().toISOString()};
     d.quoteReview={...d.quoteReview,status:"accepted",acceptedAt:new Date().toISOString()};
-    d.agreement={...d.agreement,acceptedAt:new Date().toISOString()};
     await tx.weddingBooking.update({where:{id},data:{status:"hold",detailsJson:JSON.stringify(d)}});
     await tx.bookingEvent.create({data:{shop,bookingId:id,kind:"quote",text:"Customer accepted the owner quote and agreement; date held for 15 minutes pending payment."}});
+  });
+}
+
+export async function signBookingContract(shop:string,id:string,form:FormData,portalToken:string,userAgent=""){
+  return locked(shop,async tx=>{
+    const b=await tx.weddingBooking.findFirstOrThrow({where:{shop,id}}),d=details(b);
+    if(!/^[a-f0-9]{64}$/.test(portalToken)||!validPortalLink(d,hash(portalToken)))throw Error("Your private booking link is unavailable or expired.");
+    if(!["hold","confirmed","paid_review"].includes(b.status))throw Error("Your booking needs owner review before this contract can be signed.");
+    const result=applyContractSignature(b,d,form,userAgent);
+    if(result.alreadySigned)return result;
+    await tx.weddingBooking.update({where:{id},data:{detailsJson:JSON.stringify(d)}});
+    await tx.bookingEvent.create({data:{shop,bookingId:id,kind:"agreement",text:"Customer electronically signed contract revision "+result.contract.revision+"; document SHA-256 "+result.contract.hash+"."}});
+    return result;
   });
 }
