@@ -1,7 +1,6 @@
 name: Booking contract visual checks
 on:
-  push:
-    branches: [codex/contract-visual-qa]
+  pull_request:
     paths: ['booking-app/**', '.github/workflows/booking-contract-visual.yml']
   workflow_dispatch:
 permissions:
