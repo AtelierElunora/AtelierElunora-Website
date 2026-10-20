@@ -1,3 +1,6 @@
+import type {BookingContract} from "../booking-contract";
+import {ContractCopy} from "../BookingContract";
+import {currentContract} from "../booking-contract.server";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { Form, Link, useActionData, useLoaderData } from "react-router";
 import { authenticate } from "../shopify.server";
@@ -23,7 +26,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
       where: { shop: session.shop, bookingId: b.id },
       orderBy: { createdAt: "desc" },
     });
-  return { booking: b, payments, events, calendar:await calendarStatus(session.shop,b.id) };
+  return { booking: b, payments, events, contract:currentContract(b,details(b)), calendar:await calendarStatus(session.shop,b.id) };
 }
 export async function action({ request, params }: ActionFunctionArgs) {
   const { session, admin } = await authenticate.admin(request),
@@ -123,6 +126,7 @@ export default function BookingEditor() {
       payments: Awaited<ReturnType<typeof db.bookingPayment.findMany>>;
       events: Awaited<ReturnType<typeof db.bookingEvent.findMany>>;
       calendar: Awaited<ReturnType<typeof calendarStatus>>;
+      contract: BookingContract|null;
     },
     { booking: b, payments, events } = loaded,
     d = JSON.parse(b.detailsJson),
@@ -141,6 +145,7 @@ export default function BookingEditor() {
         fontFamily: "Arial",
       }}
     >
+      <link rel="stylesheet" href="/contract.css"/>
       <Link to="/app">Back to bookings</Link>
       <h1 style={{ fontFamily: "Georgia" }}>
         {b.customerName} · {b.weddingDate}
@@ -193,6 +198,14 @@ export default function BookingEditor() {
       {["quote_review","quote_offered"].includes(b.status) && <section><h2>Quote & travel approval</h2><p>The customer cannot pay until they accept your quote. No date is held during review.</p><Form method="post"><label>Experience amount <input name="base" inputMode="decimal" required defaultValue={((d.quoteReview?.baseCents || b.totalCents)/100).toFixed(2)}/></label><label>Travel amount <input name="travel" inputMode="decimal" required defaultValue={((d.quoteReview?.travelCents || 0)/100).toFixed(2)}/></label><label>Quote details and travel approval<textarea name="quoteNotes" maxLength={4000} required defaultValue={d.quoteReview?.notes || ""}/></label><button name="op" value="offer_quote">Save quote for customer acceptance</button></Form><p>Generate a private portal link above to share the quote. Email delivery depends on sender setup.</p></section>}
       {["pending","offered"].includes(d.changeRequest?.status) && <section style={{background:"#f3f2e9",padding:24,borderRadius:12,margin:"24px 0"}}><h2>{d.changeRequest.kind==="reschedule"?"Reschedule request":"Cancellation request"}</h2><p>Current date: <strong>{b.weddingDate}</strong>{d.changeRequest.kind==="reschedule" && <> · Requested date: <strong>{d.changeRequest.date}</strong></>}</p><p>{d.changeRequest.reason}</p>{d.changeRequest.status==="pending"?<Form method="post"><input type="hidden" name="requestId" value={d.changeRequest.id}/><button name="op" value="approve_change">{d.changeRequest.kind==="reschedule"?"Approve requested date":"Approve cancellation"}</button><button name="op" value="decline_change">Decline request</button></Form>:<p>Offered {d.changeRequest.offeredDate} · awaiting customer acceptance.</p>}{d.changeRequest.kind==="reschedule" && <details><summary>Offer a different date</summary><Form method="post"><input type="hidden" name="requestId" value={d.changeRequest.id}/><label>Alternative date<input type="date" name="offeredDate" required/></label><button name="op" value="offer_date">Send date offer</button></Form><p>The original date stays reserved. Availability is checked again when the customer accepts.</p></details>}{d.changeRequest.kind==="cancel" && <p>Refunds are reviewed separately.</p>}</section>}
       <section style={{background:"#fff",padding:20,borderRadius:12,margin:"20px 0"}}><h2>Google Calendar</h2><p>{!loaded.calendar.connected?"Direct sync is not connected.":loaded.calendar.entry?.status==="synced"?"Calendar synced":loaded.calendar.entry?.status==="removed"?"Removed from calendar":loaded.calendar.entry?.status==="failed"?"Sync failed — automatic retry scheduled":b.status==="confirmed"?"Waiting to sync":"Appears in Google after booking confirmation"}</p>{loaded.calendar.entry?.lastSyncedAt && <p>Last synced {new Date(loaded.calendar.entry.lastSyncedAt).toLocaleString()}</p>}{loaded.calendar.entry?.error && <p>{loaded.calendar.entry.error}</p>}{loaded.calendar.connected?<Form method="post"><button name="op" value="calendar_retry">Retry calendar sync</button></Form>:<Link to="/app/calendar">Connect Google Calendar</Link>}</section>
+      <section aria-label="Booking contract"><h2>Booking contract</h2><p>{loaded.contract?.signature?"Signed by "+loaded.contract.signature.name+" on "+loaded.contract.signature.signedAt:d.agreement?.acceptedAt && !d.agreement?.signatureRequired?"Earlier agreement acceptance recorded; no electronic signature.":"Awaiting customer signature"}</p>
+        <p>The customer can review and sign through their private portal link. Signing never marks a payment as received.</p>
+        {!d.agreement?.contract?.signature && b.status!=="cancelled" && <Form method="post"><button name="op" value="prepare_contract">{d.agreement?.signatureRequired?"Refresh unsigned contract":"Prepare contract & require customer signature"}</button></Form>}
+        {d.agreement?.previousAcceptance && <p>Earlier checkbox acceptance is preserved from {d.agreement.previousAcceptance.acceptedAt}; no typed signature was recorded then.</p>}
+
+        {loaded.contract && <ContractCopy contract={loaded.contract}/>}
+        {!!d.agreement?.contractHistory?.length && <details className="contract-history"><summary>Earlier signed contracts ({d.agreement.contractHistory.length})</summary>{d.agreement.contractHistory.map((copy:any)=><details key={copy.hash}><summary>Signed revision {copy.revision} · {copy.document.weddingDate}</summary><ContractCopy contract={copy}/></details>)}</details>}
+      </section>
       <h2>Payment history</h2>
       {payments.map((p) => (
         <div key={p.id}>

@@ -5,7 +5,7 @@ import {randomUUID} from 'node:crypto';
 import {rm} from 'node:fs/promises';
 if(process.env.ELUNORA_DATABASE_BACKEND)throw Error('Server tests require the local SQLite backend.');
 await build({entryPoints:['tests/server-entry.ts'],bundle:true,format:'esm',platform:'node',packages:'external',outfile:'tests/.server-bundle.mjs'});
-const {db,createBooking,invoice,refreshPayment,refreshBookingPayments,updateBooking,portalBooking,details,parseImport,importBookings,importFingerprint,reminderDrafts,requestBookingChange,acceptQuote,calendarFeedLoader,hash,scheduleMail,bookingEmail}=await import('./.server-bundle.mjs');
+const {db,createBooking,invoice,refreshPayment,refreshBookingPayments,updateBooking,portalBooking,details,parseImport,importBookings,importFingerprint,reminderDrafts,requestBookingChange,acceptQuote,calendarFeedLoader,hash,scheduleMail,bookingEmail,signBookingContract,reservePayment}=await import('./.server-bundle.mjs');
 const shop='test-'+randomUUID()+'.myshopify.com';
 const input={name:'Synthetic test',email:'test@example.invalid',venue:'Test venue',weddingDate:'2027-06-01',guests:50,addons:{},totalCents:100000,accepted:true,source:'owner'};
 try{await db.bookingSettings.create({data:{shop,dailyCapacity:2,agreementText:'Test agreement'}});
@@ -83,4 +83,53 @@ await assert.rejects(updateBooking(shop,id,'accept_date',new URLSearchParams({re
 await updateBooking(shop,id,'offer_date',new URLSearchParams({requestId:currentId,offeredDate:'2028-05-04'}));saved=await db.weddingBooking.findUniqueOrThrow({where:{id}});await updateBooking(shop,id,'accept_date',new URLSearchParams({requestId:details(saved).changeRequest.id}));saved=await db.weddingBooking.findUniqueOrThrow({where:{id}});assert.equal(saved.weddingDate,'2028-05-04');assert.equal(details(saved).changeRequest.status,'approved');await scheduleMail(shop);assert.equal(await db.bookingMail.count({where:{bookingId:id,kind:'change'}}),2);
 });
 await test('CSV preview/import preserves opening payments and rejects duplicate batches',async()=>{const text='external_id,name,email,date,venue,total,paid,balance_due\nlegacy-1,Test,test@example.invalid,2027-08-01,Venue,1000.00,300.00,2027-07-02';assert.equal(parseImport(text)[0].paidCents,30000);await assert.rejects(importBookings(shop,text,'wrong'),/Preview/);assert.equal(await importBookings(shop,text,importFingerprint(text)),1);await assert.rejects(importBookings(shop,text,importFingerprint(text)),/Already imported/);const imported=await db.weddingBooking.findFirstOrThrow({where:{shop,customerName:"Test",weddingDate:"2027-08-01"}});const draft=(await reminderDrafts(shop)).filter(r=>r.bookingId===imported.id);assert.equal(draft.length,4);assert.match(draft[0].text,/\$700.00/);});
+
+await test('online contracts gate invoices, persist one signature, retain amendments and protect private access',async()=>{
+ await db.bookingSettings.update({where:{shop},data:{agreementText:"Owner booking and cancellation terms.",prepaymentPercent:30,balanceDaysBefore:30,configJson:"{}"}});
+ const online=await createBooking(shop,{...input,weddingDate:"2030-06-01",source:"customer",accepted:false,contractRequested:true});
+ const id=online.booking.id,privateToken=online.portalToken;
+ let saved=await db.weddingBooking.findUniqueOrThrow({where:{id}}),d=details(saved);
+ assert.equal(d.agreement.acceptedAt,null);assert.equal(d.agreement.contract.signature,null);assert.equal(d.agreement.contract.document.prepaymentCents,30000);
+ await assert.rejects(reservePayment(shop,id,"prepayment"),/Sign/);
+ const signing=new URLSearchParams({contractHash:d.agreement.contract.hash,signatureName:"Synthetic Signer",signatureConsent:"yes"});
+ await assert.rejects(signBookingContract(shop,id,signing,"f".repeat(64)),/link/);
+ await assert.rejects(signBookingContract(shop+"-other",id,signing,privateToken));
+ await signBookingContract(shop,id,signing,privateToken,"Test browser");const original=details(await db.weddingBooking.findUniqueOrThrow({where:{id}})).agreement.contract;
+ await signBookingContract(shop,id,signing,privateToken,"Test browser");
+ assert.equal(await db.bookingEvent.count({where:{shop,bookingId:id,kind:"agreement"}}),1);
+ saved=await db.weddingBooking.findUniqueOrThrow({where:{id}});assert.equal(saved.paidCents,0);assert.equal(saved.status,"hold");
+ const reserved=await reservePayment(shop,id,"prepayment");assert.equal(reserved.amountCents,30000);
+ await assert.rejects(updateBooking(shop,id,"reschedule",new URLSearchParams({date:"2030-06-02"})),/Void/);
+ await db.bookingPayment.update({where:{id:reserved.id},data:{status:"void"}});
+ await updateBooking(shop,id,"reschedule",new URLSearchParams({date:"2030-06-02"}));
+ d=details(await db.weddingBooking.findUniqueOrThrow({where:{id}}));
+ assert.equal(d.agreement.contract.signature,null);assert.equal(d.agreement.acceptedAt,null);assert.equal(d.agreement.contractHistory[0].hash,original.hash);
+ await assert.rejects(signBookingContract(shop,id,signing,privateToken),/changed/);
+ await assert.rejects(reservePayment(shop,id,"balance"),/Sign/);
+ const latest=new URLSearchParams({contractHash:d.agreement.contract.hash,signatureName:"Synthetic Signer",signatureConsent:"yes"});
+ d.portalExpiresAt=new Date(Date.now()-1000).toISOString();d.emailPortalLinks=[];await db.weddingBooking.update({where:{id},data:{detailsJson:JSON.stringify(d)}});
+ await assert.rejects(signBookingContract(shop,id,latest,privateToken),/link/);
+});
+await test('approved quotes require the exact generated contract signature before holding a date',async()=>{
+ const proposed=await createBooking(shop,{...input,weddingDate:"2030-07-01",source:"customer",accepted:false,contractRequested:true,quoteRequest:true});
+ const id=proposed.booking.id,privateToken=proposed.portalToken;
+ await updateBooking(shop,id,"offer_quote",new URLSearchParams({base:"1200.00",travel:"100.00",quoteNotes:"Approved test travel"}));
+ let saved=await db.weddingBooking.findUniqueOrThrow({where:{id}}),d=details(saved);
+ const f=new URLSearchParams({accepted:"yes",revision:String(d.quoteReview.revision)});
+ await assert.rejects(acceptQuote(shop,id,f,privateToken),/changed/);
+ saved=await db.weddingBooking.findUniqueOrThrow({where:{id}});assert.equal(saved.status,"quote_offered");assert.equal(details(saved).agreement.contract.signature,null);
+ await assert.rejects(signBookingContract(shop,id,f,privateToken),/owner review/);
+ f.set("contractHash",d.agreement.contract.hash);f.set("signatureName","Synthetic Quote Signer");f.set("signatureConsent","yes");
+ await acceptQuote(shop,id,f,privateToken,"Test browser");saved=await db.weddingBooking.findUniqueOrThrow({where:{id}});d=details(saved);
+ assert.equal(saved.status,"hold");assert.equal(saved.paidCents,0);assert.equal(d.agreement.contract.signature.documentHash,f.get("contractHash"));assert.equal(d.agreement.contract.document.totalCents,130000);
+});
+
+await test('owner can prepare an older unsigned booking while preserving earlier checkbox acceptance',async()=>{
+ const legacy=await createBooking(shop,{...input,weddingDate:"2030-08-01",source:"owner",accepted:true});
+ const id=legacy.booking.id,before=details(legacy.booking).agreement.acceptedAt;
+ await updateBooking(shop,id,"prepare_contract",new URLSearchParams());
+ const saved=await db.weddingBooking.findUniqueOrThrow({where:{id}}),d=details(saved);
+ assert.equal(d.agreement.previousAcceptance.acceptedAt,before);assert.equal(d.agreement.acceptedAt,null);assert.equal(d.agreement.signatureRequired,true);assert.equal(d.agreement.contract.signature,null);assert.equal(saved.paidCents,0);
+ await assert.rejects(reservePayment(shop,id,"prepayment"),/Sign/);
+});
 }finally{for(const model of ['bookingMail','bookingWebhook','bookingEvent','bookingPayment','weddingBooking','bookingSettings'])await db[model].deleteMany({where:{shop}});await db.$disconnect();await rm('tests/.server-bundle.mjs',{force:true});}
