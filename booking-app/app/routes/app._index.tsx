@@ -180,7 +180,7 @@ export async function action({ request }: ActionFunctionArgs) {
           prepaymentPercent,
           balanceDaysBefore,
           agreementText,
-          configJson: JSON.stringify({...config,googleCalendar:JSON.parse(prior.configJson).googleCalendar}),
+          configJson: JSON.stringify({...config,eventAgreement:JSON.parse(prior.configJson).eventAgreement,googleCalendar:JSON.parse(prior.configJson).googleCalendar}),
         },
       });
     });

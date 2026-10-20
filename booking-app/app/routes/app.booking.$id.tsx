@@ -1,12 +1,13 @@
+import {ownerAgreementFields} from "../event-agreement";
 import type {BookingContract} from "../booking-contract";
-import {ContractCopy} from "../BookingContract";
+import {ContractCopy,ProviderSigning} from "../BookingContract";
 import {currentContract} from "../booking-contract.server";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { Form, Link, useActionData, useLoaderData } from "react-router";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
 import {calendarStatus,retryGoogle} from "../google-calendar.server";
-import { details, hash, locked, token, updateBooking } from "../booking.server";
+import { details, hash, locked, token, updateBooking, countersignBookingContract, requireOrigin } from "../booking.server";
 import { CalendarDownload } from "../CalendarDownload";
 import {
   graphql,
@@ -34,6 +35,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
     id = params.id!;
   try {
     const op = String(f.get("op"));
+    if(op==="contract_details")requireOrigin(request);
+    if(op==="countersign_contract"){requireOrigin(request);await countersignBookingContract(session.shop,id,f);return {success:"Provider signature saved. Share the private booking page so the customer can continue to payment."};}
     if (op === "calendar_retry") {await retryGoogle(session.shop,id);return {success:"Google Calendar sync checked."};}
     if (op === "portal") {
       const raw = token();
@@ -203,7 +206,8 @@ export default function BookingEditor() {
         {!d.agreement?.contract?.signature && b.status!=="cancelled" && <Form method="post"><button name="op" value="prepare_contract">{d.agreement?.signatureRequired?"Refresh unsigned contract":"Prepare contract & require customer signature"}</button></Form>}
         {d.agreement?.previousAcceptance && <p>Earlier checkbox acceptance is preserved from {d.agreement.previousAcceptance.acceptedAt}; no typed signature was recorded then.</p>}
 
-        {loaded.contract && <ContractCopy contract={loaded.contract}/>}
+        {loaded.contract && <><ContractCopy contract={loaded.contract}/><ProviderSigning contract={loaded.contract}/></>}
+        {loaded.contract?.document.serviceAgreement&&<details className="portal-card"><summary>Edit agreement details</summary><Form method="post" className="contract-sign-form">{ownerAgreementFields.map(([key,label,required])=><label key={key}>{label}<textarea name={"contract_"+key} defaultValue={d.agreement?.fields?.[key]||""} maxLength={1000} required={required}/></label>)}<label className="contract-consent"><input type="checkbox" name="useLatestTemplate" value="yes"/><span>Use the latest business contract settings for this revision.</span></label><button name="op" value="contract_details">Save agreement details</button><p>Changes to signed content retain the original and require both signatures again. Void pending invoices before making such changes.</p></Form></details>}
         {!!d.agreement?.contractHistory?.length && <details className="contract-history"><summary>Earlier signed contracts ({d.agreement.contractHistory.length})</summary>{d.agreement.contractHistory.map((copy:any)=><details key={copy.hash}><summary>Signed revision {copy.revision} · {copy.document.weddingDate}</summary><ContractCopy contract={copy}/></details>)}</details>}
       </section>
       <h2>Payment history</h2>
