@@ -1,4 +1,5 @@
-import {currentContract,refreshContract,applyContractSignature} from "./booking-contract.server";
+import {eventAgreementSettings,validateAgreementSettings,readAgreementFields} from "./event-agreement";
+import {currentContract,refreshContract,applyContractSignature,applyProviderSignature} from "./booking-contract.server";
 import { validPortalLink } from "./portal-links";
 import { randomBytes, createHash } from "node:crypto";
 import db from "./db.server";
@@ -70,6 +71,7 @@ export async function createBooking(
     accepted: boolean;
     source: string;
     contractRequested?: boolean;
+    agreementFields?: Record<string,string>;
     phone?: string;
     preferredStartTime?: string;
     customerNotes?: string;
@@ -95,6 +97,10 @@ export async function createBooking(
   return locked(shop, async (tx) => {
     const s = await tx.bookingSettings.findUniqueOrThrow({ where: { shop } }),
       c = parseConfig(s.configJson);
+    const agreementProfile=eventAgreementSettings(JSON.parse(s.configJson).eventAgreement);
+    if(agreementProfile.enabled)validateAgreementSettings(agreementProfile);
+    const agreementFields=readAgreementFields(input.agreementFields||{});
+    if(agreementProfile.enabled && input.source==="customer" && !agreementFields.mailingAddress)throw Error("Enter your mailing address for the agreement.");
     const q =
       input.totalCents !== undefined
         ? { totalCents: input.totalCents, package: null, addons: [] }
@@ -107,7 +113,7 @@ export async function createBooking(
       throw Error("Enter a positive booking total.");
     if (
       input.source === "customer" && !input.waitlist && !input.quoteRequest &&
-      (!s.agreementText.trim() || (!input.accepted && !input.contractRequested))
+      ((!s.agreementText.trim()&&!agreementProfile.enabled) || (!input.accepted && !input.contractRequested&&!agreementProfile.enabled))
     )
       throw Error("Accept the booking agreement to continue.");
     const bookings = await tx.weddingBooking.findMany({
@@ -132,7 +138,8 @@ export async function createBooking(
           prepaymentPercent: s.prepaymentPercent,
           balanceDaysBefore: s.balanceDaysBefore,
           agreement: {
-            text: s.agreementText,
+            text: agreementProfile.enabled?"Atelier Elunora full event service agreement":s.agreementText,
+            ...(agreementProfile.enabled?{eventTemplate:agreementProfile,fields:agreementFields,preparedAt:new Date().toISOString()}:{}),
             version: c.agreementVersion,
             acceptedAt: input.accepted ? new Date().toISOString() : null,
           },
@@ -156,8 +163,8 @@ export async function createBooking(
       },
     });
     const contractDetails=details(b);
-    contractDetails.agreement.signatureRequired=input.contractRequested===true;
-    if(input.contractRequested || input.waitlist || needsQuote) contractDetails.agreement.acceptedAt=null;
+    contractDetails.agreement.signatureRequired=input.contractRequested===true || agreementProfile.enabled;
+    if(input.contractRequested || agreementProfile.enabled || input.waitlist || needsQuote) contractDetails.agreement.acceptedAt=null;
     refreshContract(b,contractDetails);
     const savedBooking=await tx.weddingBooking.update({where:{id:b.id},data:{detailsJson:JSON.stringify(contractDetails)}});
     await tx.bookingEvent.create({
@@ -180,6 +187,7 @@ export async function reservePayment(shop: string, id: string, kind: string) {
     if(d.agreement?.signatureRequired){
       const contract=currentContract(b,d);
       if(!contract?.signature || contract.signature.documentHash!==contract.hash) throw Error("Sign your current booking contract before payment.");
+      if(contract.document.serviceAgreement?.requiresProviderSignature && (!contract.providerSignature || contract.providerSignature.documentHash!==contract.hash))throw Error("Atelier Elunora must countersign your current agreement before payment.");
     }
     if (b.status === "hold") {
       const s = await tx.bookingSettings.findUniqueOrThrow({ where: { shop } });
@@ -243,7 +251,17 @@ export async function updateBooking(
       d = details(b);
     let data: Prisma.WeddingBookingUpdateInput = {};
     let text = "";
-    if (op === "prepare_contract") {
+    if(op==="contract_details"){
+      if(b.status==="cancelled")throw Error("Cancelled bookings cannot be amended.");
+      if(!d.agreement?.eventTemplate)throw Error("This booking does not use the full event agreement.");
+      d.agreement.fields={...d.agreement.fields,...readAgreementFields(form,true)};
+      if(form.get("useLatestTemplate")==="yes"){
+        const settings=await tx.bookingSettings.findUniqueOrThrow({where:{shop}});
+        const profile=eventAgreementSettings(JSON.parse(settings.configJson).eventAgreement);validateAgreementSettings({...profile,enabled:true});
+        d.agreement.eventTemplate=profile;
+      }
+      text="Owner updated agreement details; changed signed content requires both signatures again.";
+    } else if (op === "prepare_contract") {
       if(b.status==="cancelled" || d.agreement?.contract?.signature)throw Error("This contract is already signed or the booking is cancelled.");
       if(await tx.bookingPayment.count({where:{shop,bookingId:id,status:{in:["creating","ready","review"]}}}))throw Error("Void pending invoices before requiring a new signature.");
       const settings=await tx.bookingSettings.findUniqueOrThrow({where:{shop}});
@@ -436,6 +454,24 @@ export async function signBookingContract(shop:string,id:string,form:FormData,po
     if(result.alreadySigned)return result;
     await tx.weddingBooking.update({where:{id},data:{detailsJson:JSON.stringify(d)}});
     await tx.bookingEvent.create({data:{shop,bookingId:id,kind:"agreement",text:"Customer electronically signed contract revision "+result.contract.revision+"; document SHA-256 "+result.contract.hash+"."}});
+    return result;
+  });
+}
+
+export async function countersignBookingContract(shop:string,id:string,form:FormData){
+  return locked(shop,async tx=>{
+    const b=await tx.weddingBooking.findFirstOrThrow({where:{shop,id}}),d=details(b);
+    if(!["hold","confirmed","paid_review"].includes(b.status))throw Error("This booking needs review before countersigning.");
+    if(b.weddingDate<new Date().toISOString().slice(0,10))throw Error("Review the event date before countersigning.");
+    const result=applyProviderSignature(b,d,form);
+    if(result.alreadySigned)return result;
+    if(b.status==="hold"){
+      const settings=await tx.bookingSettings.findUniqueOrThrow({where:{shop}});
+      d.resources=allocate(parseConfig(settings.configJson),settings.dailyCapacity,await tx.weddingBooking.findMany({where:{shop,weddingDate:b.weddingDate}}),b.weddingDate,id);
+      d.holdExpiresAt=new Date(Date.now()+15*60000).toISOString();
+    }
+    await tx.weddingBooking.update({where:{id},data:{detailsJson:JSON.stringify(d)}});
+    await tx.bookingEvent.create({data:{shop,bookingId:id,kind:"provider_signature",text:"Authorized provider "+result.contract.providerSignature!.name+" countersigned revision "+result.contract.revision+"; document SHA-256 "+result.contract.hash+". Availability checked; no payment recorded."}});
     return result;
   });
 }

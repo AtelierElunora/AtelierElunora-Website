@@ -1,3 +1,4 @@
+import {contractReadyForPayment} from "../booking-contract";
 import { useEffect, useRef } from "react";
 import {ContractCopy,ContractSigning} from "../BookingContract";
 import {currentContract} from "../booking-contract.server";
@@ -110,7 +111,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
     }
     if (op === "accept_quote") {
       await acceptQuote(b.shop,b.id,f,t,request.headers.get("User-Agent")||"");
-      return data({success:"Quote accepted and date held for 15 minutes. Choose a payment option below."},{headers:privateHeaders});
+      return data({success:"Quote and signature saved. If a provider signature is required, Atelier Elunora must countersign before checkout. Date availability is checked again before payment."},{headers:privateHeaders});
     }
     if (op === "invoice") {
       if (!details(b).agreement?.acceptedAt)
@@ -136,7 +137,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
     }
     if (op === "agreement") {
       const signed=await signBookingContract(b.shop,b.id,f,t,request.headers.get("User-Agent")||"");
-      return data({success:signed.alreadySigned?"Your contract is already signed.":"Your signed contract is saved. You can now choose your payment option."},{headers:privateHeaders});
+      return data({success:signed.alreadySigned?"Your contract is already signed.":signed.contract.document.serviceAgreement?"Your signature is saved. Atelier Elunora will countersign before payment becomes available.":"Your signed contract is saved. You can now choose your payment option."},{headers:privateHeaders});
     }
     if (op === "message") {
       const text = String(f.get("text") || "").trim();
@@ -200,6 +201,7 @@ export default function Portal() {
         currency: terms.currency,
       }).format(n / 100),
     remaining = Math.max(0, b.totalCents - b.paidCents);
+  const awaitingProvider=!!terms.contract?.document.serviceAgreement && !!terms.contract.signature && !contractReadyForPayment(terms.contract);
   return (
     <main className="customer-portal" ref={portalRef}>
       <link rel="stylesheet" href="/portal.css"/><link rel="stylesheet" href="/contract.css"/>
@@ -214,7 +216,7 @@ export default function Portal() {
         {b.customerName} · {b.weddingDate} · {b.venue}
       </p>
       <p>{d.preferredStartTime && `Preferred service start: ${d.preferredStartTime}`}</p>
-      <p className="status-badge">{({confirmed:"Booking confirmed",quote_offered:"Your quote is ready",quote_review:"Quote in review",waitlist:"On the waitlist",hold:"Awaiting payment",cancelled:"Booking cancelled",paid_review:"Payment in review"} as Record<string,string>)[b.status] || "Booking in progress"}</p>
+      <p className="status-badge">{({confirmed:"Booking confirmed",quote_offered:"Your quote is ready",quote_review:"Quote in review",waitlist:"On the waitlist",hold:awaitingProvider?"Awaiting Atelier Elunora signature":terms.contract&&!terms.contract.signature?"Review your agreement":"Awaiting payment",cancelled:"Booking cancelled",paid_review:"Payment in review"} as Record<string,string>)[b.status] || "Booking in progress"}</p>
       {b.status === "waitlist" && <p>Your waitlist request has been saved. Your date is not reserved and payment is unavailable until Atelier Elunora invites you to book.</p>}
       {b.status==="quote_review" && <p>Your quote is being reviewed, including travel and event requirements. Your date is not held and payment is unavailable.</p>}
       {b.status==="quote_offered" && <section className="portal-card"><h2>Your wedding quote</h2><p>Experience {money(terms.quoteReview.baseCents)} · Travel {money(terms.quoteReview.travelCents)} · Total {money(b.totalCents)}</p><p style={{whiteSpace:"pre-wrap"}}>{terms.quoteReview.notes}</p><p>We’ll check availability when you accept. Your date is not yet reserved.</p><p>Review and sign your personalized contract below to accept this quote.</p></section>}
@@ -232,7 +234,7 @@ export default function Portal() {
         </p>
       )}
       {terms.contract && !["waitlist","quote_review"].includes(b.status) && <section id="booking-contract" aria-label="Your booking contract">
-        <p className="contract-status">{terms.contract.signature?"Your signed contract is saved.":terms.agreement?.acceptedAt && !terms.agreement?.signatureRequired?"Your earlier agreement acceptance is recorded. An electronic signature has not been recorded for this copy.":"Review and sign your contract before payment."}</p>
+        <p className="contract-status">{terms.contract.signature?(awaitingProvider?"Your signature is saved. Atelier Elunora will review and countersign before payment becomes available.":"Your signed contract is saved."):terms.agreement?.acceptedAt && !terms.agreement?.signatureRequired?"Your earlier agreement acceptance is recorded. An electronic signature has not been recorded for this copy.":"Review and sign your contract before payment."}</p>
         <ContractCopy contract={terms.contract}/>
         {!terms.contract.signature && ["hold","confirmed","paid_review","quote_offered"].includes(b.status) &&
           <ContractSigning key={terms.contract.hash} contract={terms.contract} quoteRevision={b.status==="quote_offered"?terms.quoteReview.revision:undefined} busy={navigation.state!=="idle"}/>}
@@ -244,9 +246,9 @@ export default function Portal() {
         <div><span>Paid toward booking</span><strong>{money(b.paidCents)}</strong></div>
         <div><span>{["quote_review","quote_offered","waitlist"].includes(b.status)?"Proposed balance":"Remaining balance"}</span><strong>{money(remaining)}</strong></div>
       </div>
-      {!["quote_review","quote_offered","waitlist","cancelled"].includes(b.status) && <p className="muted">{b.status==="paid_review"?"Your payment is being reviewed.":remaining===0?"Paid in full — thank you.":b.paidCents>0?`Balance due ${b.balanceDueDate}`:"Choose prepayment or pay in full below."}</p>}
+      {!["quote_review","quote_offered","waitlist","cancelled"].includes(b.status) && <p className="muted">{b.status==="paid_review"?"Your payment is being reviewed.":remaining===0?"Paid in full — thank you.":b.paidCents>0?`Balance due ${b.balanceDueDate}`:awaitingProvider?"Payment becomes available after Atelier Elunora countersigns.":terms.agreement?.signatureRequired&&!contractReadyForPayment(terms.contract)?"Review and sign your agreement to continue.":"Choose prepayment or pay in full below."}</p>}
       </section>
-      {remaining > 0 && (!terms.agreement?.signatureRequired || !!terms.contract?.signature) && !["cancelled", "paid_review", "waitlist", "quote_review", "quote_offered"].includes(b.status) && (
+      {remaining > 0 && (!terms.agreement?.signatureRequired || contractReadyForPayment(terms.contract)) && !["cancelled", "paid_review", "waitlist", "quote_review", "quote_offered"].includes(b.status) && (
         <Form method="post">
           <input type="hidden" name="op" value="invoice" />
           {!b.paidCents && (

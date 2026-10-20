@@ -5,7 +5,7 @@ import {randomUUID} from 'node:crypto';
 import {rm} from 'node:fs/promises';
 if(process.env.ELUNORA_DATABASE_BACKEND)throw Error('Server tests require the local SQLite backend.');
 await build({entryPoints:['tests/server-entry.ts'],bundle:true,format:'esm',platform:'node',packages:'external',outfile:'tests/.server-bundle.mjs'});
-const {db,createBooking,invoice,refreshPayment,refreshBookingPayments,updateBooking,portalBooking,details,parseImport,importBookings,importFingerprint,reminderDrafts,requestBookingChange,acceptQuote,calendarFeedLoader,hash,scheduleMail,bookingEmail,signBookingContract,reservePayment}=await import('./.server-bundle.mjs');
+const {db,createBooking,invoice,refreshPayment,refreshBookingPayments,updateBooking,portalBooking,details,parseImport,importBookings,importFingerprint,reminderDrafts,requestBookingChange,acceptQuote,calendarFeedLoader,hash,scheduleMail,bookingEmail,signBookingContract,reservePayment,countersignBookingContract}=await import('./.server-bundle.mjs');
 const shop='test-'+randomUUID()+'.myshopify.com';
 const input={name:'Synthetic test',email:'test@example.invalid',venue:'Test venue',weddingDate:'2027-06-01',guests:50,addons:{},totalCents:100000,accepted:true,source:'owner'};
 try{await db.bookingSettings.create({data:{shop,dailyCapacity:2,agreementText:'Test agreement'}});
@@ -132,4 +132,36 @@ await test('owner can prepare an older unsigned booking while preserving earlier
  assert.equal(d.agreement.previousAcceptance.acceptedAt,before);assert.equal(d.agreement.acceptedAt,null);assert.equal(d.agreement.signatureRequired,true);assert.equal(d.agreement.contract.signature,null);assert.equal(saved.paidCents,0);
  await assert.rejects(reservePayment(shop,id,"prepayment"),/Sign/);
 });
+
+await test('full agreement snapshots, customer signature, owner countersign and invoice gates are transactional',async()=>{
+ const profile={enabled:true,providerLegalName:"Sample Studio LLC",providerAddress:"1 Sample Lane",providerPhone:"+15555550100",providerEmail:"studio@example.invalid",backupDeletionPeriod:"No photo backups retained in this test.",additionalHourAddonId:""};
+ await db.bookingSettings.update({where:{shop},data:{prepaymentPercent:30,agreementText:"Full agreement",configJson:JSON.stringify({eventAgreement:profile})}});
+ const request={...input,weddingDate:"2031-07-01",source:"customer",contractRequested:true,accepted:false,phone:"+15555550101",preferredStartTime:"5 PM",agreementFields:{mailingAddress:"2 Sample Lane"}};
+ await assert.rejects(createBooking(shop,{...request,agreementFields:{}}),/mailing address/);
+ const made=await createBooking(shop,request),id=made.booking.id,token=made.portalToken;
+ let saved=await db.weddingBooking.findUniqueOrThrow({where:{id}}),c=details(saved).agreement.contract;
+ assert.equal(c.document.serviceAgreement.sections.length,20);
+ await assert.rejects(reservePayment(shop,id,"full"),/Sign/);
+ const f=new URLSearchParams({contractHash:c.hash,signatureName:"Sample Client",signatureStyle:"script",signatureConsent:"yes"});
+ await signBookingContract(shop,id,f,token);
+ await assert.rejects(reservePayment(shop,id,"full"),/countersign/);
+ const provider=new URLSearchParams({contractHash:c.hash,providerName:"Sample Owner",providerTitle:"Owner",providerConsent:"yes"});
+ await assert.rejects(countersignBookingContract("wrong.myshopify.com",id,provider));
+ await assert.rejects(countersignBookingContract(shop,id,new URLSearchParams({...Object.fromEntries(provider),contractHash:"0".repeat(64)})),/current/);
+ await countersignBookingContract(shop,id,provider);await countersignBookingContract(shop,id,provider);
+ assert.equal(await db.bookingEvent.count({where:{shop,bookingId:id,kind:"provider_signature"}}),1);
+ saved=await db.weddingBooking.findUniqueOrThrow({where:{id}});c=details(saved).agreement.contract;assert.equal(saved.paidCents,0);assert.equal(saved.status,"hold");assert.equal(c.providerSignature.documentHash,c.hash);
+ assert.equal(await invoice(fakeAdmin,shop,id,"prepayment"),"https://checkout.shopify.com/test");
+ assert.equal((await db.bookingPayment.findFirstOrThrow({where:{bookingId:id}})).amountCents,30000);
+ const amended=new URLSearchParams({contract_mailingAddress:"3 Changed Lane"});
+ await assert.rejects(updateBooking(shop,id,"contract_details",amended),/Void pending/);
+ const payment=await db.bookingPayment.findFirstOrThrow({where:{bookingId:id}});await db.bookingPayment.update({where:{id:payment.id},data:{status:"void"}});
+ await updateBooking(shop,id,"contract_details",amended);saved=await db.weddingBooking.findUniqueOrThrow({where:{id}});
+ assert.equal(details(saved).agreement.contract.signature,null);assert.ok(details(saved).agreement.contractHistory[0].providerSignature);
+ await assert.rejects(reservePayment(shop,id,"full"),/Sign/);
+ // A global profile change never rewrites the saved agreement for this booking.
+ const raw=JSON.parse((await db.bookingSettings.findUniqueOrThrow({where:{shop}})).configJson);raw.eventAgreement.providerAddress="Changed global address";await db.bookingSettings.update({where:{shop},data:{configJson:JSON.stringify(raw)}});
+ assert.equal(details(await db.weddingBooking.findUniqueOrThrow({where:{id}})).agreement.eventTemplate.providerAddress,"1 Sample Lane");
+});
+
 }finally{for(const model of ['bookingMail','bookingWebhook','bookingEvent','bookingPayment','weddingBooking','bookingSettings'])await db[model].deleteMany({where:{shop}});await db.$disconnect();await rm('tests/.server-bundle.mjs',{force:true});}
