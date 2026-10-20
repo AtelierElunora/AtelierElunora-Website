@@ -11,7 +11,7 @@ The feature is disabled until configured. Existing bookings keep their previous 
 ## Customer flow
 
 1. The customer chooses their date, collection and extras and supplies the existing booking information plus a mailing address. Optional fields include event name, event-day contact and entity signer/title.
-2. Generate my contract saves the booking and a snapshot of the business terms and booking data. The private booking page displays all 20 completed sections with section links and Print / save as PDF.
+2. Generate my contract saves the booking and a snapshot of the business terms and booking data. The private booking page displays all 20 completed sections with section links and Download PDF.
 3. The customer reviews the contract, edits the name if needed, and chooses Classic or Handwritten style. Both are visual renderings of a typed name, not handwriting reproduction or identity verification.
 4. Consent starts unchecked. Only Apply my signature (or Apply my signature & accept quote) saves the signature. The receipt includes the name, booking email, chosen style, server timestamp, consent, revision and exact document hash.
 5. The baseline requires both parties to sign. An authenticated owner reviews the same copy and explicitly countersigns with their name, title and consent. This rechecks availability for a held booking.
@@ -29,6 +29,8 @@ Missing essential fields and unsupported payment terms block signing. Later plan
 
 ## Validation
 
-70 automated tests cover legacy behavior, full agreement generation, placeholder prevention, explicit consent and appearance, stale hashes, owner authorization, countersign idempotence, amendment history, cross-shop denial, pending invoice protection and 30/70 payment separation. TypeScript and the production build are also checked.
+72 automated tests cover legacy behavior, full agreement generation, placeholder prevention, explicit consent and appearance, stale hashes, owner authorization, countersign idempotence, amendment history, cross-shop denial, pending invoice protection and 30/70 payment separation. TypeScript and the production build are also checked.
 
 The sample preview uses invented contact details and no live booking, payment, email or signature. The Shopify validator accepts the new settings components; standalone checks of existing route files cannot resolve their server-only Node/app imports, while the project's full typecheck passes.
+
+PDF export generates a real application/pdf file in the browser with bundled fonts. It does not open a blank HTML window or depend on a print dialog. A retained Save PDF file link and Open PDF to print link provide a fallback after generation. Signed copies include both stored receipts and the selected name appearance; unsigned copies are clearly marked. PDF code/fonts load only when requested, and no contract content is sent to an external PDF service.

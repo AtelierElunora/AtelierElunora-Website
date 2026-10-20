@@ -1,24 +1,40 @@
-import {useState} from "react";
+import {useEffect,useRef,useState} from "react";
 import {Form} from "react-router";
-import {SIGNATURE_CONSENT,SIGNATURE_STYLES,PROVIDER_CONSENT,contractRows,contractPrintHtml,type BookingContract,type SignatureStyle} from "./booking-contract";
+import {SIGNATURE_CONSENT,SIGNATURE_STYLES,PROVIDER_CONSENT,contractRows,type BookingContract,type SignatureStyle} from "./booking-contract";
+import {signatureImage} from "./contract-signature-image";
 export function SignatureReceipt({label,person}:{label:string;person:{name:string;signedAt:string;consent:string;style?:SignatureStyle;email?:string;title?:string}}){
   return <section className="contract-signature"><strong>{label}</strong><p className="contract-signed-name" data-signature-style={person.style||"classic"}>{person.name}</p><p>{person.title||person.email}<br/><time dateTime={person.signedAt}>{new Date(person.signedAt).toLocaleString("en-US",{timeZone:"UTC"})} UTC</time></p><p>{person.consent}</p></section>;
 }
 export function ContractCopy({contract}:{contract:BookingContract}) {
-  const [printError,setPrintError]=useState("");
+  const [pdfError,setPdfError]=useState(""),[preparing,setPreparing]=useState(false);
+  const [file,setFile]=useState<{url:string;name:string}|null>(null);
+  const attempt=useRef(0),objectUrl=useRef<string|null>(null);
+  const copyKey=JSON.stringify([contract.hash,contract.signature,contract.providerSignature]);
   const d=contract.document,a=d.serviceAgreement;
-  function print(){
-    const popup=window.open("about:blank","_blank");
-    if(!popup){setPrintError("Allow a new tab to print or save your contract, then try again.");return}
-    popup.opener=null;
-    popup.document.open();popup.document.write(contractPrintHtml(contract));
-    popup.addEventListener("load",()=>{popup.focus();popup.print()},{once:true});
-    popup.document.close();setPrintError("");
+  useEffect(()=>{
+    setFile(null);setPdfError("");setPreparing(false);
+    return ()=>{attempt.current++;if(objectUrl.current){URL.revokeObjectURL(objectUrl.current);objectUrl.current=null;}};
+  },[copyKey]);
+  async function downloadPdf(){
+    const current=++attempt.current;setPreparing(true);setPdfError("");
+    try{
+      await document.fonts.ready;
+      const {createContractPdf,contractPdfFilename}=await import("./contract-pdf");
+      const blob=await createContractPdf(contract,{client:signatureImage(contract.signature),provider:signatureImage(contract.providerSignature)});
+      if(current!==attempt.current)return;
+      if(objectUrl.current)URL.revokeObjectURL(objectUrl.current);
+      const url=URL.createObjectURL(blob),name=contractPdfFilename(contract);
+      objectUrl.current=url;setFile({url,name});
+      const link=document.createElement("a");link.href=url;link.download=name;
+      document.body.append(link);link.click();link.remove();
+    }catch{if(current===attempt.current)setPdfError("We could not prepare your PDF. Please try again.");}
+    finally{if(current===attempt.current)setPreparing(false);}
   }
   return <article className="contract-document">
     <header className="contract-header"><p className="eyebrow">ATELIER ELUNORA · {a?"SERVICE AGREEMENT":"BOOKING CONTRACT"}</p><h2>{a?a.title:"Your celebration, in writing."}</h2><p>Contract revision {contract.revision} · Reference {d.reference}</p>
-      <button className="contract-secondary" type="button" onClick={print}>Print / save as PDF</button>
-      {printError&&<p role="alert">{printError}</p>}</header>
+      <button className="contract-secondary" type="button" onClick={downloadPdf} disabled={preparing}>{preparing?"Preparing PDF…":"Download PDF"}</button>
+      {file&&<p role="status">Your PDF is ready. <a className="contract-file-link" href={file.url} download={file.name}>Save PDF file</a> <a className="contract-file-link" href={file.url} target="_blank" rel="noopener noreferrer">Open PDF to print</a></p>}
+      {pdfError&&<p role="alert">{pdfError}</p>}</header>
     {a?<>
       <p className="contract-terms">{a.introduction}</p>
       {!!a.missingFields.length&&<aside className="contract-status" role="status"><strong>This agreement is being prepared.</strong><p>These fields must be completed before signing: {a.missingFields.join("; ")}.</p></aside>}
