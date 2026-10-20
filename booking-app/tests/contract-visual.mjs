@@ -47,7 +47,7 @@ const buffer=await locator.screenshot({path:output+"/"+name+".jpg",type:"jpeg",q
 console.log("CONTRACT_SCREENSHOT:"+name+":"+buffer.toString("base64"));
 }
 try{
-for(const [engine,name,options]of [[chromium,"desktop",{viewport:{width:1280,height:1000}}],[webkit,"iphone",{...devices["iPhone 13"]}]]){
+for(const [engine,name,options]of [[chromium,"desktop",{viewport:{width:1280,height:1000}}],[webkit,"iphone",{...devices["iPhone 13"],deviceScaleFactor:1}]]){
 reset();submissions=0;const browser=await engine.launch();const context=await browser.newContext(options);
 const page=await context.newPage();const errors=[];page.on("pageerror",e=>errors.push(e.message));
 await page.route("**/*",route=>route.request().url().startsWith(origin)?route.continue():route.abort());
@@ -62,8 +62,8 @@ const sign=page.getByRole("button",{name:"Sign my contract",exact:true});
 await sign.click();assert.equal(submissions,0,"Empty name blocked");
 await page.getByRole("textbox",{name:"Full name for your signature"}).fill("Alex Example");
 await sign.click();assert.equal(submissions,0,"Consent required");
-if(name==="iphone")await capture(page.locator(".contract-sign-form"),"02-sign-contract-iphone");
 await page.getByRole("checkbox").check();
+if(name==="iphone")await capture(page.locator(".contract-sign-form"),"02-sign-contract-iphone");
 await sign.click();
 await page.getByText("Your signed contract is saved.",{exact:true}).waitFor();
 await page.getByRole("button",{name:"Pay 30% prepayment · $448.50",exact:true}).waitFor();
@@ -76,8 +76,7 @@ assert.equal(await sign.count(),0,"Saved signature replaces form");
 assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
 if(name==="iphone"){
 await capture(page.locator(".contract-signature"),"03-signed-receipt-iphone");
-await page.getByRole("heading",{name:"At a glance",exact:true}).scrollIntoViewIfNeeded();
-await capture(page,"04-payment-options-iphone");
+await capture(page.locator("form").filter({has:page.getByRole("button",{name:"Pay 30% prepayment · $448.50",exact:true})}),"04-payment-options-iphone");
 }
 const popupPromise=page.waitForEvent("popup");
 await page.getByRole("button",{name:"Print / save as PDF",exact:true}).click();
