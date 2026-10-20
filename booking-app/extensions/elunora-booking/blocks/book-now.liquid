@@ -1,0 +1,18 @@
+<div class="elunora-booking-block" {{ block.shopify_attributes }}>
+  <button type="button" class="elunora-booking-trigger" data-elunora-url="{{ block.settings.booking_url | escape }}" data-elunora-collection="{{ product.selected_or_first_available_variant.title | escape }}">{{ 'booking.book_now' | t }}</button>
+  <p>{{ 'booking.confirmation' | t }}</p>
+  <script type="application/json" class="elunora-product-variants">{{ product.variants | json }}</script>
+  <dialog class="elunora-booking-dialog">
+    <button type="button" class="elunora-booking-dismiss" aria-label="{{ 'booking.close' | t }}">×</button>
+    <iframe title="{{ 'booking.title' | t }}" referrerpolicy="no-referrer"></iframe>
+  </dialog>
+</div>
+{% schema %}
+{
+  "name": "Atelier Elunora booking",
+  "target": "section",
+  "javascript": "booking-widget.js",
+  "stylesheet": "booking-widget.css",
+  "settings": [{"type":"url","id":"booking_url","label":"Booking page URL"}]
+}
+{% endschema %}

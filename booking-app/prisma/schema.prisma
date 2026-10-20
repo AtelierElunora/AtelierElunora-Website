@@ -1,0 +1,110 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Note that some adapters may set a maximum length for the String type by default, please ensure your strings are long
+// enough when changing adapters.
+// See https://www.prisma.io/docs/orm/reference/prisma-schema-reference#string for more information
+datasource db {
+  provider = "sqlite"
+  url      = "file:dev.sqlite"
+}
+
+model Session {
+  id            String    @id
+  shop          String
+  state         String
+  isOnline      Boolean   @default(false)
+  scope         String?
+  expires       DateTime?
+  accessToken   String
+  userId        BigInt?
+  firstName     String?
+  lastName      String?
+  email         String?
+  accountOwner  Boolean   @default(false)
+  locale        String?
+  collaborator  Boolean?  @default(false)
+  emailVerified Boolean?  @default(false)
+  refreshToken        String?
+  refreshTokenExpires DateTime?
+}
+
+model BookingSettings {
+  shop String @id
+  dailyCapacity Int @default(1)
+  prepaymentPercent Int @default(30)
+  balanceDaysBefore Int @default(30)
+  agreementText String @default("")
+  configJson String @default("{}")
+  updatedAt DateTime @updatedAt
+}
+
+model WeddingBooking {
+  id String @id @default(cuid())
+  shop String
+  weddingDate String
+  customerName String
+  customerEmail String
+  venue String
+  status String @default("pending")
+  totalCents Int
+  paidCents Int @default(0)
+  balanceDueDate String?
+  detailsJson String @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([shop, weddingDate, status])
+}
+
+model BookingPayment {
+  id String @id @default(cuid())
+  shop String
+  bookingId String
+  kind String
+  status String @default("creating")
+  currency String
+  amountCents Int
+  expectedGrandTotalCents Int
+  draftOrderId String? @unique
+  orderId String? @unique
+  invoiceUrl String?
+  receivedCents Int @default(0)
+  refundedCents Int @default(0)
+  orderUpdatedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([shop, bookingId])
+}
+model BookingEvent {
+  id String @id @default(cuid())
+  shop String
+  bookingId String
+  kind String
+  text String
+  createdAt DateTime @default(now())
+  @@index([shop, bookingId, createdAt])
+}
+model BookingWebhook {
+  id String @id
+  shop String
+  topic String
+  processedAt DateTime @default(now())
+}
+
+model BookingMail {
+  id String @id
+  shop String
+  bookingId String
+  kind String
+  dueDate String?
+  sendAt DateTime
+  status String @default("pending")
+  operationId String @unique
+  payloadJson String @default("{}")
+  updatedAt DateTime @updatedAt
+  @@index([status, sendAt])
+}

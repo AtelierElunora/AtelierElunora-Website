@@ -1,0 +1,1 @@
+query ElunoraRecoverInvoice($query: String!) { draftOrders(first:2,query:$query) { nodes { id invoiceUrl customAttributes { key value } totalPriceSet { presentmentMoney { amount currencyCode } } order { id } } } }

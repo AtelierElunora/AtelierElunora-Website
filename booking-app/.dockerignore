@@ -1,0 +1,10 @@
+.cache
+build
+node_modules
+.git
+.env
+.env.*
+!.env.example
+azure/evidence
+prisma/*.sqlite*
+tests/.*.mjs
