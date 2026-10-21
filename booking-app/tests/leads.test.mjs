@@ -43,9 +43,10 @@ await test('booking linkage requires the browser token, shop and matching email;
  assert.equal((await db.bookingLead.findUniqueOrThrow({where:{id:record.id}})).customerEmail,'couple@example.invalid');
 });
 await test('public capture rejects cross-origin requests and unsupported stores',async()=>{
- const req=new Request('https://booking.example.invalid/book/'+shop,{method:'POST',headers:{Origin:'https://evil.example.invalid'},body:inquiry()});
+ const origin=new URL(process.env.SHOPIFY_APP_URL || 'https://booking.example.invalid').origin;
+ const req=new Request(origin+'/book/'+shop,{method:'POST',headers:{Origin:'https://evil.example.invalid'},body:inquiry()});
  await assert.rejects(captureAction({request:req,params:{shop},context:{}}),e=>e instanceof Response&&e.status===403);
- const valid=new Request('https://booking.example.invalid/book/'+shop,{method:'POST',headers:{Origin:'https://booking.example.invalid'},body:inquiry()});
+ const valid=new Request(origin+'/book/'+shop,{method:'POST',headers:{Origin:origin},body:inquiry()});
  await assert.rejects(captureAction({request:valid,params:{shop},context:{}}),e=>e instanceof Response&&e.status===404);
 });
 } finally {
