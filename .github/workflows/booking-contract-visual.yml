@@ -1,0 +1,33 @@
+name: Booking contract visual checks
+on:
+  pull_request:
+    paths: ['booking-app/**', '.github/workflows/booking-contract-visual.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  visual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: booking-app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: booking-app/package-lock.json
+      - run: npm ci --include=dev
+      - name: Install isolated browser test dependency
+        run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install --with-deps chromium webkit
+      - name: Test real contract screens against isolated sample data
+        run: node tests/contract-visual.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: booking-contract-screenshots
+          path: booking-app/artifacts/contracts/
+          retention-days: 14
