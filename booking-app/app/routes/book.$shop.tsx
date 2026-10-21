@@ -133,7 +133,7 @@ export default function Booking() {
       <Form method="post" className="booking-steps">
         <input type="hidden" name="leadToken" value={leadToken}/>
         <input type="hidden" name="quoteRequest" value={reviewRequired?"yes":"no"}/><input type="hidden" name="waitlist" value={waitlist?"yes":"no"}/><input type="hidden" name="package" value={packageId}/><input type="hidden" name="date" value={weddingDate}/>
-        <nav aria-label="Booking progress">{["Date","Details & extras",waitlist?"Review":"Payment"].map((label,i)=><span key={label} aria-current={step===i?"step":undefined}>{i+1}. {label}</span>)}</nav>
+        <nav aria-label="Booking progress">{["Contact","Date","Details & extras",waitlist?"Review":"Payment"].map((label,i)=><span key={label} aria-current={step===i?"step":undefined}>{i+1}. {label}</span>)}</nav>
         {r?.error && <p role="alert" className="booking-error">{r.error}</p>}
         {(leadError || lead.data?.error) && <p role="alert" className="booking-error">{leadError || lead.data?.error}</p>}
         <section hidden={step!==0}><h2>Where can we reach you?</h2><div className="customer-fields">
