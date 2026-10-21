@@ -9,6 +9,10 @@ test('booking schema coexists with website tables and keeps prepayment separate 
     await db.exec("CREATE SCHEMA customer; CREATE TABLE customer.accounts (id text PRIMARY KEY); INSERT INTO customer.accounts VALUES ('website-sentinel');");
     await db.exec(await readFile(new URL('./initial-booking-schema.sql', import.meta.url), 'utf8'));
     await db.exec(await readFile(new URL('./booking-operations.sql', import.meta.url), 'utf8'));
+    await db.exec(await readFile(new URL('./booking-leads.sql', import.meta.url), 'utf8'));
+    await db.query(`INSERT INTO elunora_booking."BookingLead" (id,shop,"tokenHash","customerName","customerEmail","consentAt","updatedAt") VALUES ('synthetic-lead','dev.myshopify.com','synthetic-hash','Synthetic inquiry','test@example.invalid',now(),now())`);
+    const {rows:leads}=await db.query('SELECT status,"bookingId" FROM elunora_booking."BookingLead"');
+    assert.deepEqual(leads,[{status:'new',bookingId:null}]);
     await db.query(`INSERT INTO elunora_booking."BookingSettings" (shop,"updatedAt") VALUES ($1,now())`, ['dev.myshopify.com']);
     const { rows: settings } = await db.query('SELECT * FROM elunora_booking."BookingSettings"');
     assert.equal(settings[0].prepaymentPercent, 30);
