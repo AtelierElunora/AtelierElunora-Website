@@ -1,5 +1,6 @@
+import { saveLead, linkLead } from "../leads.server";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
-import { Form, redirect, useActionData, useLoaderData, useNavigation } from "react-router";
+import { Form, redirect, useActionData, useLoaderData, useNavigation, useFetcher } from "react-router";
 import db from "../db.server";
 import { useEffect, useState } from "react";
 import { BookingCalendar } from "../BookingCalendar";
@@ -51,6 +52,11 @@ export async function action({ request, params }: ActionFunctionArgs) {
   const shop = allowed(params.shop),
     f = await request.formData();
   try {
+    if (f.get("intent") === "save-lead") {
+      await db.bookingSettings.findUniqueOrThrow({where:{shop}});
+      await saveLead(shop,f);
+      return { error: "", saved:true, nextStep: f.get("nextStep")==="3"?3:1, savedToken:String(f.get("leadToken")) };
+    }
     const s = await db.bookingSettings.findUniqueOrThrow({ where: { shop } }),
       c = parseConfig(s.configJson);
     if (String(f.get("email") || "").trim().toLowerCase() !== String(f.get("confirmEmail") || "").trim().toLowerCase()) throw Error("Your email addresses must match.");
@@ -75,6 +81,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
       customerNotes: String(f.get("notes") || ""),
       paymentChoice: String(f.get("paymentChoice") || ""),
     });
+    await linkLead(shop,String(f.get("leadToken") || ""),booking);
     return redirect("/portal/" + booking.id + "?token=" + portalToken);
   } catch (error) {
     return {
@@ -85,6 +92,19 @@ export async function action({ request, params }: ActionFunctionArgs) {
 }
 export default function Booking() {
   const c = useLoaderData<typeof loader>(), r = useActionData<typeof action>(), navigation = useNavigation();
+  const lead = useFetcher<typeof action>();
+  const [leadToken,setLeadToken]=useState("");
+  const [leadError,setLeadError]=useState("");
+  useEffect(()=>{if(lead.data && "saved" in lead.data && lead.data.saved){setLeadToken(lead.data.savedToken);setStep(lead.data.nextStep);setLeadError("")}},[lead.data]);
+  function saveDetails(form:HTMLFormElement,nextStep:number){
+    const fields=nextStep===1?["name","email","confirmEmail","followUpConsent"]:[];
+    for(const name of fields){const input=form.elements.namedItem(name) as HTMLInputElement;if(!input.checkValidity()){input.reportValidity();return}}
+    const email=form.elements.namedItem("email") as HTMLInputElement, confirmation=form.elements.namedItem("confirmEmail") as HTMLInputElement;
+    if(email.value.trim().toLowerCase()!==confirmation.value.trim().toLowerCase()){setLeadError("Your email addresses must match.");return}
+    const data=new FormData(form);data.set("intent","save-lead");data.set("nextStep",String(nextStep));
+    const token=leadToken || crypto.randomUUID();setLeadToken(token);data.set("leadToken",token);
+    lead.submit(data,{method:"post"});
+  }
   const [waitlist,setWaitlist]=useState(false), [open,setOpen]=useState(c.embedded), [step,setStep]=useState(0), [weddingDate,setWeddingDate]=useState("");
   const [packageId,setPackageId]=useState(c.packages.find(p=>p.name===c.initialPackage)?.id || c.packages[0]?.id || ""), [quantities,setQuantities]=useState<Record<string,number>>({}), [payment,setPayment]=useState("prepayment");
   const selected=c.packages.find(p=>p.id===packageId);
@@ -96,7 +116,7 @@ export default function Booking() {
   const reviewRequired=!waitlist && (c.travelApprovalRequired || quoteRequested || (c.shop===liveBookingShop && (selected?.maxGuests || 0)>200));
   const deposit=percentAmount(total,c.percent), due=waitlist||reviewRequired?0:payment==="full" ? total : deposit;
   const money=(n:number)=>new Intl.NumberFormat("en-US",{style:"currency",currency:c.currency}).format(n/100);
-  const busy=navigation.state!=="idle";
+  const busy=navigation.state!=="idle" || lead.state!=="idle";
   useEffect(()=>{if(!open)return;const previous=document.activeElement as HTMLElement|null;const background=Array.from(document.querySelectorAll<HTMLElement>(".experience-page > :not(.booking-window)"));background.forEach(el=>el.inert=true);const overflow=document.body.style.overflow;document.body.style.overflow="hidden";document.querySelector<HTMLElement>(".booking-close")?.focus();return()=>{background.forEach(el=>el.inert=false);document.body.style.overflow=overflow;previous?.focus()};},[open]);
   useEffect(()=>{if(!open)return;const panel=document.querySelector<HTMLElement>(".booking-panel");if(panel)panel.scrollTop=0;const heading=document.querySelector<HTMLElement>(".booking-steps section:not([hidden]) h2");heading?.setAttribute("tabindex","-1");heading?.focus({preventScroll:true});},[step,open]);
   return <main className={`experience-page${c.embedded ? " booking-embedded" : ""}`} >
@@ -111,14 +131,21 @@ export default function Booking() {
       {!c.embedded && <div className="booking-shade"/>}<div className="booking-panel">{!c.embedded && <button className="booking-close" aria-label="Close booking" disabled={busy} onClick={()=>setOpen(false)}>×</button>}
       <aside className="booking-summary"><img src="/elunora-logo.png" alt="Atelier Elunora"/><h2 id="booking-title">Wedding & Event Photo Magnet Experience</h2><p>{selected?.name}</p><p>{weddingDate ? new Date(weddingDate+"T12:00:00Z").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric",timeZone:"UTC"}):"Choose your celebration date"}</p><dl><dt>Experience total</dt><dd>{money(total)}</dd><dt>Due now {!waitlist && !reviewRequired && payment!=="full" && `(${c.percent}%)`}</dt><dd>{money(due)}</dd><dt>{waitlist||reviewRequired?"Payment status":"Remaining balance"}</dt><dd>{waitlist?"No payment requested":reviewRequired?"Pending quote approval":money(total-due)}</dd></dl><p>Additional tax, if applicable, appears at Shopify checkout. {waitlist?"Waitlist requests do not reserve a date.":reviewRequired?"Your quote and travel need owner approval before payment. No date is reserved yet.":"Your date is confirmed after payment is verified."}</p></aside>
       <Form method="post" className="booking-steps">
+        <input type="hidden" name="leadToken" value={leadToken}/>
         <input type="hidden" name="quoteRequest" value={reviewRequired?"yes":"no"}/><input type="hidden" name="waitlist" value={waitlist?"yes":"no"}/><input type="hidden" name="package" value={packageId}/><input type="hidden" name="date" value={weddingDate}/>
         <nav aria-label="Booking progress">{["Date","Details & extras",waitlist?"Review":"Payment"].map((label,i)=><span key={label} aria-current={step===i?"step":undefined}>{i+1}. {label}</span>)}</nav>
         {r?.error && <p role="alert" className="booking-error">{r.error}</p>}
-        <section hidden={step!==0}><h2 id="booking-heading">{waitlist?"Join the date waitlist":"Choose your date"}</h2><BookingCalendar availability={c.availability} onSelect={setWeddingDate} allowUnavailable={waitlist}/><p>{weddingDate || (waitlist?"Select your requested date to continue.":"Select an available date to continue.")}</p><button type="button" disabled={!weddingDate} onClick={()=>setStep(1)}>Continue</button></section>
-        <section hidden={step!==1}><h2>Your celebration</h2><p>Final service timing is confirmed with Atelier Elunora.</p><div className="customer-fields">
+        {(leadError || lead.data?.error) && <p role="alert" className="booking-error">{leadError || lead.data?.error}</p>}
+        <section hidden={step!==0}><h2>Where can we reach you?</h2><div className="customer-fields">
           <label>Name<input name="name" required maxLength={200} autoComplete="name"/></label>
           <label>Email<input name="email" type="email" required autoComplete="email"/></label>
           <label>Confirm email<input name="confirmEmail" type="email" required autoComplete="off"/></label>
+          <label><input type="checkbox" name="followUpConsent" value="yes" required/>Save my inquiry and allow Atelier Elunora to contact me about this event.</label>
+        </div><p>Saving your details lets us follow up if you leave before booking. It does not reserve a date, create a contract or collect payment.</p>
+        <button type="button" disabled={busy} onClick={e=>saveDetails(e.currentTarget.form!,1)}>{busy?"Saving…":"Save my details & continue"}</button></section>
+        <section hidden={step!==1}><h2 id="booking-heading">{waitlist?"Join the date waitlist":"Choose your date"}</h2><BookingCalendar availability={c.availability} onSelect={setWeddingDate} allowUnavailable={waitlist}/><p>{weddingDate || (waitlist?"Select your requested date to continue.":"Select an available date to continue.")}</p><button type="button" disabled={!weddingDate} onClick={()=>setStep(2)}>Continue</button></section>
+        <section hidden={step!==2}><h2>Your celebration</h2><p>Final service timing is confirmed with Atelier Elunora.</p><div className="customer-fields">
+
           <label>Phone number<input name="phone" type="tel" required maxLength={40} autoComplete="tel"/></label>
           <label>Venue name and full address<textarea name="venue" required maxLength={500}/></label>
           <label>Estimated guest count<input name="guests" type="number" min={1} max={5000} required value={guestCount} aria-describedby={exceedsCollection ? "guest-upgrade-help" : undefined} onChange={e=>setGuestCount(e.target.value)}/></label>
@@ -127,9 +154,9 @@ export default function Booking() {
           <div className="quote-request"><label className="quote-request-choice"><input type="checkbox" checked={quoteRequested} aria-describedby="quote-request-help" onChange={e=>setQuoteRequested(e.target.checked)}/><span>Request a custom quote or travel review before payment</span></label><p id="quote-request-help">Optional. Your experience price stays the same. Checking this sends a request for owner review: nothing is due now and your date is not reserved. You can choose prepayment or full payment after accepting your approved quote.</p></div>
           <label>Anything else we should know?<textarea name="notes" maxLength={4000}/></label>
         </div><h3>Make it yours</h3>{c.addons.length ? c.addons.map(a=><label className="extra-option" key={a.id}><span><strong>{a.name}</strong><small>{money(a.priceCents)} each</small></span><input aria-label={a.name+" quantity"} name={"addon_"+a.id} type="number" min={0} max={24} value={quantities[a.id] || 0} onChange={e=>setQuantities({...quantities,[a.id]:Number(e.target.value)})}/></label>):<p>No optional extras are configured yet.</p>}
-        <div className="step-actions"><button type="button" onClick={()=>setStep(0)}>Back to dates</button><button type="button" onClick={e=>{const form=e.currentTarget.form!;if(exceedsCollection){document.getElementById("guest-upgrade-help")?.scrollIntoView({block:"center"});return}const confirmation=form.elements.namedItem("confirmEmail") as HTMLInputElement;const email=form.elements.namedItem("email") as HTMLInputElement;confirmation.setCustomValidity(confirmation.value.trim().toLowerCase()===email.value.trim().toLowerCase()?"":"Email addresses must match.");const invalid=Array.from(form.elements).find(el=>el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement ? el.name!=="accepted"&&!el.checkValidity():false) as HTMLInputElement|undefined;if(invalid){invalid.reportValidity();return}setStep(2)}}>{waitlist||reviewRequired?"Review request":"Review payment"}</button></div></section>
-        <section hidden={step!==2}><h2>Reserve with confidence</h2>{waitlist?<p>This request does not reserve the date or collect payment. Atelier Elunora will review capacity before inviting you to book.</p>:reviewRequired?<p>Atelier Elunora will confirm travel and your final quote before payment. This request does not hold the date. You will review and accept the quote in your private booking page.</p>:<fieldset className="payment-options"><legend>How would you like to pay?</legend><label><input type="radio" name="paymentChoice" value="prepayment" checked={payment==="prepayment"} onChange={()=>setPayment("prepayment")}/><strong>Pay {c.percent}% prepayment · {money(deposit)}</strong><span>{money(total-deposit)} remains due {c.balanceDaysBefore} days before your event.</span></label><label><input type="radio" name="paymentChoice" value="full" checked={payment==="full"} onChange={()=>setPayment("full")}/><strong>Pay in full · {money(total)}</strong><span>No remaining booking balance.</span></label></fieldset>}
-        <div hidden={waitlist||reviewRequired}><details><summary>Read your booking agreement · version {c.version}</summary><p style={{whiteSpace:"pre-wrap"}}>{c.agreement}</p></details><label className="agreement-check"><input name="accepted" type="checkbox" value="yes" required={!waitlist&&!reviewRequired}/>I accept this booking agreement.</label></div><p hidden={waitlist||reviewRequired}>Continue creates a temporary 15-minute hold. You can then open secure Shopify checkout. No payment is collected by this form.</p><div className="step-actions"><button type="button" onClick={()=>setStep(1)}>Back to details</button><button disabled={busy}>{busy?"Preparing your booking…":waitlist?"Submit waitlist request":reviewRequired?"Request quote review":"Continue to payment"}</button></div></section>
+        <div className="step-actions"><button type="button" onClick={()=>setStep(1)}>Back to dates</button><button type="button" onClick={e=>{const form=e.currentTarget.form!;if(exceedsCollection){document.getElementById("guest-upgrade-help")?.scrollIntoView({block:"center"});return}const confirmation=form.elements.namedItem("confirmEmail") as HTMLInputElement;const email=form.elements.namedItem("email") as HTMLInputElement;confirmation.setCustomValidity(confirmation.value.trim().toLowerCase()===email.value.trim().toLowerCase()?"":"Email addresses must match.");const invalid=Array.from(form.elements).find(el=>el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement ? el.name!=="accepted"&&!el.checkValidity():false) as HTMLInputElement|undefined;if(invalid){invalid.reportValidity();return}saveDetails(form,3)}}>{waitlist||reviewRequired?"Review request":"Review payment"}</button></div></section>
+        <section hidden={step!==3}><h2>Reserve with confidence</h2>{waitlist?<p>This request does not reserve the date or collect payment. Atelier Elunora will review capacity before inviting you to book.</p>:reviewRequired?<p>Atelier Elunora will confirm travel and your final quote before payment. This request does not hold the date. You will review and accept the quote in your private booking page.</p>:<fieldset className="payment-options"><legend>How would you like to pay?</legend><label><input type="radio" name="paymentChoice" value="prepayment" checked={payment==="prepayment"} onChange={()=>setPayment("prepayment")}/><strong>Pay {c.percent}% prepayment · {money(deposit)}</strong><span>{money(total-deposit)} remains due {c.balanceDaysBefore} days before your event.</span></label><label><input type="radio" name="paymentChoice" value="full" checked={payment==="full"} onChange={()=>setPayment("full")}/><strong>Pay in full · {money(total)}</strong><span>No remaining booking balance.</span></label></fieldset>}
+        <div hidden={waitlist||reviewRequired}><details><summary>Read your booking agreement · version {c.version}</summary><p style={{whiteSpace:"pre-wrap"}}>{c.agreement}</p></details><label className="agreement-check"><input name="accepted" type="checkbox" value="yes" required={!waitlist&&!reviewRequired}/>I accept this booking agreement.</label></div><p hidden={waitlist||reviewRequired}>Continue creates a temporary 15-minute hold. You can then open secure Shopify checkout. No payment is collected by this form.</p><div className="step-actions"><button type="button" onClick={()=>setStep(2)}>Back to details</button><button disabled={busy}>{busy?"Preparing your booking…":waitlist?"Submit waitlist request":reviewRequired?"Request quote review":"Continue to payment"}</button></div></section>
       </Form></div></section>}
   </main>;
 }

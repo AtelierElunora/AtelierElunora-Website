@@ -108,3 +108,24 @@ model BookingMail {
   updatedAt DateTime @updatedAt
   @@index([status, sendAt])
 }
+
+model BookingLead {
+  id String @id @default(cuid())
+  shop String
+  tokenHash String @unique
+  customerName String
+  customerEmail String
+  weddingDate String @default("")
+  venue String @default("")
+  guests Int?
+  packageId String @default("")
+  status String @default("new")
+  bookingId String?
+  notes String @default("")
+  consentAt DateTime
+  contactedAt DateTime?
+  followUpAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([shop, status, followUpAt])
+}
