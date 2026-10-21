@@ -1,6 +1,6 @@
 # Website inquiries and follow-up
 
-Implemented in source; not deployed by this change.
+Deployed to the existing Azure booking service on October 21, 2026.
 
 The booking flow now starts with a contact step. Visitors explicitly consent to
 an event-specific follow-up and click **Save my details & continue**. That saves
@@ -20,7 +20,47 @@ notify the owner outside the dashboard. No automated customer emails are added.
 The existing email worker, calendar integration and payment flows are unchanged.
 Owners must check Leads regularly; this is not an unattended email campaign.
 
-## Deployment
+## Production release
+
+The release was isolated from the previous live production commit
+`92745d2f9be0bcbe63628d29266b4325a6962416` on
+`release/booking-leads-20261021`. Unrelated source-only contract changes were
+excluded. Only `BookingLead` and its indexes were added to the existing
+`elunora_booking` schema. The existing runtime role received DML access to this
+new table; no foundation migrations or existing-record changes were applied.
+
+The production contact form display and consent rejection were checked without saving a
+synthetic inquiry or sending customer emails. Owner routes require Shopify
+embedded-app authentication. The runtime role's SELECT, INSERT and UPDATE privileges on BookingLead were
+verified with a read-only query. The live form shows Contact, Date, Details &
+extras and Payment; the live health endpoint returned HTTP 200 with the server
+fingerprint below. Full authenticated owner interaction was not exercised in
+production. Source checks passed: 76 tests for the feature branch,
+56 tests for the isolated release, type checking and production builds.
+
+The compatible Linux runtime is packaged at
+`/home/data/booking-leads-runtime-20261021-v3.tgz` with SHA-256
+`d6fec06a7e488fbac379b31195b2ea2e5d28b57ffefb51dd28e1bd295a678e03`.
+The startup command is `sh /home/data/booking-leads-start-20261021-v3.sh`.
+It extracts the complete package into container-local temporary storage, then
+runs `node azure/server.mjs`. Container startup may take roughly two minutes.
+The container startup allowance is 600 seconds; no plan upgrade was made.
+
+The release source is `91438f3a61036a4a64e7792a05a52524eee798a2`.
+The server build fingerprint is
+`d305bc1cd54ccf289056aec7f0f9927135fcba5c248f5e66aac43cd1659c463d`.
+Prisma clients must be generated normally. Do not use `--no-engine` or
+`PRISMA_GENERATE_NO_ENGINE` with this PostgreSQL adapter configuration.
+The compiled release passed an adapter initialization smoke test before upload.
+
+Native source deployment first installed v1 successfully. A later incremental
+OneDeploy failed and removed the previous compressed dependency/manifest
+artifacts, so the final runtime uses the self-contained package above.
+`SCM_DO_BUILD_DURING_DEPLOYMENT=false`; the future source build command is
+`npm ci --no-audit --no-fund && npm run build`. Deploy complete, tested runtime
+packages with dependencies rather than sending a build-only ZIP to Oryx.
+
+## Future deployment
 
 1. Back up and compare the current Azure source/schema with this branch. The
    repository contains other source-only changes, including contract work. A
@@ -38,7 +78,11 @@ Owners must check Leads regularly; this is not an unattended email campaign.
    abuse controls at the hosting ingress. The form includes origin checking,
    bounded fields, explicit consent and a honeypot; these are not bot verification.
 
-For a code rollback, restore the previous booking build. Retain the additive
+For a code rollback, restore the previous booking build together with compatible
+Linux dependencies. A build-only copy will not restore missing dependency
+artifacts. The previous source/build archive is
+`/home/data/booking-before-leads-20261021.tgz` (SHA-256
+`feb5536647776521e922e888a15f0695828890817988014830202a9ef4c5cbac`). Retain the additive
 lead table until inquiries are exported/reconciled rather than dropping records.
 
 ## Validation
