@@ -14,6 +14,8 @@ struct PendingPhoto: Codable {
     let eventName: String
     let jpeg: Data
     var attempted = false
+    var contact: BoothContact? = nil
+    var received: Bool? = nil
     var isTest: Bool? = nil
 }
 
@@ -34,7 +36,7 @@ struct StationAPI {
 
     static func call(token: String, action: String, photo: PendingPhoto? = nil) async throws -> [String: Any] {
         var body: [String: Any] = ["token": token, "purpose": "capture", "action": action]
-        if let photo { body["requestId"] = photo.requestId.uuidString.lowercased(); body["jpeg"] = photo.jpeg.base64EncodedString() }
+        if let photo { if let contact = photo.contact { body["contact"] = ["channel": contact.channel, "recipient": contact.recipient, "consent": contact.consent] }; body["requestId"] = photo.requestId.uuidString.lowercased(); body["jpeg"] = photo.jpeg.base64EncodedString() }
         var request = URLRequest(url: endpoint, timeoutInterval: 90)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -60,6 +62,11 @@ struct StationAPI {
     @Published var eventName = ""
     @Published var notice = "Choose an event to connect this booth."
     @Published var pending: PendingPhoto?
+    @Published var invitationChannels: [String] = []
+    @Published var wantsInvitation = false
+    @Published var invitationChannel = "email"
+    @Published var recipient = ""
+    @Published var invitationConsent = false
     @Published var busy = false
     @Published var preview: UIImage?
     @Published var previewIsTest = false
@@ -68,7 +75,7 @@ struct StationAPI {
     var connected: Bool { token != nil && !eventName.isEmpty }
     private var storageReady = false
     private let pendingURL: URL
-    private struct SavedStation: Codable { let token: String; let eventName: String }
+    private struct SavedStation: Codable { let token: String; let eventName: String; var invitationChannels: [String]? = nil }
     private var stationURL: URL { pendingURL.deletingLastPathComponent().appendingPathComponent("station.json") }
 
     init(ownerEmail: String) {
@@ -79,10 +86,11 @@ struct StationAPI {
             var directory = pendingURL.deletingLastPathComponent()
             var values = URLResourceValues(); values.isExcludedFromBackup = true
             try directory.setResourceValues(values)
-            if let data = try? Data(contentsOf: stationURL), let saved = try? JSONDecoder().decode(SavedStation.self, from: data) { token = saved.token; eventName = saved.eventName; notice = "Event connection restored. Submit a test photo before opening the booth to guests." }
+            if let data = try? Data(contentsOf: stationURL), let saved = try? JSONDecoder().decode(SavedStation.self, from: data) { token = saved.token; eventName = saved.eventName; invitationChannels = saved.invitationChannels ?? []; notice = "Event connection restored. Submit a test photo before opening the booth to guests." }
             if FileManager.default.fileExists(atPath: pendingURL.path) {
                 let recovered = try JSONDecoder().decode(PendingPhoto.self, from: Data(contentsOf: pendingURL))
                 pending = recovered; preview = UIImage(data: recovered.jpeg)
+                if let contact = recovered.contact { wantsInvitation = true; invitationChannel = contact.channel; recipient = contact.recipient; invitationConsent = contact.consent }
                 previewIsTest = recovered.isTest ?? true
                 eventName = recovered.eventName; token = recovered.token
                 notice = "Recovered a pending photo. Retry to confirm its receipt."
@@ -106,7 +114,9 @@ struct StationAPI {
             guard let name = info["name"] as? String, info["purpose"] as? String == "capture" else {
                 throw StationFailure(message: "This link is not a capture station.")
             }
-            try JSONEncoder().encode(SavedStation(token: candidate, eventName: name)).write(to: stationURL, options: [.atomic, .completeFileProtection])
+            invitationChannels = info["invitationChannels"] as? [String] ?? []
+            if !invitationChannels.contains(invitationChannel) { invitationChannel = invitationChannels.first ?? "email" }
+            try JSONEncoder().encode(SavedStation(token: candidate, eventName: name, invitationChannels: invitationChannels)).write(to: stationURL, options: [.atomic, .completeFileProtection])
             token = candidate; eventName = name; link = ""
             notice = "Connected. Approved photos will enter this event's gallery and print queue."
         } catch { notice = error.localizedDescription }
@@ -160,22 +170,41 @@ struct StationAPI {
         guard !busy, pending?.attempted != true else { return }
         do {
             if FileManager.default.fileExists(atPath: pendingURL.path) { try FileManager.default.removeItem(at: pendingURL) }
-            pending = nil; preview = nil; notice = "Ready for another photo."
+            pending = nil; preview = nil; resetContact(); notice = "Ready for another photo."
         } catch { notice = "Could not clear the saved photo. Please retry." }
+    }
+
+    private func resetContact() { wantsInvitation = false; recipient = ""; invitationConsent = false }
+    private func clearReceived() throws {
+        try FileManager.default.removeItem(at: pendingURL)
+        pending = nil; preview = nil; resetContact()
+    }
+    func finishReceivedPhoto() {
+        guard !busy, pending?.received == true else { return }
+        do { try clearReceived(); notice = "Photo received. Ask the attendant if your invitation needs attention." }
+        catch { notice = "Could not clear the saved photo. Please retry." }
     }
 
     func submit() async {
         guard !busy, var photo = pending else { return }
         busy = true; defer { busy = false }
         do {
+            if !photo.attempted && wantsInvitation {
+                guard invitationChannels.contains(invitationChannel) else { throw CustomerError(message: "This invitation option is not enabled. Choose another option or skip the invitation.") }
+                photo.contact = try BoothContact.validated(channel: invitationChannel, recipient: recipient, consent: invitationConsent)
+            }
             photo.attempted = true
             try save(photo) // Persist before networking; keep the same UUID and bytes on every retry.
             notice = "Sending photo…"
             let result = try await StationAPI.call(token: photo.token, action: "submit", photo: photo)
             guard result["received"] as? Bool == true else { throw StationFailure(message: "Receipt unconfirmed. Retry this photo.") }
-            try FileManager.default.removeItem(at: pendingURL)
-            pending = nil; preview = nil
-            notice = "Photo received by the event gallery and print queue."
+            photo.received = true; try save(photo)
+            if photo.contact != nil {
+                guard let invitation = result["invitation"] as? [String: Any] else { throw CustomerError(message: "Photo received, but invitation support is unavailable. Ask the attendant.") }
+                guard invitation["status"] as? String == "accepted" else { throw CustomerError(message: invitation["message"] as? String ?? "Photo received. Ask the attendant about your invitation.") }
+            }
+            try clearReceived()
+            notice = photo.contact == nil ? "Photo received by the event gallery and print queue." : "Photo received. Your invitation was accepted for sending; check your messages."
         } catch { notice = "\(error.localizedDescription) The saved photo is retained for retry." }
     }
 }

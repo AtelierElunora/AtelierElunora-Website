@@ -1,6 +1,80 @@
 {
   "status": "not-deployed",
-  "feature": "No pending source overrides after production reconciliation",
-  "changes": [],
-  "additions": []
+  "description": "Optional photo-scoped booth invitations; email and configurable SMS, app and website claiming. Production baseline retained.",
+  "changes": [
+    {
+      "path": "ios/ElunoraCustomer/ElunoraCustomer.xcodeproj/project.pbxproj",
+      "productionSha256": "be03ca5f5e559c2fd1c5c4c2afc66ce6e6d20a213b17ad47e49b634810063d46",
+      "sha256": "a6aa7f32f8429adb4a1f9564e79b9e8ecb63b51eba2477272d76f849763ca063"
+    },
+    {
+      "path": "ios/ElunoraCustomer/ElunoraCustomer/BoothCaptureView.swift",
+      "productionSha256": "1443202a037614a71c7276298ec11879a98c177a23b4288d9dd91f92a38b887e",
+      "sha256": "7d3ff6dbd82dccb0ed43627cbd97429ce1c16e9a77088af65dd0e79fef188355"
+    },
+    {
+      "path": "ios/ElunoraCustomer/ElunoraCustomer/BoothStation.swift",
+      "productionSha256": "f1f4226e7fed243dcdd02e56de101f97f3f3453f60b6cb2ce8bbba3824f353cc",
+      "sha256": "d3b0f82c84afcad1f39e871d67abe33b350cae49d46f659193c14d8d74ab795e"
+    },
+    {
+      "path": "ios/ElunoraCustomer/ElunoraCustomer/Commerce.swift",
+      "productionSha256": "c95ede71ffa19a0e5240ae3ba1904ed95d52295eec46fcde908e8c2c689035ed",
+      "sha256": "a7cd7cc0500f2b6e3d1335468705c082393f120e19bd4846a58359aa3e1d5559"
+    },
+    {
+      "path": "ios/ElunoraCustomer/ElunoraCustomer/CustomerDomain.swift",
+      "productionSha256": "684b87bbb9c605c19fc2d3aa079dbab18046a44bc4d4bd179af15050b68e28c5",
+      "sha256": "436d182f8a5c4f471de50892d35191409c40470926b07b8a20b2c89fd0efcef9"
+    },
+    {
+      "path": "ios/ElunoraCustomer/ElunoraCustomer/CustomerExperience.swift",
+      "productionSha256": "0624aaceed03882f14c7a399b43e1f44ee4f4abf753a8ddb208114b0b2526f88",
+      "sha256": "65dc9cc01a23e21f7e0bb487e8253d39a086ccffabbcb452865a39e15dd7e494"
+    },
+    {
+      "path": "ios/ElunoraCustomer/ElunoraCustomer/Info.plist",
+      "productionSha256": "8f113455f1bdf27d1f63714a4e7e0b0c9b8294e78ac6ecc7a49a1817f861258d",
+      "sha256": "bb9860de0522674fd85e089de49d0ddf90ed2f45391ff8f9845889fd1d9e9dcf"
+    },
+    {
+      "path": "ios/ElunoraCustomer/ElunoraCustomer/OrderViews.swift",
+      "productionSha256": "6f0cf023a768c837e4aba85e8ef79ccd19c244bb01be08a22cd9c103c45fb872",
+      "sha256": "15720d9a096063ab797c78932d9a2388a47db404cfe35c21d1397d8245027360"
+    },
+    {
+      "path": "ios/ElunoraCustomer/Tests/Native/CustomerTests.swift",
+      "productionSha256": "05d5cbffbfd80d4524b8804c717b1c9568173b50cac7ac7b9d2532e1d77333b4",
+      "sha256": "f0d78ad48ce19ef08efb79ab70087c3e02ffc704308cf3d5658348086c142856"
+    },
+    {
+      "path": "supabase/functions/gallery-api/handler.mts",
+      "productionSha256": "7ebe56e411addea9891b7cbcdcd18c239ca879c5333c9bf67691f8e1b342ef47",
+      "sha256": "da3b37fdfaa788e8dbbdbd6a314e170867e0597efbc2eabbd7e65eac3e9a88bf"
+    },
+    {
+      "path": "theme/locales/en.default.json",
+      "productionSha256": "efb51333b6083c8f11a6d6592d970eedeecf22135adc845cd83b3cea61b18962",
+      "sha256": "3c49f05e4490093723f8246b9b1c190f0bfd6579c0be66da697fa4b27d448543"
+    },
+    {
+      "path": "theme/sections/atelier-client-gallery.liquid",
+      "productionSha256": "92522d43ba6c61171b1fde1317f02898bd0df5d7c5aaca2a2a267dd925e0daa0",
+      "sha256": "fef088b02771f1bb0d885db97ca438d01a60b4117a9a81a3a7e7c1440d3b7d1e"
+    }
+  ],
+  "additions": [
+    {
+      "path": "supabase/functions/gallery-api/booth-photos.mjs",
+      "sha256": "b9bbc9e5dbf8d86dd58b25db8126e7baf1e94c7c2cc4aaf25d1fe8b0262a8776"
+    },
+    {
+      "path": "supabase/migrations/20261002122316_booth_photo_invitations.sql",
+      "sha256": "f897bb87b19a45977d93f02aad8215307cf62bfd4fc26dcecfedc52cc7f29493"
+    },
+    {
+      "path": "ios/ElunoraCustomer/ElunoraCustomer/BoothPhotos.swift",
+      "sha256": "c216b4555cb8431407a5cc5b697108faf8127593841942be7e847eff631625e2"
+    }
+  ]
 }

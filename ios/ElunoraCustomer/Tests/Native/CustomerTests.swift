@@ -367,3 +367,30 @@ final class StubURLProtocol: URLProtocol {
         XCTAssertNil(model().pendingCheckout)
     }
 }
+
+final class BoothInvitationTests: XCTestCase {
+    func testPendingCapturePreservesContactAndConfirmedReceipt() throws {
+        let old = Data(#"{"requestId":"00000000-0000-4000-8000-000000000001","token":"station","eventName":"Event","jpeg":"aW1hZ2U=","attempted":true}"#.utf8)
+        var pending = try JSONDecoder().decode(PendingPhoto.self, from: old)
+        XCTAssertNil(pending.contact); XCTAssertNil(pending.received)
+        pending.contact = try BoothContact.validated(channel: "email", recipient: "guest@example.test", consent: true)
+        pending.received = true
+        let restored = try JSONDecoder().decode(PendingPhoto.self, from: JSONEncoder().encode(pending))
+        XCTAssertEqual(restored.contact, pending.contact); XCTAssertEqual(restored.received, true)
+        XCTAssertEqual(restored.requestId, pending.requestId); XCTAssertEqual(restored.jpeg, pending.jpeg)
+    }
+
+    func testPrivateLinksRejectForeignHostsAndDuplicateTokens() {
+        let token = String(repeating: "a", count: 64)
+        XCTAssertEqual(BoothInviteLink.token("https://www.atelierelunora.com/pages/client-gallery#booth=\(token)"), token)
+        XCTAssertEqual(BoothInviteLink.token("elunora://booth?booth=\(token)"), token)
+        XCTAssertEqual(CustomerLink.parse(URL(string: "elunora://booth?booth=\(token)")!), .booth(token))
+        for link in ["http://atelierelunora.com/pages/client-gallery#booth=\(token)", "https://evil.test/pages/client-gallery#booth=\(token)", "https://user@atelierelunora.com/pages/client-gallery#booth=\(token)", "elunora://booth?booth=\(token)&booth=\(token)"] { XCTAssertNil(BoothInviteLink.token(link)) }
+    }
+    func testContactRequiresConsentAndInternationalPhoneNumber() throws {
+        XCTAssertEqual(try BoothContact.validated(channel: "email", recipient: " Guest@Example.test ", consent: true).recipient, "guest@example.test")
+        XCTAssertEqual(try BoothContact.validated(channel: "sms", recipient: "+1 (555) 555-5555", consent: true).recipient, "+15555555555")
+        XCTAssertThrowsError(try BoothContact.validated(channel: "sms", recipient: "5555555555", consent: true))
+        XCTAssertThrowsError(try BoothContact.validated(channel: "email", recipient: "guest@example.test", consent: false))
+    }
+}
