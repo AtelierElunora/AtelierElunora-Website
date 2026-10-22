@@ -1,9 +1,10 @@
 import { saveLead, linkLead } from "../leads.server";
+import { createInquiryReporter } from "../inquiry-analytics";
 import {customerAgreementFields,eventAgreementSettings,readAgreementFields} from "../event-agreement";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { Form, redirect, useActionData, useLoaderData, useNavigation, useFetcher } from "react-router";
 import db from "../db.server";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { BookingCalendar } from "../BookingCalendar";
 import { createBooking, requireOrigin } from "../booking.server";
 import { allocate, parseConfig, percentAmount } from "../booking-rules";
@@ -37,6 +38,7 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     availability,
     shop,
     embedded: new URL(request.url).searchParams.get("embed") === "1",
+    parentOrigin: new URL(request.url).searchParams.get("parentOrigin") || "https://www.atelierelunora.com",
     initialPackage: new URL(request.url).searchParams.get("collection") || "",
     packages: c.packages,
     addons: c.addons,
@@ -56,8 +58,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
   try {
     if (f.get("intent") === "save-lead") {
       await db.bookingSettings.findUniqueOrThrow({where:{shop}});
-      await saveLead(shop,f);
-      return { error: "", saved:true, nextStep: f.get("nextStep")==="3"?3:1, savedToken:String(f.get("leadToken")) };
+      const conversion = await saveLead(shop,f);
+      return { error: "", saved:true, nextStep: f.get("nextStep")==="3"?3:1, savedToken:String(f.get("leadToken")), conversionId:conversion?.conversionId };
     }
     const s = await db.bookingSettings.findUniqueOrThrow({ where: { shop } }),
       c = parseConfig(s.configJson);
@@ -99,6 +101,8 @@ export default function Booking() {
   const lead = useFetcher<typeof action>();
   const [leadToken,setLeadToken]=useState("");
   const [leadError,setLeadError]=useState("");
+  const reportInquiry = useRef(createInquiryReporter());
+  useEffect(()=>{if(c.embedded)reportInquiry.current(lead.data,c.shop,c.parentOrigin,window.parent)},[lead.data,c.embedded,c.shop,c.parentOrigin]);
   useEffect(()=>{if(lead.data && "saved" in lead.data && lead.data.saved){setLeadToken(lead.data.savedToken);setStep(lead.data.nextStep);setLeadError("")}},[lead.data]);
   function saveDetails(form:HTMLFormElement,nextStep:number){
     const fields=nextStep===1?["name","email","confirmEmail","followUpConsent"]:[];

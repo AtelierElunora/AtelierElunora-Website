@@ -20,7 +20,9 @@ await test('explicit consent is required; validation rejects malformed contacts 
  assert.equal(await db.bookingLead.count({where:{shop}}),0);
 });
 await test('saving and retrying an inquiry creates no booking, contract, date hold or mail',async()=>{
- const f=inquiry();await saveLead(shop,f);f.set('date','2027-07-24');f.set('venue','Synthetic venue');f.set('guests','100');await saveLead(shop,f);
+ const f=inquiry();const firstConversion=await saveLead(shop,f);f.set('date','2027-07-24');f.set('venue','Synthetic venue');f.set('guests','100');const repeatedConversion=await saveLead(shop,f);
+ assert.match(firstConversion.conversionId,/^[a-f0-9]{64}$/);assert.equal(firstConversion.conversionId,repeatedConversion.conversionId);
+ assert.notEqual(firstConversion.conversionId,f.get('leadToken'));assert.notEqual(firstConversion.conversionId,(await import('node:crypto')).createHash('sha256').update(f.get('leadToken')).digest('hex'));
  const leads=await listLeads(shop);assert.equal(leads.length,1);assert.equal(leads[0].guests,100);assert.equal(leads[0].customerEmail,'couple@example.invalid');assert.ok(!('tokenHash' in leads[0]));
  assert.equal(await db.weddingBooking.count({where:{shop}}),0);assert.equal(await db.bookingMail.count({where:{shop}}),0);
  await assert.rejects(saveLead(other,f));assert.equal((await listLeads(other)).length,0);

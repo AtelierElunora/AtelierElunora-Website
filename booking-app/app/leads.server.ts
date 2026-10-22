@@ -25,6 +25,8 @@ export async function saveLead(shop: string, form: FormData) {
   // A browser retry may update event details, but cannot reopen a closed inquiry.
   const data = { customerName, customerEmail, weddingDate, guests, venue: text(form,"venue",500), packageId:text(form,"package",200) };
   await db.bookingLead.upsert({where:{tokenHash}, create:{shop,tokenHash,...data,consentAt:new Date(),followUpAt:new Date(Date.now()+86400000)},update:data});
+  // Domain-separated identifier: never expose the inquiry access token or contact fields.
+  return { conversionId: digest("elunora:inquiry-conversion:" + shop + ":" + token) };
 }
 
 export async function linkLead(shop: string, token: string, booking: { id:string; customerEmail:string }) {
