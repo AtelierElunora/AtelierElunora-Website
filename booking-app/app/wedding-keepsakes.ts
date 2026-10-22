@@ -12,6 +12,23 @@ export const keepsakeProducts = [
 export type KeepsakeVariant = { id: string; name: string; priceCents: number; available: boolean };
 export type KeepsakeProduct = { handle: string; name: string; description: string; note: string; requiresBooking: boolean; image: string | null; variants: KeepsakeVariant[] };
 
+export type KeepsakeItem = { handle: string; name: string; variantId: string; variantName: string; quantity: 1; unitCents: number; note: string };
+export type KeepsakeSelection = { version: 1; items: KeepsakeItem[]; subtotalCents: number };
+export const keepsakeSubtotal = (items: KeepsakeItem[]) => items.reduce((n, item) => n + item.unitCents * item.quantity, 0);
+// A set is one line item. Resolve every ID and reviewed price on the server.
+export function resolveKeepsakeSelection(value: unknown, products: KeepsakeProduct[]): KeepsakeSelection | null {
+  if (!Array.isArray(value) || value.length > keepsakeProducts.length) throw Error("Choose up to one option from each keepsake collection.");
+  const seen = new Set<string>();
+  const items = value.map((entry): KeepsakeItem => {
+    const product = products.find(p => p.variants.some(v => v.id === entry?.variantId));
+    const variant = product?.variants.find(v => v.id === entry?.variantId);
+    if (!product || !variant?.available || seen.has(product.handle) || entry.quantity !== 1 || entry.unitCents !== variant.priceCents) throw Error("A selected keepsake changed or is unavailable. Return to details, reload the options and review your selection.");
+    seen.add(product.handle);
+    return { handle: product.handle, name: product.name, variantId: variant.id, variantName: variant.name, quantity: 1, unitCents: variant.priceCents, note: product.note };
+  });
+  return items.length ? { version: 1, items, subtotalCents: keepsakeSubtotal(items) } : null;
+}
+
 export function productUrl(product: KeepsakeProduct, variant?: KeepsakeVariant) {
   const url = new URL("/products/" + product.handle, keepsakeStore);
   if (variant) url.searchParams.set("variant", variant.id);

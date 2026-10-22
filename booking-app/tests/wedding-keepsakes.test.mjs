@@ -6,7 +6,7 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 
 await build({ stdin: { contents: `export * from './app/wedding-keepsakes';export * from './app/wedding-keepsakes.server';export { KeepsakeCard } from './app/WeddingKeepsakes';export { quote, defaultConfig, percentAmount } from './app/booking-rules';`, resolveDir: process.cwd(), loader:'ts' }, bundle:true, packages:'external', platform:'node', format:'esm', jsx:'automatic', outfile:'tests/.keepsakes-bundle.mjs' });
-const { publishedKeepsake, loadWeddingKeepsakes, keepsakeProducts, keepsakeCheckoutUrl, productUrl, KeepsakeCard, quote, defaultConfig, percentAmount } = await import('./.keepsakes-bundle.mjs');
+const { publishedKeepsake, loadWeddingKeepsakes, keepsakeProducts, keepsakeCheckoutUrl, productUrl, KeepsakeCard, quote, defaultConfig, percentAmount, resolveKeepsakeSelection } = await import('./.keepsakes-bundle.mjs');
 const spec=keepsakeProducts[0];
 const product=(s=spec)=>({handle:s.handle,published_at:'2026-10-22T00:00:00Z',tags:['booking add-on'],featured_image:'//cdn.shopify.com/s/files/test.jpg',variants:[{id:67923044827424,title:'25 magnets',price:8900,available:true,requires_shipping:true},{id:67923044860192,title:'50 magnets',price:14900,available:true,requires_shipping:true}]});
 try {
@@ -41,6 +41,16 @@ await test('cards browse before confirmation and open a separate product checkou
   assert.match(buy,/\/cart\/67923044827424:1/);assert.match(buy,/Buy separately in Shopify/);assert.match(buy,/shipping at checkout/);
   assert.match(browse,/For confirmed wedding bookings/);assert.match(browse,/\$149\.00/);
   assert.doesNotMatch(browse,/(bookingToken|customerEmail|addon_)/);
+});
+await test('booking cards add in place and server resolves prices without accepting arbitrary variants',()=>{
+ const p=publishedKeepsake(product(),spec);
+ const view=renderToStaticMarkup(React.createElement(KeepsakeCard,{product:p,confirmed:false,onChange:()=>{}}));
+ assert.match(view,/Add to my booking/);assert.doesNotMatch(view,/(target="_blank"|href=)/);
+ const value=[{variantId:p.variants[1].id,unitCents:14900,quantity:1,name:"untrusted"}];
+ const selected=resolveKeepsakeSelection(value,[p]);
+ assert.equal(selected.subtotalCents,14900);assert.equal(selected.items[0].quantity,1);assert.equal(selected.items[0].name,spec.name);
+ for(const v of [[{...value[0],unitCents:1}],[{...value[0],quantity:50}],[{...value[0],variantId:"other"}],[...value,...value],{}])assert.throws(()=>resolveKeepsakeSelection(v,[p]));
+ assert.throws(()=>resolveKeepsakeSelection(value,[{...p,variants:p.variants.map(v=>({...v,available:false}))}]));
 });
 await test('physical products cannot enter event invoice totals; service extras retain 30% accounting',()=>{
   const config={...defaultConfig,packages:[{id:'base',name:'Wedding',priceCents:149500,maxGuests:150}],addons:[{id:'hour',name:'Additional hour',priceCents:25000}]};

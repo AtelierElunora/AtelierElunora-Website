@@ -1,6 +1,7 @@
 import type {ServiceAgreement} from "./event-agreement";
 export const SIGNATURE_CONSENT = "I have reviewed this contract, agree to its terms, and intend my typed name to be my electronic signature. I can print or save a copy.";
 export type ContractDocument = {
+  keepsakes?: { items: {name:string;variantName:string;unitCents:number;quantity:number;note:string}[]; subtotalCents:number };
   templateVersion: 1|2; serviceAgreement?:ServiceAgreement; reference: string; business: string; customerName: string; customerEmail: string;
   phone: string; weddingDate: string; venue: string; preferredStartTime: string; guests: number;
   collection: string; extras: {name: string; quantity: number; unitCents: number}[];
@@ -30,10 +31,23 @@ export function contractRows(d: ContractDocument): [string,string][] {
     ["Preferred service start",d.preferredStartTime || "To be confirmed"],
     ["Guest count",d.guests?String(d.guests):"To be confirmed"],["Collection",d.collection],
     ...d.extras.map(e => [e.name + " × " + e.quantity,money(e.unitCents * e.quantity)] as [string,string]),
-    ["Booking total",money(d.totalCents)],
+    [d.keepsakes ? "Wedding service total" : "Booking total",money(d.totalCents)],
     ["Prepayment option ("+d.prepaymentPercent+"%)",money(d.prepaymentCents)],
     ["Balance after prepayment",money(d.balanceCents)],
     ["Balance deadline",d.balanceCents===0?"No balance after full prepayment":d.balanceDueDate || "To be confirmed"],
+    ...(d.keepsakes ? keepsakeContractRows(d) : []),
+  ];
+}
+export function keepsakeContractRows(d: ContractDocument): [string,string][] {
+  if(!d.keepsakes)return [];
+  const money=(n:number)=>contractMoney(n,d.currency);
+  return [
+    ...d.keepsakes.items.map(i=>["Shipped keepsake · "+i.name+" · "+i.variantName,money(i.unitCents*i.quantity)] as [string,string]),
+    ["Keepsakes paid in full at first checkout",money(d.keepsakes.subtotalCents)],
+    ["Checkout subtotal with wedding prepayment",money(d.prepaymentCents+d.keepsakes.subtotalCents)],
+    ["Checkout subtotal with full wedding payment",money(d.totalCents+d.keepsakes.subtotalCents)],
+    ["Shipping & tax","Calculated at Shopify checkout. Keepsake purchases do not reduce the remaining wedding service balance."],
+    ...d.keepsakes.items.map(i=>[i.name+" · arrangements",i.note] as [string,string]),
   ];
 }
 export function contractPlainText(c: BookingContract) {

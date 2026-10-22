@@ -1,5 +1,5 @@
 import { liveBookingShop } from "./live-store";
-import { keepsakeProducts, keepsakeStore, type KeepsakeProduct } from "./wedding-keepsakes";
+import { keepsakeProducts, keepsakeStore, type KeepsakeProduct, resolveKeepsakeSelection, type KeepsakeSelection } from "./wedding-keepsakes";
 
 type ProductResponse = { handle?: unknown; published_at?: unknown; tags?: unknown; variants?: unknown; featured_image?: unknown; requires_selling_plan?: unknown };
 export function publishedKeepsake(value: ProductResponse, spec: typeof keepsakeProducts[number]): KeepsakeProduct | null {
@@ -21,6 +21,7 @@ export function publishedKeepsake(value: ProductResponse, spec: typeof keepsakeP
 type Catalogue = { products: KeepsakeProduct[]; incomplete: boolean };
 let cache: { value: Catalogue; until: number } | undefined;
 let pending: Promise<Catalogue> | undefined;
+const productCache = new Map<string,{value:KeepsakeProduct|null;until:number}>();
 export async function loadWeddingKeepsakes(shop: string, fetcher: typeof fetch = fetch) {
   if (shop !== liveBookingShop) return { products: [], incomplete: false };
   // No customer data, cookies, access tokens or booking information are sent.
@@ -29,20 +30,23 @@ export async function loadWeddingKeepsakes(shop: string, fetcher: typeof fetch =
   if (fetcher === fetch && pending) return pending;
   const load = async () => {
     const results = await Promise.allSettled(keepsakeProducts.map(async (spec, index) => {
-      if (fetcher === fetch && index) await new Promise(resolve => setTimeout(resolve, index * 600));
+      const cached=fetcher===fetch && productCache.get(spec.handle);
+      if(cached && cached.until>Date.now())return cached.value;
+      if (fetcher === fetch && index) await new Promise(resolve => setTimeout(resolve, index * 1600));
       const url = `${keepsakeStore}/products/${spec.handle}.js`;
       const options = { signal: AbortSignal.timeout(5000), redirect: "error" as const, headers: { Accept: "application/json" } };
       let response = await fetcher(url, options);
-      if (response.status === 429) {
-        const retry = Number(response.headers.get("Retry-After") || "1");
-        if (Number.isFinite(retry) && retry >= 0 && retry <= 5) {
-          await new Promise(resolve => setTimeout(resolve, Math.max(1, retry) * 1000));
-          response = await fetcher(url, { ...options, signal: AbortSignal.timeout(5000) });
-        }
+      for(let attempt=0; response.status===429 && attempt<3; attempt++) {
+        const retry=Number(response.headers.get("Retry-After") || String(attempt+2));
+        if(!Number.isFinite(retry) || retry<0 || retry>5)break;
+        if(fetcher===fetch)await new Promise(resolve=>setTimeout(resolve,Math.max(2,retry)*1000));
+        response=await fetcher(url,{...options,signal:AbortSignal.timeout(5000)});
       }
       if (response.status === 404) return null;
       if (!response.ok) throw Error("Product catalogue is temporarily unavailable.");
-      return publishedKeepsake(await response.json(), spec);
+      const value=publishedKeepsake(await response.json(), spec);
+      if(fetcher===fetch)productCache.set(spec.handle,{value,until:Date.now()+60000});
+      return value;
     }));
     if (results.every(r => r.status === "rejected")) throw Error("Product catalogue is temporarily unavailable.");
     const products = results.flatMap(r => r.status === "fulfilled" && r.value ? [r.value] : []);
@@ -54,4 +58,13 @@ export async function loadWeddingKeepsakes(shop: string, fetcher: typeof fetch =
   if (fetcher !== fetch) return load();
   pending = load();
   try { return await pending; } finally { pending = undefined; }
+}
+
+export async function validateWeddingKeepsakes(shop: string, raw: unknown): Promise<KeepsakeSelection | null> {
+  if (raw === undefined || raw === null) return null;
+  if (!Array.isArray(raw) || raw.length > 4) throw Error("Choose valid wedding keepsakes.");
+  if (!raw.length) return null;
+  if (shop !== liveBookingShop) throw Error("These keepsakes are unavailable for this store.");
+  const catalogue = await loadWeddingKeepsakes(shop);
+  return resolveKeepsakeSelection(raw, catalogue.products);
 }

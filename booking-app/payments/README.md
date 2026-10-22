@@ -19,3 +19,14 @@ Sources:
 - https://shopify.dev/docs/api/admin-graphql/2026-10/mutations/webhookSubscriptionCreate
 - https://shopify.dev/docs/api/admin-graphql/2026-10/objects/Order
 - https://shopify.dev/docs/api/admin-graphql/2026-10/objects/LineItem
+
+
+## Combined wedding and keepsake checkout
+
+New customer bookings can snapshot an allowlisted published shipped variant from each keepsake family. The reviewed USD price is revalidated on booking creation and invoice creation. The first invoice contains one non-shipping custom wedding prepayment/full-payment line and real Shopify variant lines paid in full, with shipping selected in Shopify Checkout. BookingPayment.amountCents and WeddingBooking.totalCents/paidCents remain wedding-service principal only.
+
+The booking details retain a versioned keepsake selection, its invoice attachment, and verified keepsake receipts. Pending invoice retries reuse the draft; settled or refunded physical purchases are never added to later wedding balance invoices. Failed or voided unpaid drafts may be retried. These fields require no database migration.
+
+mixed-checkout.mjs verifies the complete variant/quantity/price list, service line marker, currency, discounts, shipping and receipt totals. Fully captured receipts credit only the service line. Line-specific product or shipping refunds do not reduce wedding credit; service refunds do. Unallocated adjustments, partial captures, edited contents or truncated snapshots require review and retain previously verified credit. The existing single-service-line reconciliation is preserved for historical bookings.
+
+Shopify receipt amounts include all items, shipping and tax. Customer and owner booking summaries, signed contracts and confirmation emails distinguish wedding principal from keepsakes. Physical fulfillment remains in Shopify. No real payment is made by the automated tests.
