@@ -1,6 +1,6 @@
 # Shopify booking payment integration
 
-The server implementation is in `app/payment.server.ts`, `app/checkout-credit.mjs`, and `app/payment-ledger.mjs`. It uses the approved development-store scopes `write_draft_orders,read_orders`, API 2026-10. GraphQL operations were schema-validated with Shopify AI Toolkit.
+The server implementation is in `app/payment.server.ts`, `app/checkout-credit.mjs`, and `app/payment-ledger.mjs`. It uses the approved scopes `write_draft_orders,read_orders,read_products`, API 2026-10. GraphQL operations were schema-validated with Shopify AI Toolkit.
 
 Each immutable payment attempt is recorded before Shopify creates its draft checkout. A transaction reserves daily capacity and resource pools. Customers choose the configured prepayment or the full remaining amount; balance checkout charges only the principal still outstanding. Shopify verifies actual receipt before booking credit changes. A draft order being paid in full does not mean the wedding booking is fully paid.
 
@@ -23,7 +23,7 @@ Sources:
 
 ## Combined wedding and keepsake checkout
 
-New customer bookings can snapshot an allowlisted published shipped variant from each keepsake family. The reviewed USD price is revalidated on booking creation and invoice creation. The first invoice contains one non-shipping custom wedding prepayment/full-payment line and real Shopify variant lines paid in full, with shipping selected in Shopify Checkout. BookingPayment.amountCents and WeddingBooking.totalCents/paidCents remain wedding-service principal only.
+New customer bookings can snapshot an allowlisted published shipped variant from each keepsake family. The reviewed USD price is revalidated on booking creation and invoice creation. The approved read_products scope lets the installed app verify the real variant identity on draft and order line items; selection remains restricted to the published keepsake allowlist. The first invoice contains one non-shipping custom wedding prepayment/full-payment line and real Shopify variant lines paid in full, with shipping selected in Shopify Checkout. BookingPayment.amountCents and WeddingBooking.totalCents/paidCents remain wedding-service principal only.
 
 The booking details retain a versioned keepsake selection, its invoice attachment, and verified keepsake receipts. Pending invoice retries reuse the draft; settled or refunded physical purchases are never added to later wedding balance invoices. Failed or voided unpaid drafts may be retried. These fields require no database migration.
 

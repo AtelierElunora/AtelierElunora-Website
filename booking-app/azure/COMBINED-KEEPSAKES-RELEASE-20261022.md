@@ -1,15 +1,25 @@
-# Combined wedding checkout — awaiting product-access approval
+# Combined wedding and keepsake checkout
 
-The implementation is in PR 17, source commit 45630cfbaf0e02ceda429d2e6b75442305f6d258, stacked on PRs 16 and 15. New bookings can select keepsakes in Details & extras, pay 100% of those products alongside the wedding prepayment/full payment, and keep the remaining wedding principal separate. Real variant lines retain Shopify shipping and fulfillment. Contracts, booking summaries and confirmation emails distinguish the product purchase.
+Released to the existing Azure booking host on 2026-10-22T21:13:07.147275+00:00. Functional source commit: 45630cfbaf0e02ceda429d2e6b75442305f6d258, in PR 17, stacked on PRs 16 and 15.
 
-A $1,495 wedding with a $149 save-the-date set has a $597.50 initial subtotal at 30%, plus Shopify shipping/tax, and a $1,046.50 wedding balance. Physical variants are validated against the published catalogue, limited to one set/frame per family, and attached only to the first invoice. Retry, recovery, refunds, later balance collection and legacy service-only orders preserve wedding-principal accounting. Refund shipping uses original shipping line prices.
+Customers select keepsakes in Details & extras and pay their full price alongside the wedding prepayment or full payment in one Shopify Checkout. The remaining wedding balance stays separate. A $1,495 wedding plus $149 save-the-dates collects $597.50 initially at 30%, before Shopify shipping/tax, and leaves $1,046.50 wedding principal due. Selected real variants retain Shopify shipping and fulfillment. Contracts, booking summaries and confirmations distinguish the product purchase.
 
-Validation: 98 local automated tests passed; TypeScript and production build passed. Admin GraphQL 2026-10 validation passed, and the order snapshot operation executed against Shopify. The previous functional commit passed Linux workflow 39851193518; the shipping regression commit has workflow 39853263318. Desktop and a real 390-pixel booking frame verified adding, removing, prepayment and full-payment totals without horizontal overflow. An unsent diagnostic draft displayed the $448.50 service line and $149 product together and offered store shipping methods. No real payment or customer booking was created by the live verification.
+Selection is restricted to published keepsake families and revalidated against current variants and prices. Products attach only to the first invoice; later balance collection excludes them. Retries, recovery and item-specific refunds preserve wedding-principal accounting. Ambiguous receipts or adjustments require owner review. No database migration or new dependency is needed.
 
-The actual installed app's normal SDK session check identified the required read_products permission. The app currently has read_orders and write_draft_orders. Product access also includes unpublished products, so explicit approval has been requested before publishing that permission change. The Dev Dashboard form is prepared as booking-keepsakes-combined-20261022, with existing app URLs/redirects and read_products added to existing scopes. Release has not been clicked.
+The owner approved read_products. Shopify version booking-keepsakes-combined-20261022 (1178052034561) was released and both production and test-store installations were updated. Source TOML and the Azure SCOPES setting include read_orders, write_draft_orders and read_products. The installed app's normal SDK session successfully read the diagnostic draft's real variant identity on 2026-10-22T21:11:39.023Z. The one-off probe was removed from future startup after verification.
 
-Production startup was restored to sh /home/data/booking-keepsakes-20261022-start.sh. Its healthy build is 2f0993731b765ace1669efb7b43f83d5aa6d320d930a31868c679eaee8af1c81. The combined build a47b4c94c7b864607836a41cc1f616971b9da505441aa398ff2bbf8cec938c37 was rejected by the release permission check and is not the final candidate. The final shipping-corrected candidate is e4ebb3a982058981b8f8af0d5ada389ad60c527dc6c7d34735fe8f845b99a628 and has not been activated.
+Validation: 98 automated tests passed, TypeScript and production build passed, and Linux workflow 39853263318 passed for the functional source. Desktop and a 390-pixel booking frame verified selection, removal, prepayment/full totals and no horizontal overflow. An unsent Shopify diagnostic draft displayed the $448.50 service and $149 product together with store shipping methods. The diagnostic draft was deleted after verification. No real payment or customer booking was created by release verification.
 
-After permission approval: publish the prepared app version, approve the updated installation in the production Shopify store, update the source TOML and Azure SCOPES to include read_products, and authenticate through the normal app flow. Stage and activate the final candidate, rerun its SDK/draft permission probe, and verify its exact health hash, PostgreSQL-backed public booking page, stylesheet and four product families. Preserve the previous startup for rollback. Remove the unsent diagnostic draft after the successful check. No schema migration or new dependency is needed.
+Live checks: exact server build fingerprint, PostgreSQL-backed public booking page, stylesheet and all four product families (5 save-the-date, 4 frame, 12 frame-and-magnet, 1 after-wedding variants) passed.
 
-References: [Shopify invoice checkout](https://help.shopify.com/en/manual/fulfillment/managing-orders/create-orders/send-draft), [Admin Order fields](https://shopify.dev/docs/api/admin-graphql/2026-10/objects/Order).
+## Deployment record
+
+- Host: app-elunora-bookings-nvo32m3ban2cc, resource group rg-elunora-production-central.
+- Startup: `sh /home/data/booking-mixed-final-20261022-start.sh`.
+- Server SHA256: `e4ebb3a982058981b8f8af0d5ada389ad60c527dc6c7d34735fe8f845b99a628`.
+- Frontend archive: `/home/data/booking-mixed-final-20261022-frontend.tgz`.
+- Archive SHA256: `febe0578faa875001aa1b333c0b704cdc1db89d63470c3462192268fa325f660`.
+- Retained Linux runtime archive: `/home/data/booking-combined-runtime-20261022-a1c6b401.tgz`, SHA256 `dc1ec630c7fde4f1a3db07122a3e8d39f6efbc00dfe979528fcea3bc98430001`.
+- Rollback: restore `sh /home/data/booking-keepsakes-20261022-start.sh` and restart the booking host. Retain the existing keepsakes frontend archive and runtime archive used by that startup. Do not deploy the obsolete a47 candidate.
+
+The app configuration was published through Shopify Dev Dashboard; the Shopify CLI is unavailable on this host, so its config validator was not run. GitHub retains the approved TOML scopes alongside the implementation.
