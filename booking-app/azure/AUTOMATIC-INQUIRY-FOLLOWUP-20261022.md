@@ -1,6 +1,6 @@
 # Automatic inquiry follow-up
 
-Deployed and verified on 2026-10-22T22:40:07.804303+00:00. Production inquiry sending remains **paused**, pending explicit approval to email saved inquiry details to consenting customers. Automatic approval review rejected the activation click; no alternate activation was attempted. Functional source: 6566eb901e3dd7e229bfb3166e11b4645ae68872; Linux workflow 39865791477 passed. The Shopify app version and storefront extension were not republished for this update.
+Activated in production on 2026-10-22T23:24:32.565373+00:00, after the owner explicitly approved customer follow-up emails. Sender: photos@mail.atelierelunora.com. Replies: support@atelierelunora.com. The existing provider payload already sets this Reply-To address; no code change or redeployment was required for activation. Functional source: 6566eb901e3dd7e229bfb3166e11b4645ae68872; Linux workflow 39865791477 passed. The Shopify app version and storefront extension were not republished for this update.
 
 ## Customer flow
 
@@ -8,7 +8,7 @@ A consented inquiry receives a gentle follow-up at 24 hours and a final note aro
 
 A private, purpose-bound HMAC link expires after fourteen days. Opening it is read-only. The customer explicitly continues or confirms opt-out. Linked unpaid bookings return to their existing portal and contract; existing invoice reservation checks revalidate availability before checkout. Unlinked inquiries return to the current booking form with saved contact/event details and current pricing. A date must be selected again. No email link creates a booking, accepts an agreement, reserves capacity or charges a card automatically. The saved email address remains fixed on the private recovery form.
 
-Messages use the existing Microsoft 365 provider and branded light/dark email template. The stop link closes inquiry follow-up only; it does not cancel a booking or suppress required booking messages. Replies are handled by the business: marking an inquiry Contacted or Closed stops automatic follow-up. There is no automated inbound-mail processing.
+Messages use the existing Microsoft 365 provider and branded light/dark email template, from photos@mail.atelierelunora.com with Reply-To support@atelierelunora.com. The stop link closes inquiry follow-up only; it does not cancel a booking or suppress required booking messages. Replies are handled by the business: marking an inquiry Contacted or Closed stops automatic follow-up. There is no automated inbound-mail processing.
 
 ## Eligibility and delivery
 
@@ -20,7 +20,7 @@ No schema migration, dependency, new credential or expanded Shopify scope is req
 
 ## Verification
 
-110 local automated tests passed; TypeScript and production build passed; Linux workflow 39865791477 passed. Coverage includes timing, idempotency, deduplication, delayed dispatch, payment/closure/opt-out suppression, allowlists, uncertain outcomes, token expiry/tampering/shop/purpose scope, read-only GET, POST origin checks, existing portal recovery and prefilled fresh booking. Live checks verified the exact build, PostgreSQL-backed public form, invalid inquiry access returning 410, production controls showing Paused and the actual storefront Book now entry point opening the updated booking form. No new customer booking, contract signature or payment was created by these checks; no customer follow-up was forced to send early.
+110 local automated tests passed; TypeScript and production build passed; Linux workflow 39865791477 passed. Coverage includes timing, idempotency, deduplication, delayed dispatch, payment/closure/opt-out suppression, allowlists, uncertain outcomes, token expiry/tampering/shop/purpose scope, read-only GET, POST origin checks, existing portal recovery and prefilled fresh booking. Live checks verified the exact build, PostgreSQL-backed public form, invalid inquiry access returning 410, production controls showing Enabled with a success message and scheduled message history, and the actual storefront Book now entry point opening the updated booking form. Two recent same-email test inquiries share one sequence, scheduled for October 23 and October 25 in the production UI. No new customer booking, contract signature or payment was created by these checks; no customer follow-up was forced to send early.
 
 ## Deployment
 
