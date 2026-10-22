@@ -1,12 +1,14 @@
 # Wedding inquiry conversion tracking
 
-Prepared in source. Not deployed or verified in Meta yet.
+Deployed and verified on 2026-10-22 in the combined booking release.
+See `combined-booking-release-20261022.md` for deployment and rollback details.
 
-Local validation on 2026-10-22: 14 focused tests passed (widget, browser-side
-reporter, pixel consent/deduplication and database-backed inquiry capture),
-TypeScript passed, and client/server production builds passed. These are local
-checks, not proof that Meta has received a live Lead. No live lead or payment
-was created during this work.
+Validation: 82 tests, TypeScript and production builds passed, including 14
+focused inquiry/widget/pixel checks. A synthetic inquiry saved through the live
+storefront appeared in the CRM and produced one Processed browser Lead in Meta
+Test Events. The synthetic inquiry was then closed. No payment, signature or
+customer email was created. Consent denial, blocked SDK/storage and deduplication
+are covered by automated checks; no live checkout transaction was performed.
 
 ## Event definition
 
