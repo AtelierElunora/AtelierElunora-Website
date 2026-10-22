@@ -18,7 +18,9 @@
     "graphql-codegen": "graphql-codegen",
     "vite": "vite",
     "typecheck": "npm run db:generate && react-router typegen && tsc --noEmit",
-    "db:generate": "node azure/generate-clients.mjs"
+    "db:generate": "node azure/generate-clients.mjs",
+    "test:chat": "node --test tests/chat*.test.mjs",
+    "preview:chat": "node chat/preview.mjs"
   },
   "type": "module",
   "engines": {

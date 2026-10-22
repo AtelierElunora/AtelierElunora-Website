@@ -1,0 +1,21 @@
+{% if block.settings.enabled %}
+  <div class="elunora-chat" data-chat-url="{{ block.settings.service_url | escape }}" data-chat-shop="{{ shop.permanent_domain | escape }}">
+    <button type="button" class="elunora-chat-launch" aria-haspopup="dialog">{{ 'assistant.open' | t }}</button>
+    <dialog class="elunora-chat-dialog" aria-label="{{ 'assistant.title' | t }}">
+      <button type="button" class="elunora-chat-close" aria-label="{{ 'assistant.close' | t }}">×</button>
+      <iframe title="{{ 'assistant.title' | t }}" referrerpolicy="strict-origin" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"></iframe>
+    </dialog>
+  </div>
+{% endif %}
+{% schema %}
+{
+  "name": "Atelier assistant",
+  "target": "body",
+  "javascript": "assistant-widget.js",
+  "stylesheet": "assistant-widget.css",
+  "settings": [
+    {"type":"checkbox","id":"enabled","label":"Show the assistant","default":false},
+    {"type":"url","id":"service_url","label":"Azure booking app URL","default":"https://app-elunora-bookings-nvo32m3ban2cc.azurewebsites.net"}
+  ]
+}
+{% endschema %}

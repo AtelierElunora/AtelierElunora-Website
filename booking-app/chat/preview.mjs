@@ -1,0 +1,14 @@
+import express from 'express';
+import {PGlite} from '@electric-sql/pglite';
+import {readFileSync} from 'node:fs';
+import {ChatStore} from './store.mjs';
+import {defaults} from './core.mjs';
+import {createChatRouter} from './http.mjs';
+const db=new PGlite();
+await db.exec(readFileSync(new URL('./schema.sql',import.meta.url),'utf8'));
+const store=new ChatStore(db),shop='v0j63n-ms.myshopify.com';
+await store.save(shop,{...defaults,enabled:true,aiEnabled:false,faqs:defaults.faqs.map(f=>({...f,approved:true}))},0);
+const app=express(),port=Number(process.env.PORT||4317);
+app.use('/assistant',createChatRouter({env:{NODE_ENV:'development',SHOPIFY_APP_URL:`http://127.0.0.1:${port}`,ELUNORA_CHAT_ENABLED:'true',ELUNORA_CHAT_SESSION_SECRET:'local-preview-only-not-a-production-secret'},storeFactory:()=>store}));
+app.get('/',(req,res)=>res.type('html').send('<!doctype html><html lang="en"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Atelier assistant preview</title><body style="margin:0;background:#eee7dd;font:14px system-ui"><p style="text-align:center">Local preview · sample draft answers · no AI calls · inquiries disappear when stopped</p><iframe style="display:block;margin:auto;width:min(100%,440px);height:820px;border:1px solid #cfc5b8;border-radius:12px" title="Atelier assistant" src="/assistant/'+shop+'"></iframe></body></html>'));
+app.listen(port,'127.0.0.1',()=>console.info(`Assistant preview: http://127.0.0.1:${port}`));

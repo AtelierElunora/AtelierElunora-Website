@@ -18,7 +18,7 @@ export default function App() {
   return (
     <AppProvider apiKey={apiKey}>
       <nav aria-label="App navigation">
-        <Link to="/app">Bookings</Link> <Link to="/app/contracts">Contracts</Link>
+        <Link to="/app">Bookings</Link> <Link to="/app/contracts">Contracts</Link> <Link to="/app/assistant">Assistant</Link>
         
       </nav>
       <Outlet />

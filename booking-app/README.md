@@ -45,3 +45,7 @@ Shopify registration and theme-extension configuration are included. App registr
 See [production source record](PRODUCTION-SOURCE.json) and [repository scope](../docs/BOOKING-PRODUCTION-SOURCE.md). Core source files are copied byte-for-byte from the maintained local booking project; repository documentation, ignore rules and CI are added for this import.
 
 The local compiled server and saved deployment archive match the latest stored deployment checksum. This is evidence from existing deployment records, not a fresh Azure live-state verification or a proof that a clean rebuild will be byte-identical. Archive binaries, environment files, credentials, customer records, screenshots and private operational evidence are excluded.
+
+## Storefront assistant
+
+The optional Azure-backed assistant, owner FAQ editor and inquiry inbox are implemented on the feature branch. See [configuration, behavior, validation and release steps](../docs/azure-storefront-assistant.md). Chat defaults off and requires a separate reviewed PostgreSQL schema and Azure model configuration before launch. Preview locally with `npm run preview:chat`; it makes no paid AI calls.

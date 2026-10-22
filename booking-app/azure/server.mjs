@@ -1,5 +1,6 @@
 import express from 'express';
 import compression from 'compression';
+import {createChatRouter} from '../chat/http.mjs';
 import {createRequestHandler} from '@react-router/express';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
@@ -13,6 +14,8 @@ app.use('/health',(req,res,next)=>{res.set('X-Booking-Build',buildHash);next();}
 app.disable('x-powered-by');
 // Portal tokens and Shopify session tokens must never appear in request logs.
 app.use(compression());
+// Chat routes are isolated from booking sessions, payments, and customer APIs.
+app.use('/assistant',createChatRouter());
 app.use('/assets',express.static(path.join(root,'build/client/assets'),{immutable:true,maxAge:'1y'}));
 app.use(express.static(path.join(root,'build/client')));
 app.use(express.static(path.join(root,'public'),{maxAge:'1h'}));
