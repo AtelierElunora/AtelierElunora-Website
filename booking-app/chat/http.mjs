@@ -5,14 +5,15 @@ import {readFileSync} from 'node:fs';
 import {fallback,contactUrl,sign,sessionToken,validSession,validQuestion,validInquiry,messagesFor,selectedAnswer} from './core.mjs';
 import {chatStore} from './store.mjs';
 import {modelClient} from './azure-model.mjs';
+import {configuredChatOrigin} from './preview-config.mjs';
 
 const directory=path.dirname(fileURLToPath(import.meta.url));
 const shell=readFileSync(path.join(directory,'public/index.html'),'utf8');
-export function createChatRouter({env=process.env,storeFactory=()=>chatStore(env),modelFactory=()=>modelClient(env)}={}) {
+export function createChatRouter({env=process.env,storeFactory=()=>chatStore(env),modelFactory=()=>modelClient(env),previewOrigin}={}) {
   const router=express.Router();
   const shops=new Set((env.ELUNORA_CHAT_SHOPS || 'v0j63n-ms.myshopify.com').split(',').map(s=>s.trim()).filter(s=>/^[a-z0-9][a-z0-9-]*\.myshopify\.com$/.test(s)));
-  let origin, model;
-  try { const url=new URL(env.SHOPIFY_APP_URL); if(url.protocol==='https:' || (env.NODE_ENV!=='production' && ['localhost','127.0.0.1'].includes(url.hostname))) origin=url.origin; } catch {}
+  const origin=configuredChatOrigin(env,previewOrigin);
+  let model;
   const secret=env.ELUNORA_CHAT_SESSION_SECRET;
   router.use((req,res,next)=>{
     res.set({'Cache-Control':'no-store','Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff',

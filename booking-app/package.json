@@ -20,7 +20,8 @@
     "typecheck": "npm run db:generate && react-router typegen && tsc --noEmit",
     "db:generate": "node azure/generate-clients.mjs",
     "test:chat": "node --test tests/chat*.test.mjs",
-    "preview:chat": "node chat/preview.mjs"
+    "preview:chat": "node chat/preview.mjs",
+    "preview:chat:phone": "node chat/preview.mjs --lan"
   },
   "type": "module",
   "engines": {

@@ -56,7 +56,7 @@ npm run build
 npm run preview:chat
 ```
 
-Preview opens at `http://127.0.0.1:4317`. It uses synthetic in-memory settings, three clearly labeled sample draft answers, no model call, and an ephemeral inbox that disappears when stopped. It is bound to loopback and is not a production start command. Tests exercise real PostgreSQL semantics with PGlite and mocked provider responses; they make no paid Azure calls. The existing booking CI picks up `tests/chat.test.mjs` through its test glob.
+Preview opens at `http://127.0.0.1:4317`. It uses synthetic in-memory settings, three clearly labeled sample draft answers, no model call, and an ephemeral inbox that disappears when stopped. The default command is bound to loopback and is not a production start command. Tests exercise real PostgreSQL semantics with PGlite and mocked provider responses; they make no paid Azure calls. The existing booking CI picks up `tests/chat.test.mjs` through its test glob.
 
 ## Validation recorded for this branch
 
@@ -75,3 +75,9 @@ Set `ELUNORA_CHAT_ENABLED=false` and disable the theme app embed. Normal booking
 - [Shopify app embeds](https://shopify.dev/docs/apps/build/online-store/theme-app-extensions/configuration)
 - [Azure chat completion interface](https://learn.microsoft.com/en-us/azure/foundry/openai/how-to/chatgpt)
 - [Azure structured outputs](https://learn.microsoft.com/en-us/azure/foundry/openai/how-to/structured-outputs)
+
+## Test from a phone on the same Wi-Fi
+
+From `booking-app/`, run `npm run preview:chat:phone`. The command prints a private-network URL using the Mac’s current Wi-Fi/Ethernet address and port 4319. Open that exact HTTP URL in Safari or Chrome on your phone. Both devices must be on the same network; keep the Mac awake. If macOS asks whether Node may receive incoming connections, allow it only for this local preview. A guest network with client isolation can prevent the devices from reaching each other.
+
+This is a sample-data preview with AI disabled and an ephemeral inbox. Use test contact details. It is available to devices able to reach that private network address until stopped with Ctrl+C; no tunnel, router port forwarding, or public deployment is created. The normal preview command stays loopback-only, and the production router still rejects HTTP origins. Phone-preview HTTP is allowed only when the preview launcher explicitly supplies the selected private address in development mode. A fresh signing secret is generated for each preview run. The default phone port is separate from the desktop preview; the address can change when the Mac changes networks.
