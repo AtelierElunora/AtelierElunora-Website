@@ -163,8 +163,9 @@ export default function Booking() {
         {(leadError || lead.data?.error) && <p role="alert" className="booking-error">{leadError || lead.data?.error}</p>}
         <section hidden={step!==0}><h2>Where can we reach you?</h2><div className="customer-fields">
           <label>Name<input name="name" defaultValue={c.resumeLead?.name||""} required maxLength={200} autoComplete="name"/></label>
-          <label>Email<input name="email" defaultValue={c.resumeLead?.email||""} type="email" required autoComplete="email"/></label>
-          <label>Confirm email<input name="confirmEmail" defaultValue={c.resumeLead?.email||""} type="email" required autoComplete="off"/></label>
+          <label>Email<input name="email" defaultValue={c.resumeLead?.email||""} readOnly={!!c.resumeLead} type="email" required autoComplete="email"/></label>
+          <label>Confirm email<input name="confirmEmail" defaultValue={c.resumeLead?.email||""} readOnly={!!c.resumeLead} type="email" required autoComplete="off"/></label>
+          {c.resumeLead&&<p>This private link uses your saved email. Contact us if that address needs to change.</p>}
           <label><input type="checkbox" name="followUpConsent" value="yes" defaultChecked={!!c.resumeLead} required/>Save my inquiry and allow Atelier Elunora to contact me about this event.</label>
         </div><p>Saving your details lets us follow up if you leave before booking. It does not reserve a date, create a contract or collect payment.</p>
         <button type="button" disabled={busy} onClick={e=>saveDetails(e.currentTarget.form!,1)}>{busy?"Saving…":"Save my details & continue"}</button></section>

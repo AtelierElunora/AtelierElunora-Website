@@ -16,6 +16,7 @@ export async function saveLead(shop: string, form: FormData) {
   const customerName = text(form, "name", 200), customerEmail = text(form, "email", 254).toLowerCase();
   if (!customerName || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) throw Error("Enter your name and a valid email.");
   if (customerEmail !== text(form, "confirmEmail", 254).toLowerCase()) throw Error("Your email addresses must match.");
+  if(!browserToken && authorized?.customerEmail!==customerEmail) throw Error("Please start a new inquiry to use a different email address. This private link belongs to your saved email.");
   const weddingDate = text(form, "date", 10), rawGuests = text(form, "guests", 10);
   const parsedDate = new Date(weddingDate + "T12:00:00Z");
   if (weddingDate && (!/^\d{4}-\d{2}-\d{2}$/.test(weddingDate) || !Number.isFinite(parsedDate.getTime()) || parsedDate.toISOString().slice(0,10) !== weddingDate)) throw Error("Enter a valid wedding date.");
