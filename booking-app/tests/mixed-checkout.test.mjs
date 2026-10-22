@@ -42,3 +42,8 @@ test("edited lines, wrong variants, prices, truncation, discounts and unallocate
  assert.throws(()=>validateMixedLines({...plan,subtotalCents:1},44850,"USD",base.lineItems,"p"),/review/);
  assert.equal(allocate({...base,totalReceivedSet:m(0)}).creditCents,0);
 });
+
+test("shipping principal comes from original shipping lines across returns",()=>{
+ const returned={...base,totalShippingPriceSet:m(0),refunds:[refund(null,0,0,1000)],totalRefundedSet:m(1000)};
+ assert.equal(allocate(returned).creditCents,44850);assert.equal(allocate(returned).shippingCents,0);
+});

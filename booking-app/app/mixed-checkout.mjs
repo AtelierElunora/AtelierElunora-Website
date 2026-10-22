@@ -27,9 +27,13 @@ export function mixedCheckoutCredit(amount,currency,order,plan,paymentId){
   const {service,subtotal}=validateMixedLines(plan,amount,currency,order?.lineItems,paymentId);
   const money = value => moneyToCents(value?.presentmentMoney,currency);
   const grandCents=money(order.totalPriceSet),tax=money(order.totalTaxSet),currentTax=money(order.currentTotalTaxSet);
-  const shipping=money(order.totalShippingPriceSet),received=money(order.totalReceivedSet),refunded=money(order.totalRefundedSet);
+  if(order.shippingLines?.pageInfo?.hasNextPage!==false || !Array.isArray(order.shippingLines?.nodes))review();
+  // Original shipping lines retain their price across returns. The order's
+  // shipping summary is not used to infer pre-refund charges.
+  const shipping=order.shippingLines.nodes.reduce((n,l)=>n+money(l.originalPriceSet),0);
+  const received=money(order.totalReceivedSet),refunded=money(order.totalRefundedSet);
   if(typeof order.taxesIncluded!=="boolean" || money(order.totalDiscountsSet)!==0 || grandCents!==amount+subtotal+shipping+(order.taxesIncluded?0:tax) || grandCents>2147483647 || currentTax>tax || refunded>received || received>grandCents || (received!==0&&received!==grandCents))review();
-  if(order.shippingLines?.pageInfo?.hasNextPage!==false || !Array.isArray(order.shippingLines?.nodes) || order.shippingLines.nodes.reduce((n,l)=>n+money(l.originalPriceSet),0)!==shipping)review();
+
   if(!Array.isArray(order.refunds) || order.refunds.length>=20)review();
   const allLines=new Map(order.lineItems.nodes.map(l=>[l.id,l]));
   const quantities=new Map(),principals=new Map();
