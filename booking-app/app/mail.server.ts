@@ -1,3 +1,5 @@
+import {runLeadFollowups} from "./lead-followup.server";
+import {followupKinds} from "./lead-followup";
 import { addEmailPortalLink } from "./portal-links";
 import {bookingEmail} from "./booking-email";
 import { randomUUID } from "node:crypto";
@@ -70,10 +72,13 @@ export async function runMail() {
     if (!/^\S+@\S+\.\S+$/.test(sender))
       throw Error("Email sender is not configured.");
     const provider = emailProvider();
+    try {await runLeadFollowups(provider,sender,allowed);}
+    catch {console.error("Inquiry follow-up worker needs review");}
     const shops = await db.bookingSettings.findMany();
     for (const { shop } of shops) await scheduleMail(shop);
     const jobs = await db.bookingMail.findMany({
       where: {
+        kind: {notIn:followupKinds},
         status: { in: ["pending", "accepted", "sending"] },
         sendAt: { lte: new Date() },
       },

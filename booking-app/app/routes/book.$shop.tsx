@@ -1,3 +1,4 @@
+import {leadForToken,inquiryToken} from "../lead-access.server";
 import { saveLead, linkLead } from "../leads.server";
 import { createInquiryReporter } from "../inquiry-analytics";
 import { keepsakeSubtotal, type KeepsakeItem } from "../wedding-keepsakes";
@@ -21,6 +22,10 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
   const shop = allowed(params.shop),
     s = await db.bookingSettings.findUnique({ where: { shop } });
   if (!s) throw new Response("Booking setup is incomplete", { status: 503 });
+  const resumeToken=new URL(request.url).searchParams.get("inquiry")||"";
+  const resume=resumeToken.includes(".")?await leadForToken(shop,resumeToken):null;
+  if(resumeToken && (!resume || resume.status==="declined"))throw new Response("This inquiry link has expired or been closed. Contact support@atelierelunora.com.",{status:410});
+  if(resume?.bookingId)return redirect(`/inquiry/${resume.id}?token=${encodeURIComponent(resumeToken)}`);
   const requestedCollection = new URL(request.url).searchParams.get("collection");
   const c = parseConfig(s.configJson),
     bookings = await db.weddingBooking.findMany({ where: { shop } });
@@ -38,6 +43,8 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
   });
   return {
     availability,
+    resumeToken,
+    resumeLead:resume?{name:resume.customerName,email:resume.customerEmail,venue:resume.venue,guests:resume.guests,packageId:resume.packageId,weddingDate:resume.weddingDate}:null,
     shop,
     embedded: new URL(request.url).searchParams.get("embed") === "1",
     parentOrigin: new URL(request.url).searchParams.get("parentOrigin") || "https://www.atelierelunora.com",
@@ -63,6 +70,9 @@ export async function action({ request, params }: ActionFunctionArgs) {
       const conversion = await saveLead(shop,f);
       return { error: "", saved:true, nextStep: f.get("nextStep")==="3"?3:1, savedToken:String(f.get("leadToken")), conversionId:conversion?.conversionId };
     }
+    const priorLead=await leadForToken(shop,String(f.get("leadToken")||""));
+    if(String(f.get("leadToken")||"").includes(".") && !priorLead)throw Error("This inquiry link has expired. Contact Atelier Elunora.");
+    if(priorLead?.bookingId) return redirect(`/inquiry/${priorLead.id}?token=${encodeURIComponent(inquiryToken(priorLead,"resume"))}`);
     const s = await db.bookingSettings.findUniqueOrThrow({ where: { shop } }),
       c = parseConfig(s.configJson);
     if (String(f.get("email") || "").trim().toLowerCase() !== String(f.get("confirmEmail") || "").trim().toLowerCase()) throw Error("Your email addresses must match.");
@@ -102,7 +112,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 export default function Booking() {
   const c = useLoaderData<typeof loader>(), r = useActionData<typeof action>(), navigation = useNavigation();
   const lead = useFetcher<typeof action>();
-  const [leadToken,setLeadToken]=useState("");
+  const [leadToken,setLeadToken]=useState(c.resumeToken);
   const [leadError,setLeadError]=useState("");
   const reportInquiry = useRef(createInquiryReporter());
   useEffect(()=>{if(c.embedded)reportInquiry.current(lead.data,c.shop,c.parentOrigin,window.parent)},[lead.data,c.embedded,c.shop,c.parentOrigin]);
@@ -116,12 +126,12 @@ export default function Booking() {
     const token=leadToken || crypto.randomUUID();setLeadToken(token);data.set("leadToken",token);
     lead.submit(data,{method:"post"});
   }
-  const [waitlist,setWaitlist]=useState(false), [open,setOpen]=useState(c.embedded), [step,setStep]=useState(0), [weddingDate,setWeddingDate]=useState("");
-  const [packageId,setPackageId]=useState(c.packages.find(p=>p.name===c.initialPackage)?.id || c.packages[0]?.id || ""), [quantities,setQuantities]=useState<Record<string,number>>({}), [payment,setPayment]=useState("prepayment");
+  const [waitlist,setWaitlist]=useState(false), [open,setOpen]=useState(c.embedded||!!c.resumeLead), [step,setStep]=useState(c.resumeLead?1:0), [weddingDate,setWeddingDate]=useState("");
+  const [packageId,setPackageId]=useState(c.packages.find(p=>p.id===c.resumeLead?.packageId)?.id || c.packages.find(p=>p.name===c.initialPackage)?.id || c.packages[0]?.id || ""), [quantities,setQuantities]=useState<Record<string,number>>({}), [payment,setPayment]=useState("prepayment");
   const [keepsakeItems,setKeepsakeItems]=useState<KeepsakeItem[]>([]);
   const keepsakesTotal=keepsakeSubtotal(keepsakeItems);
   const selected=c.packages.find(p=>p.id===packageId);
-  const [guestCount,setGuestCount]=useState("");
+  const [guestCount,setGuestCount]=useState(c.resumeLead?.guests?String(c.resumeLead.guests):"");
   const exceedsCollection=Number(guestCount)>(selected?.maxGuests || 0);
   const suggestedCollection=exceedsCollection ? [...c.packages].sort((a,b)=>a.maxGuests-b.maxGuests).find(p=>p.maxGuests>=Number(guestCount)) : undefined;
   const total=(selected?.priceCents || 0)+c.addons.reduce((sum,a)=>sum+a.priceCents*(quantities[a.id] || 0),0);
@@ -152,17 +162,17 @@ export default function Booking() {
         {r?.error && <p role="alert" className="booking-error">{r.error}</p>}
         {(leadError || lead.data?.error) && <p role="alert" className="booking-error">{leadError || lead.data?.error}</p>}
         <section hidden={step!==0}><h2>Where can we reach you?</h2><div className="customer-fields">
-          <label>Name<input name="name" required maxLength={200} autoComplete="name"/></label>
-          <label>Email<input name="email" type="email" required autoComplete="email"/></label>
-          <label>Confirm email<input name="confirmEmail" type="email" required autoComplete="off"/></label>
-          <label><input type="checkbox" name="followUpConsent" value="yes" required/>Save my inquiry and allow Atelier Elunora to contact me about this event.</label>
+          <label>Name<input name="name" defaultValue={c.resumeLead?.name||""} required maxLength={200} autoComplete="name"/></label>
+          <label>Email<input name="email" defaultValue={c.resumeLead?.email||""} type="email" required autoComplete="email"/></label>
+          <label>Confirm email<input name="confirmEmail" defaultValue={c.resumeLead?.email||""} type="email" required autoComplete="off"/></label>
+          <label><input type="checkbox" name="followUpConsent" value="yes" defaultChecked={!!c.resumeLead} required/>Save my inquiry and allow Atelier Elunora to contact me about this event.</label>
         </div><p>Saving your details lets us follow up if you leave before booking. It does not reserve a date, create a contract or collect payment.</p>
         <button type="button" disabled={busy} onClick={e=>saveDetails(e.currentTarget.form!,1)}>{busy?"Saving…":"Save my details & continue"}</button></section>
-        <section hidden={step!==1}><h2 id="booking-heading">{waitlist?"Join the date waitlist":"Choose your date"}</h2><BookingCalendar availability={c.availability} onSelect={setWeddingDate} allowUnavailable={waitlist}/><p>{weddingDate || (waitlist?"Select your requested date to continue.":"Select an available date to continue.")}</p><button type="button" disabled={!weddingDate} onClick={()=>setStep(2)}>Continue</button></section>
+        <section hidden={step!==1}><h2 id="booking-heading">{waitlist?"Join the date waitlist":"Choose your date"}</h2><>{c.resumeLead&&<p>Your saved contact details are restored. Please choose an available date and review current prices.{c.resumeLead.weddingDate?` Your previous request was for ${c.resumeLead.weddingDate}.`:""}</p>}</><BookingCalendar availability={c.availability} onSelect={setWeddingDate} allowUnavailable={waitlist}/><p>{weddingDate || (waitlist?"Select your requested date to continue.":"Select an available date to continue.")}</p><button type="button" disabled={!weddingDate} onClick={()=>setStep(2)}>Continue</button></section>
         <section hidden={step!==2}><h2>Your celebration</h2><p>Final service timing is confirmed with Atelier Elunora.</p><div className="customer-fields">
 
           <label>Phone number<input name="phone" type="tel" required maxLength={40} autoComplete="tel"/></label>
-          <label>Venue name and full address<textarea name="venue" required maxLength={500}/></label>
+          <label>Venue name and full address<textarea name="venue" defaultValue={c.resumeLead?.venue||""} required maxLength={500}/></label>
           <label>Estimated guest count<input name="guests" type="number" min={1} max={5000} required value={guestCount} aria-describedby={exceedsCollection ? "guest-upgrade-help" : undefined} onChange={e=>setGuestCount(e.target.value)}/></label>
           {exceedsCollection && <div className="guest-upgrade" id="guest-upgrade-help" role="status">{suggestedCollection ? <><strong>{guestCount} guests requires the {suggestedCollection.name} collection.</strong><p>Collection price: {money(suggestedCollection.priceCents)}. Your selected extras stay included in the updated total.{c.shop===liveBookingShop && suggestedCollection.maxGuests>200 ? " Owner review is required before payment." : ` Your ${c.percent}% prepayment and remaining balance will update too.`}</p><button type="button" onClick={()=>setPackageId(suggestedCollection.id)}>Update collection to {money(suggestedCollection.priceCents)}</button></> : <><strong>This guest count needs a custom quote.</strong><p>Please contact Atelier Elunora before booking, or adjust your guest count.</p><a href="https://www.atelierelunora.com/pages/contact" target="_blank" rel="noreferrer">Request a custom quote</a></>}</div>}
           <label>Preferred service start time<input name="startTime" required maxLength={100} placeholder="For example, 5:00 PM"/></label>

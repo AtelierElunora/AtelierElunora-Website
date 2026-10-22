@@ -1,14 +1,17 @@
 import { createHash } from "node:crypto";
 import db from "./db.server";
 import { leadStatuses } from "./leads";
+import { leadForToken } from "./lead-access.server";
 
 const digest = (value: string) => createHash("sha256").update(value).digest("hex");
 const text = (form: FormData, key: string, max: number) => String(form.get(key) || "").trim().slice(0, max);
 
 export async function saveLead(shop: string, form: FormData) {
   if (form.get("companyWebsite")) throw Error("Could not save inquiry.");
-  const token = text(form, "leadToken", 100);
-  if (!/^[a-f0-9-]{36}$/.test(token)) throw Error("Please refresh and try again.");
+  const token = text(form, "leadToken", 200);
+  const browserToken=/^[a-f0-9-]{36}$/.test(token);
+  const authorized=await leadForToken(shop,token);
+  if (!browserToken && !authorized) throw Error("This inquiry link has expired. Please start again or contact Atelier Elunora.");
   if (form.get("followUpConsent") !== "yes") throw Error("Please allow us to follow up about your inquiry.");
   const customerName = text(form, "name", 200), customerEmail = text(form, "email", 254).toLowerCase();
   if (!customerName || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) throw Error("Enter your name and a valid email.");
@@ -18,7 +21,7 @@ export async function saveLead(shop: string, form: FormData) {
   if (weddingDate && (!/^\d{4}-\d{2}-\d{2}$/.test(weddingDate) || !Number.isFinite(parsedDate.getTime()) || parsedDate.toISOString().slice(0,10) !== weddingDate)) throw Error("Enter a valid wedding date.");
   const guests = rawGuests ? Number(rawGuests) : null;
   if (guests !== null && (!Number.isInteger(guests) || guests < 1 || guests > 5000)) throw Error("Enter a guest count between 1 and 5,000.");
-  const tokenHash = digest(token);
+  const tokenHash = authorized?.tokenHash || digest(token);
   const existing = await db.bookingLead.findUnique({ where: { tokenHash } });
   if (existing && existing.shop !== shop) throw Error("Please refresh and try again.");
   if (existing?.bookingId) return;
@@ -31,7 +34,9 @@ export async function saveLead(shop: string, form: FormData) {
 
 export async function linkLead(shop: string, token: string, booking: { id:string; customerEmail:string }) {
   if (!token) return;
-  await db.bookingLead.updateMany({where:{shop,tokenHash:digest(token),customerEmail:booking.customerEmail.toLowerCase().trim(),bookingId:null},data:{bookingId:booking.id}});
+  const lead=await leadForToken(shop,token);
+  if(!lead)return;
+  await db.bookingLead.updateMany({where:{id:lead.id,shop,customerEmail:booking.customerEmail.toLowerCase().trim(),bookingId:null},data:{bookingId:booking.id}});
 }
 
 export async function listLeads(shop: string) {
