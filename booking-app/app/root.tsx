@@ -12,7 +12,8 @@ export default function App() {
           rel="stylesheet"
           href="https://cdn.shopify.com/static/fonts/inter/v4/styles.css"
         />
-        <link rel="stylesheet" href="/booking.css?v=20261009-guest-upgrade"/>
+        <link rel="stylesheet" href="/booking.css?v=20261022-keepsakes"/>
+        <link rel="stylesheet" href="/keepsakes.css?v=20261022"/>
         <Meta />
         <Links />
       </head>

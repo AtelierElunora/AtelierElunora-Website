@@ -1,6 +1,7 @@
 import {contractReadyForPayment} from "../booking-contract";
 import { useEffect, useRef } from "react";
 import {ContractCopy,ContractSigning} from "../BookingContract";
+import { WeddingKeepsakes } from "../WeddingKeepsakes";
 import {currentContract} from "../booking-contract.server";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { data, Form, useActionData, useLoaderData, useNavigation } from "react-router";
@@ -331,7 +332,9 @@ export default function Portal() {
       {events.map((e) => (
         <p key={e.id}>{e.text}</p>
       ))}
-      </details><footer>Thoughtfully created for your celebration.<br/>Atelier Elunora</footer>
+      </details>
+      {b.status==="confirmed" && <WeddingKeepsakes shop={b.shop} confirmed/>}
+      <footer>Thoughtfully created for your celebration.<br/>Atelier Elunora</footer>
     </main>
   );
 }
