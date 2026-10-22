@@ -78,6 +78,9 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
       payments,
       booking: safeBooking,
       terms: {
+        keepsakes:d.keepsakes || null,
+        keepsakeReceipts:d.keepsakeReceipts || {},
+        keepsakesDue:d.keepsakes?.items?.length && !Object.values(d.keepsakeReceipts||{}).some((r:any)=>r.captured) ? d.keepsakes.subtotalCents : 0,
         currency: d.currency,
         percent: d.prepaymentPercent,
         agreement: d.agreement,
@@ -255,15 +258,16 @@ export default function Portal() {
           {!b.paidCents && (
             <button name="kind" value="prepayment">
               Pay {terms.percent}% prepayment ·{" "}
-              {money(percentAmount(b.totalCents, terms.percent))}
+              {money(percentAmount(b.totalCents, terms.percent)+terms.keepsakesDue)}
             </button>
           )}{" "}
           <button name="kind" value={b.paidCents ? "balance" : "full"}>
             {b.paidCents ? "Pay remaining balance" : "Pay in full"} ·{" "}
-            {money(remaining)}
+            {money(remaining+terms.keepsakesDue)}
           </button>
         </Form>
       )}
+      {terms.keepsakesDue > 0 && <p className="muted">Payment buttons include {money(terms.keepsakesDue)} for your keepsakes, paid in full. Shopify adds shipping and any tax. Your wedding prepayment is {money(percentAmount(b.totalCents,terms.percent))}.</p>}
       <Form method="post">
         <button name="op" value="refresh">
           Refresh Shopify payment status
@@ -283,10 +287,12 @@ export default function Portal() {
           </p>
         ),
       )}
-      </details><details className="portal-card"><summary>Payment history</summary>
+      </details>
+      {terms.keepsakes && <section className="portal-card"><h2>Your keepsake order</h2>{terms.keepsakes.items.map((i:{variantId:string;name:string;variantName:string;unitCents:number})=><p key={i.variantId}>{i.name} · {i.variantName} · {money(i.unitCents)}</p>)}<p>Keepsake subtotal: {money(terms.keepsakes.subtotalCents)} · Paid in full with your first checkout. Shipping and any tax are shown in Shopify.</p><p>{Object.keys(terms.keepsakeReceipts).length ? "Verified keepsake payment, net of refunds: "+money(Object.values(terms.keepsakeReceipts).reduce((sum:number,r:any)=>sum+r.creditCents,0)) : "Awaiting verified payment."}</p></section>}
+      <details className="portal-card"><summary>Payment history</summary>
       {payments.map((p) => (
         <p key={p.id}>
-          {p.kind} · Received {money(p.receivedCents)} · Refunded{" "}
+          {p.kind} · Shopify receipt (including any keepsakes, shipping & tax): {money(p.receivedCents)} · Refunded{" "}
           {money(p.refundedCents)}
         </p>
       ))}

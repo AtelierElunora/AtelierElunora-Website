@@ -1,3 +1,4 @@
+import { validateWeddingKeepsakes } from "./wedding-keepsakes.server";
 import {eventAgreementSettings,validateAgreementSettings,readAgreementFields} from "./event-agreement";
 import {currentContract,refreshContract,applyContractSignature,applyProviderSignature} from "./booking-contract.server";
 import { validPortalLink } from "./portal-links";
@@ -68,6 +69,7 @@ export async function createBooking(
     guests: number;
     addons: Record<string, number>;
     totalCents?: number;
+    keepsakes?: unknown;
     accepted: boolean;
     source: string;
     contractRequested?: boolean;
@@ -93,6 +95,7 @@ export async function createBooking(
   const wedding = date(input.weddingDate);
   if (wedding < new Date().toISOString().slice(0, 10))
     throw Error("Choose a future wedding date.");
+  const keepsakes = await validateWeddingKeepsakes(shop, input.keepsakes);
   const rawToken = token();
   return locked(shop, async (tx) => {
     const s = await tx.bookingSettings.findUniqueOrThrow({ where: { shop } }),
@@ -133,6 +136,7 @@ export async function createBooking(
         totalCents: q.totalCents,
         balanceDueDate: dueDate(wedding, s.balanceDaysBefore),
         detailsJson: JSON.stringify({
+          ...(keepsakes ? { keepsakes } : {}),
           currency: c.currency,
           taxable: c.taxable,
           prepaymentPercent: s.prepaymentPercent,
@@ -228,16 +232,20 @@ export async function reservePayment(shop: string, id: string, kind: string) {
           ? remaining
           : 0;
     if (!amountCents) throw Error("No payment is due for this option.");
-    return tx.bookingPayment.create({
-      data: {
-        shop,
-        bookingId: id,
-        kind,
-        currency: d.currency,
-        amountCents,
-        expectedGrandTotalCents: amountCents,
-      },
+    const payment = await tx.bookingPayment.create({
+      data: { shop, bookingId: id, kind, currency: d.currency, amountCents, expectedGrandTotalCents: amountCents },
     });
+    if (d.keepsakes?.items?.length) {
+      if (d.currency !== "USD") throw Error("Keepsake checkout requires USD. Contact Atelier Elunora.");
+      const previous = await tx.bookingPayment.findMany({where:{shop,bookingId:id,status:{notIn:["void","failed"]}}});
+      const alreadyAttached = previous.some(x => d.keepsakePayments?.[x.id]);
+      if (!alreadyAttached) {
+        if (b.paidCents) throw Error("The keepsake purchase needs owner review before another wedding payment.");
+        d.keepsakePayments = {...d.keepsakePayments,[payment.id]:d.keepsakes};
+        await tx.weddingBooking.update({where:{id},data:{detailsJson:JSON.stringify(d)}});
+      }
+    }
+    return payment;
   });
 }
 export async function updateBooking(

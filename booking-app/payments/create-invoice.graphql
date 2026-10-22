@@ -1,10 +1,1 @@
-mutation ElunoraCreatePaymentInvoice($input: DraftOrderInput!) {
-  draftOrderCreate(input: $input) {
-    draftOrder {
-      id
-      invoiceUrl
-      totalPriceSet { presentmentMoney { amount currencyCode } }
-    }
-    userErrors { field message }
-  }
-}
+mutation ElunoraCreateInvoice($input: DraftOrderInput!) { draftOrderCreate(input:$input) { draftOrder { id invoiceUrl totalDiscountsSet { presentmentMoney { amount currencyCode } } lineItems(first:6) { pageInfo { hasNextPage } nodes { quantity requiresShipping variant { id } customAttributes { key value } originalUnitPriceSet { presentmentMoney { amount currencyCode } } } } totalPriceSet { presentmentMoney { amount currencyCode } } } userErrors { field message } } }

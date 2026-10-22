@@ -1,3 +1,5 @@
+import { validateWeddingKeepsakes } from "./wedding-keepsakes.server";
+import { mixedCheckoutCredit, validateMixedLines } from "./mixed-checkout.mjs";
 import db from "./db.server";
 import { checkoutCredit } from "./checkout-credit.mjs";
 import { details, locked, reservePayment } from "./booking.server";
@@ -9,8 +11,21 @@ type Admin = {
     options?: { variables: Record<string, unknown> },
   ) => Promise<Response>;
 };
-const create = `mutation ElunoraCreateInvoice($input: DraftOrderInput!) { draftOrderCreate(input:$input) { draftOrder { id invoiceUrl totalPriceSet { presentmentMoney { amount currencyCode } } } userErrors { field message } } }`;
-export const paymentSnapshotQuery = `query ElunoraVerifyPayment($id: ID!) { order(id:$id) { id updatedAt taxesIncluded customAttributes { key value } lineItems(first:2) { nodes { quantity originalUnitPriceSet { presentmentMoney { amount currencyCode } } } } totalPriceSet { presentmentMoney { amount currencyCode } } totalTaxSet { presentmentMoney { amount currencyCode } } currentTotalTaxSet { presentmentMoney { amount currencyCode } } totalDiscountsSet { presentmentMoney { amount currencyCode } } totalReceivedSet { presentmentMoney { amount currencyCode } } totalRefundedSet { presentmentMoney { amount currencyCode } } } }`;
+const create = `mutation ElunoraCreateInvoice($input: DraftOrderInput!) { draftOrderCreate(input:$input) { draftOrder { id invoiceUrl totalDiscountsSet { presentmentMoney { amount currencyCode } } lineItems(first:6) { pageInfo { hasNextPage } nodes { quantity requiresShipping variant { id } customAttributes { key value } originalUnitPriceSet { presentmentMoney { amount currencyCode } } } } totalPriceSet { presentmentMoney { amount currencyCode } } } userErrors { field message } } }`;
+export const paymentSnapshotQuery = `query ElunoraVerifyPayment($id: ID!) { order(id:$id) {
+  id updatedAt taxesIncluded customAttributes { key value }
+  lineItems(first:6) { pageInfo { hasNextPage } nodes { id quantity requiresShipping variant { id } customAttributes { key value } originalUnitPriceSet { presentmentMoney { amount currencyCode } } } }
+  shippingLines(first:10) { pageInfo { hasNextPage } nodes { originalPriceSet { presentmentMoney { amount currencyCode } } } }
+  refunds(first:20) { totalRefundedSet { presentmentMoney { amount currencyCode } }
+    orderAdjustments(first:1) { pageInfo { hasNextPage } nodes { id } }
+    refundLineItems(first:10) { pageInfo { hasNextPage } nodes { quantity lineItem { id } subtotalSet { presentmentMoney { amount currencyCode } } totalTaxSet { presentmentMoney { amount currencyCode } } } }
+    refundShippingLines(first:10) { pageInfo { hasNextPage } nodes { subtotalAmountSet { presentmentMoney { amount currencyCode } } taxAmountSet { presentmentMoney { amount currencyCode } } } }
+  }
+  totalShippingPriceSet { presentmentMoney { amount currencyCode } }
+  totalPriceSet { presentmentMoney { amount currencyCode } } totalTaxSet { presentmentMoney { amount currencyCode } }
+  currentTotalTaxSet { presentmentMoney { amount currencyCode } } totalDiscountsSet { presentmentMoney { amount currencyCode } }
+  totalReceivedSet { presentmentMoney { amount currencyCode } } totalRefundedSet { presentmentMoney { amount currencyCode } }
+} }`;
 const verify = paymentSnapshotQuery;
 const draft = `query ElunoraDraftPayment($id: ID!) { draftOrder(id:$id) { id order { id } } }`;
 export async function graphql(
@@ -35,7 +50,11 @@ export async function invoice(
   const p = await reservePayment(shop, id, kind);
   if (p.invoiceUrl) return p.invoiceUrl;
   const b = await db.weddingBooking.findFirstOrThrow({ where: { id, shop } });
+  const plan=details(b).keepsakePayments?.[p.id];
+  let attempted=false;
   try {
+    if(plan) await validateWeddingKeepsakes(shop,plan.items);
+    attempted=true;
     const result = await graphql(admin, create, {
       input: {
         email: b.customerEmail,
@@ -53,11 +72,17 @@ export async function invoice(
             quantity: 1,
             requiresShipping: false,
             taxable: details(b).taxable !== false,
+            ...(plan ? {customAttributes:[{key:"_elunora_service_payment",value:p.id}]} : {}),
             originalUnitPriceWithCurrency: {
               amount: (p.amountCents / 100).toFixed(2),
               currencyCode: p.currency,
             },
           },
+          ...(plan ? plan.items.map((item: {variantId:string;quantity:number;unitCents:number})=>({
+            variantId:"gid://shopify/ProductVariant/"+item.variantId,
+            quantity:item.quantity,
+            priceOverride:{amount:(item.unitCents/100).toFixed(2),currencyCode:p.currency},
+          })) : []),
         ],
       },
     });
@@ -71,20 +96,27 @@ export async function invoice(
       );
     }
     const order = result.draftOrderCreate.draftOrder;
+    // Persist identity even when Shopify returns an unexpected line snapshot.
+    await db.bookingPayment.update({where:{id:p.id},data:{draftOrderId:order.id}});
+    if(plan) {
+      validateMixedLines(plan,p.amountCents,p.currency,order.lineItems,p.id);
+      if(moneyToCents(order.totalDiscountsSet?.presentmentMoney,p.currency)!==0)throw Error("Shopify changed the agreed prices. This invoice requires owner review.");
+    }
     const grand = moneyToCents(
       order.totalPriceSet.presentmentMoney,
       p.currency,
     );
+    const expectedSubtotal=p.amountCents+(plan?.subtotalCents||0);
     await db.bookingPayment.update({
       where: { id: p.id },
       data: {
         draftOrderId: order.id,
         expectedGrandTotalCents: grand,
-        status: grand >= p.amountCents ? "ready" : "review",
-        invoiceUrl: grand >= p.amountCents ? order.invoiceUrl : null,
+        status: grand >= expectedSubtotal ? "ready" : "review",
+        invoiceUrl: grand >= expectedSubtotal ? order.invoiceUrl : null,
       },
     });
-    if (grand < p.amountCents)
+    if (grand < expectedSubtotal)
       throw Error(
         "Shopify added tax or changed the quote. This invoice needs owner review before collection; no checkout link was released.",
       );
@@ -92,7 +124,7 @@ export async function invoice(
   } catch (error) {
     await db.bookingPayment.updateMany({
       where: { id: p.id, status: "creating" },
-      data: { status: "review" },
+      data: { status: attempted ? "review" : "failed" },
     });
     throw error;
   }
@@ -158,7 +190,8 @@ export async function recordPayment(
       Date.parse(snapshot.updatedAt) < p.orderUpdatedAt.getTime()
     )
       return;
-    const allocation = checkoutCredit(p.amountCents, p.currency, order);
+    const plan=d.keepsakePayments?.[p.id];
+    const allocation = plan ? mixedCheckoutCredit(p.amountCents,p.currency,order,plan,p.id) : {...checkoutCredit(p.amountCents, p.currency, order),keepsakeCreditCents:0,shippingCents:0};
     const payments = await tx.bookingPayment.findMany({
       where: {
         shop,
@@ -239,6 +272,7 @@ export async function recordPayment(
       ...d.paymentTaxes,
       [p.id]: allocation.netAdditionalTaxCents,
     };
+    if(plan) d.keepsakeReceipts={...d.keepsakeReceipts,[p.id]:{orderId:p.orderId,captured:receipt.receivedCents===allocation.grandCents,creditCents:allocation.keepsakeCreditCents,shippingCents:allocation.shippingCents,updatedAt:snapshot.updatedAt}};
     d.paymentStatus = result.paymentStatus;
     await tx.bookingPayment.update({
       where: { id: p.id },
@@ -333,6 +367,8 @@ export async function recoverInvoice(
           nodes {
             id
             invoiceUrl
+            totalDiscountsSet { presentmentMoney { amount currencyCode } }
+            lineItems(first:6) { pageInfo { hasNextPage } nodes { quantity requiresShipping variant { id } customAttributes { key value } originalUnitPriceSet { presentmentMoney { amount currencyCode } } } }
             customAttributes {
               key
               value
@@ -368,6 +404,13 @@ export async function recoverInvoice(
     attrs.get("elunora_payment_id") !== p.id
   )
     throw Error("Invoice linkage does not match.");
+  const booking=await db.weddingBooking.findFirstOrThrow({where:{id,shop}});
+  const plan=details(booking).keepsakePayments?.[p.id];
+  if(plan){
+    validateMixedLines(plan,p.amountCents,p.currency,draft.lineItems,p.id);
+    if(moneyToCents(draft.totalDiscountsSet?.presentmentMoney,p.currency)!==0)throw Error("Recovered invoice prices require owner review.");
+  }
+  const expectedSubtotal=p.amountCents+(plan?.subtotalCents||0);
   const total = moneyToCents(draft.totalPriceSet.presentmentMoney, p.currency);
   await db.bookingPayment.update({
     where: { id: p.id },
@@ -375,12 +418,12 @@ export async function recoverInvoice(
       draftOrderId: draft.id,
       orderId: draft.order?.id || null,
       expectedGrandTotalCents: total,
-      invoiceUrl: total >= p.amountCents ? draft.invoiceUrl : null,
-      status: total >= p.amountCents ? "ready" : "review",
+      invoiceUrl: total >= expectedSubtotal ? draft.invoiceUrl : null,
+      status: total >= expectedSubtotal ? "ready" : "review",
     },
   });
   if (draft.order?.id) await refreshPayment(admin, shop, p.id);
-  if (total < p.amountCents)
+  if (total < expectedSubtotal)
     throw Error(
       "Recovered invoice has a different tax-inclusive total. Void it and review the quote.",
     );

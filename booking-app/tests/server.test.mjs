@@ -18,6 +18,10 @@ await test('confirmation email distinguishes prepayment from full payment withou
  const full=bookingEmail('confirmation',{...booking,paidCents:199500,balanceDueDate:null},{currency:'USD'},'https://example.invalid/booking');
  assert.match(full.plainText,/Remaining balance: Paid in full/);assert.ok(!full.plainText.includes('Balance due'));assert.ok(!full.html.includes('null'));assert.match(full.html,/Alex &amp; Jordan/);
 });
+await test('combined confirmation identifies wedding principal separately from keepsakes',()=>{
+ const mail=bookingEmail('confirmation',{customerName:'Synthetic',weddingDate:'2027-07-24',balanceDueDate:'2027-06-24',totalCents:149500,paidCents:44850,status:'confirmed'},{currency:'USD',keepsakes:{subtotalCents:14900},keepsakeReceipts:{p:{creditCents:14900}}},'https://example.invalid/private');
+ assert.match(mail.plainText,/Paid toward wedding: \$448.50/);assert.match(mail.plainText,/Keepsakes paid: \$149.00/);assert.match(mail.plainText,/Remaining wedding balance: \$1,046.50/);
+});
 await test('gallery invitation uses the signed-in event gallery instead of a payment token',()=>{
  const url='https://api-elunora-production-nvo32m3ban2cc.azurewebsites.net/api/gallery-preview/?event=11111111-1111-4111-8111-111111111111';
  const mail=bookingEmail('gallery',{customerName:'Synthetic <client>',weddingDate:'2027-09-19',balanceDueDate:'2027-08-20',totalCents:199500,paidCents:59850,status:'confirmed'},{currency:'USD',gallery:{url}},'https://example.invalid/private-token');

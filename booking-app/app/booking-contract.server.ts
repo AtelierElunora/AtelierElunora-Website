@@ -1,7 +1,7 @@
 import {buildServiceAgreement} from "./event-agreement";
 import {createHash} from "node:crypto";
 import {percentAmount} from "./booking-rules";
-import {SIGNATURE_CONSENT,SIGNATURE_STYLES,PROVIDER_CONSENT,type BookingContract,type SignatureStyle,type ContractDocument} from "./booking-contract";
+import {keepsakeContractRows,SIGNATURE_CONSENT,SIGNATURE_STYLES,PROVIDER_CONSENT,type BookingContract,type SignatureStyle,type ContractDocument} from "./booking-contract";
 type Booking = {id:string;customerName:string;customerEmail:string;venue:string;weddingDate:string;totalCents:number;balanceDueDate:string|null};
 function baseDocument(b: Booking,d: any): ContractDocument {
   const percent=Number(d.prepaymentPercent), total=b.totalCents;
@@ -14,6 +14,7 @@ function baseDocument(b: Booking,d: any): ContractDocument {
     balanceCents:total-percentAmount(total,percent),balanceDueDate:b.balanceDueDate||"",bookingNotes:String(d.customerNotes||""),
     quoteNotes:String(d.quoteReview?.notes||""),quoteRevision:Number(d.quoteReview?.revision||0),
     termsVersion:Number(d.agreement?.version||1),termsText:String(d.agreement?.text||"")};
+  if(d.keepsakes?.items?.length)document.keepsakes=d.keepsakes;
   return document;
 }
 export function contractDocument(b:Booking,d:any):ContractDocument {
@@ -21,6 +22,7 @@ export function contractDocument(b:Booking,d:any):ContractDocument {
   if(d.agreement?.eventTemplate){
     document.templateVersion=2;
     document.serviceAgreement=buildServiceAgreement(document,d);
+    if(document.keepsakes)document.serviceAgreement.sections.push({heading:"Selected shipped keepsakes",paragraphs:keepsakeContractRows(document).map(([label,value])=>label+": "+value)});
     document.termsText=document.serviceAgreement.introduction+"\n\n"+document.serviceAgreement.sections.map(s=>s.heading+"\n\n"+s.paragraphs.join("\n\n")).join("\n\n");
   }
   return document;
