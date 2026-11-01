@@ -1,47 +1,39 @@
-# Atelier Elunora Bookings
+# Atelier Elunora booking app
 
-## Contract feature in source
+Production booking source synchronized on November 1, 2026 from the maintained October 29 release. This app runs on Azure App Service and is embedded in Shopify. It owns wedding availability, bookings, agreements, service prepayments and balances, combined keepsake checkout, inquiries and follow-ups, Google Calendar integration, and customer booking access.
 
-New code generates a personalized contract for review and typed-name electronic signing before new online invoices. Owners can prepare contracts for older unsigned bookings. See [contract behavior and release status](../docs/booking-contracts.md). This feature still needs Azure deployment; the historical deployment manifest below describes the earlier production baseline.
+## Production provenance
 
-Source for the Shopify booking app used by atelierelunora.com. The running server is Azure App Service `app-elunora-bookings-nvo32m3ban2cc`, in `rg-elunora-production-central`. It uses the existing PostgreSQL database `elunora_production`, isolated to schema `elunora_booking`.
+The saved release server bundle SHA256 exactly matched the live Azure `/health` response's `X-Booking-Build` header during this synchronization:
 
-This app is separate from the historical `shopify-owner-app/` dashboard. The native iPhone app and gallery Function App are separate deployments. Adding this folder does not redeploy any service or update those other source snapshots.
+```
+61d2f5c8dd9ee491e9c2f11e4d4ea7474510c98c84493d4c69399f621f889240
+```
 
-## Install and validate
+`PRODUCTION-SOURCE.json` records the source file checksums, deployment comparison and fresh validation results. The checksum above identifies the saved deployed bundle; a new local build is checked for success, without claiming byte-for-byte reproducibility across machines.
 
-Use Node.js 22.12 or later (the focused checks for this import used Node 24.21).
+This update includes the newer combined checkout and tiered magnet pricing, save-the-date magnet/card designer, lettering and photo borders, inquiry CRM and automatic follow-ups, owner inquiry notifications, referral sources and Google Ads attribution. Runtime source is preserved from the maintained production release; one GraphQL reference file has whitespace-only cleanup and integration tests use local storefront fixtures, as recorded in the manifest.
+
+## Local verification
+
+Use Node 24 and keep real credentials out of this checkout. The CI workflow supplies placeholder Shopify configuration and uses a disposable SQLite database. For local verification, set `NODE_ENV=test`, `SHOPIFY_API_KEY=ci-placeholder`, `SHOPIFY_API_SECRET=ci-placeholder-not-a-real-secret`, `SHOPIFY_APP_URL=https://example.invalid`, and `SCOPES=write_draft_orders,read_orders`. Leave `ELUNORA_DATABASE_BACKEND` unset. Then run:
 
 ```sh
-cd booking-app
-npm ci
+npm ci --include=dev
 npm run db:generate
-node --test azure/booking-config.test.mjs azure/schema.test.mjs payments/ledger.test.mjs tests/booking-widget.test.mjs tests/rules.test.mjs tests/tax.test.mjs
+npm run fonts:prepare
+touch prisma/dev.sqlite
+npx prisma migrate deploy
+node --test --test-concurrency=1 azure/booking-config.test.mjs azure/schema.test.mjs payments/ledger.test.mjs tests/*.test.mjs
+node --test tests/bulk-checkout.integration.mjs
 npm run typecheck
 npm run build
 ```
 
-The six listed test files contain 24 checks. They passed during this source import. Typecheck and a fresh production rebuild were not rerun during the import because the local workspace was read-only; the GitHub workflow runs those checks in a clean checkout.
+These tests mock checkout, mail and external services. Do not run the SQLite test commands with production configuration. The build downloads the existing brand fonts and checks their SHA256 against `azure/brand-fonts.json`; licensed font binaries are excluded from Git.
 
-For all existing mocked integration tests against disposable local SQLite:
+## Deployment boundaries
 
-```sh
-npx prisma migrate deploy
-node --test azure/booking-config.test.mjs azure/schema.test.mjs payments/ledger.test.mjs tests/*.test.mjs
-```
+The `Booking source checks` GitHub Actions workflow verifies source and does not deploy. Synchronizing this repository does not restart Azure, change live settings, apply production migrations, send customer emails, or publish a Shopify theme/app version. Existing production secrets, managed identity, mail and Google credentials stay in Azure.
 
-Do not set `ELUNORA_DATABASE_BACKEND` when running the SQLite server integration tests; those tests explicitly refuse another configured backend. Use `NODE_ENV=test` and no production credentials. The Azure schema test uses in-memory PGlite.
-
-## Run and deploy
-
-Copy `.env.example` to `.env` for local development and supply development Shopify credentials outside Git. Use `npm run dev` for Shopify CLI development. `npm run build` generates both database clients and compiles the React Router app. `npm start` runs `azure/server.mjs` using `PORT` and `HOST`.
-
-The existing production host keeps Shopify, email, Google Calendar, gallery credentials and runtime feature settings in Azure. PostgreSQL access uses managed identity. The runtime does not apply production migrations at startup. SQL in `azure/` is a schema reference and must be reviewed against the existing database before applying; never rerun foundation SQL blindly.
-
-Shopify registration and theme-extension configuration are included. App registration/deployment and Azure server deployment are separate operations. Existing storefront theme changes outside the app extension are not part of this folder. There is no automatic deployment workflow in this import.
-
-## Provenance
-
-See [production source record](PRODUCTION-SOURCE.json) and [repository scope](../docs/BOOKING-PRODUCTION-SOURCE.md). Core source files are copied byte-for-byte from the maintained local booking project; repository documentation, ignore rules and CI are added for this import.
-
-The local compiled server and saved deployment archive match the latest stored deployment checksum. This is evidence from existing deployment records, not a fresh Azure live-state verification or a proof that a clean rebuild will be byte-identical. Archive binaries, environment files, credentials, customer records, screenshots and private operational evidence are excluded.
+The source includes migration files and historical storefront recovery references, but this update does not reconcile the current storefront theme, gallery API, owner dashboard or native iOS app. See [production source notes](../docs/BOOKING-PRODUCTION-SOURCE.md). Generated clients, compiled builds, dependencies, local databases, customer records and credentials are excluded.

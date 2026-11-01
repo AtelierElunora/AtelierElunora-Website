@@ -1,11 +1,14 @@
+import { validateWeddingKeepsakes } from "./wedding-keepsakes.server";
 import {eventAgreementSettings,validateAgreementSettings,readAgreementFields} from "./event-agreement";
 import {currentContract,refreshContract,applyContractSignature,applyProviderSignature} from "./booking-contract.server";
+import { readReferral } from "./referral-source";
 import { validPortalLink } from "./portal-links";
 import { randomBytes, createHash } from "node:crypto";
 import db from "./db.server";
 import { liveBookingShop } from "./live-store";
 import {
   allocate,
+  requireBookingNotice,
   amount,
   date,
   dueDate,
@@ -68,8 +71,11 @@ export async function createBooking(
     guests: number;
     addons: Record<string, number>;
     totalCents?: number;
+    keepsakes?: unknown;
     accepted: boolean;
     source: string;
+    referralSource?: string;
+    referralDetails?: string;
     contractRequested?: boolean;
     agreementFields?: Record<string,string>;
     phone?: string;
@@ -90,13 +96,16 @@ export async function createBooking(
   )
     throw Error("Enter customer name, email and venue.");
   if ((input.phone || "").length > 40 || (input.preferredStartTime || "").length > 100 || (input.customerNotes || "").length > 4000) throw Error("Booking details are too long.");
+  const referral = readReferral(input);
   const wedding = date(input.weddingDate);
   if (wedding < new Date().toISOString().slice(0, 10))
     throw Error("Choose a future wedding date.");
+  const keepsakes = await validateWeddingKeepsakes(shop, input.keepsakes, true);
   const rawToken = token();
   return locked(shop, async (tx) => {
     const s = await tx.bookingSettings.findUniqueOrThrow({ where: { shop } }),
       c = parseConfig(s.configJson);
+    requireBookingNotice(c,wedding);
     const agreementProfile=eventAgreementSettings(JSON.parse(s.configJson).eventAgreement);
     if(agreementProfile.enabled)validateAgreementSettings(agreementProfile);
     const agreementFields=readAgreementFields(input.agreementFields||{});
@@ -133,6 +142,7 @@ export async function createBooking(
         totalCents: q.totalCents,
         balanceDueDate: dueDate(wedding, s.balanceDaysBefore),
         detailsJson: JSON.stringify({
+          ...(keepsakes ? { keepsakes } : {}),
           currency: c.currency,
           taxable: c.taxable,
           prepaymentPercent: s.prepaymentPercent,
@@ -146,6 +156,7 @@ export async function createBooking(
           cancellationRefundPercent: c.cancellationRefundPercent,
           changePolicy: {enabled:c.changesEnabled, cutoffDays:c.changeCutoffDays},
           quoteReview: needsQuote ? {status:"pending",baseCents:q.totalCents,travelCents:0,notes:""} : null,
+          ...referral,
           phone: input.phone || "",
           preferredStartTime: input.preferredStartTime || "",
           customerNotes: input.customerNotes || "",
@@ -191,6 +202,7 @@ export async function reservePayment(shop: string, id: string, kind: string) {
     }
     if (b.status === "hold") {
       const s = await tx.bookingSettings.findUniqueOrThrow({ where: { shop } });
+      if(!b.paidCents && !(Date.parse(d.holdExpiresAt)>Date.now()))requireBookingNotice(parseConfig(s.configJson),b.weddingDate);
       d.resources = allocate(
         parseConfig(s.configJson),
         s.dailyCapacity,
@@ -228,16 +240,20 @@ export async function reservePayment(shop: string, id: string, kind: string) {
           ? remaining
           : 0;
     if (!amountCents) throw Error("No payment is due for this option.");
-    return tx.bookingPayment.create({
-      data: {
-        shop,
-        bookingId: id,
-        kind,
-        currency: d.currency,
-        amountCents,
-        expectedGrandTotalCents: amountCents,
-      },
+    const payment = await tx.bookingPayment.create({
+      data: { shop, bookingId: id, kind, currency: d.currency, amountCents, expectedGrandTotalCents: amountCents },
     });
+    if (d.keepsakes?.items?.length) {
+      if (d.currency !== "USD") throw Error("Keepsake checkout requires USD. Contact Atelier Elunora.");
+      const previous = await tx.bookingPayment.findMany({where:{shop,bookingId:id,status:{notIn:["void","failed"]}}});
+      const alreadyAttached = previous.some(x => d.keepsakePayments?.[x.id]);
+      if (!alreadyAttached) {
+        if (b.paidCents) throw Error("The keepsake purchase needs owner review before another wedding payment.");
+        d.keepsakePayments = {...d.keepsakePayments,[payment.id]:d.keepsakes};
+        await tx.weddingBooking.update({where:{id},data:{detailsJson:JSON.stringify(d)}});
+      }
+    }
+    return payment;
   });
 }
 export async function updateBooking(
@@ -287,6 +303,7 @@ export async function updateBooking(
       const offeredDate=date(form.get("offeredDate"));
       if(offeredDate<=new Date().toISOString().slice(0,10) || offeredDate===b.weddingDate) throw Error("Choose a different future date.");
       const settings=await tx.bookingSettings.findUniqueOrThrow({where:{shop}});
+      requireBookingNotice(parseConfig(settings.configJson),offeredDate);
       allocate(parseConfig(settings.configJson),settings.dailyCapacity,await tx.weddingBooking.findMany({where:{shop,weddingDate:offeredDate}}),offeredDate,id);
       d.changeRequest={...change,id:token().slice(0,32),status:"offered",offeredDate,offeredAt:new Date().toISOString()};
       text=`Owner offered ${offeredDate}. Original date remains reserved until customer acceptance; offered date is not reserved.`;
@@ -299,6 +316,7 @@ export async function updateBooking(
           const wedding=date(op==="accept_date"?change.offeredDate:change.date);
           if (wedding<=new Date().toISOString().slice(0,10)) throw Error("Choose a future date.");
           const settings=await tx.bookingSettings.findUniqueOrThrow({where:{shop}});
+          requireBookingNotice(parseConfig(settings.configJson),wedding);
           d.resources=allocate(parseConfig(settings.configJson),settings.dailyCapacity,await tx.weddingBooking.findMany({where:{shop,weddingDate:wedding}}),wedding,id);
           data={weddingDate:wedding,balanceDueDate:dueDate(wedding,d.balanceDaysBefore)};
         } else {
@@ -313,6 +331,7 @@ export async function updateBooking(
       if (b.status !== "waitlist") throw Error("Only a waitlist request can be invited.");
       if (b.weddingDate < new Date().toISOString().slice(0, 10)) throw Error("Choose a future date before inviting.");
       const s = await tx.bookingSettings.findUniqueOrThrow({where:{shop}});
+      requireBookingNotice(parseConfig(s.configJson),b.weddingDate);
       d.resources = allocate(parseConfig(s.configJson),s.dailyCapacity,await tx.weddingBooking.findMany({where:{shop,weddingDate:b.weddingDate}}),b.weddingDate,b.id);
       d.holdExpiresAt = new Date(Date.now()+15*60000).toISOString();
       data.status = "hold";
@@ -325,6 +344,7 @@ export async function updateBooking(
       )
         throw Error("Cannot reschedule to this date.");
       const s = await tx.bookingSettings.findUniqueOrThrow({ where: { shop } });
+      if(wedding!==b.weddingDate)requireBookingNotice(parseConfig(s.configJson),wedding);
       d.resources = allocate(
         parseConfig(s.configJson),
         s.dailyCapacity,
@@ -418,6 +438,7 @@ export async function requestBookingChange(shop: string, id: string, form: FormD
       wedding=date(form.get("date"));
       if(wedding<=today || wedding===b.weddingDate) throw Error("Choose a different future date.");
       const settings=await tx.bookingSettings.findUniqueOrThrow({where:{shop}});
+      requireBookingNotice(parseConfig(settings.configJson),wedding);
       allocate(parseConfig(settings.configJson),settings.dailyCapacity,await tx.weddingBooking.findMany({where:{shop,weddingDate:wedding}}),wedding,id);
     }
     d.changeRequest={id:token().slice(0,32),kind,date:wedding,reason,status:"pending",requestedAt:new Date().toISOString()};
@@ -433,6 +454,7 @@ export async function acceptQuote(shop: string,id: string,form:FormData,portalTo
     if(form.get("accepted")!=="yes" || !d.agreement?.text?.trim()) throw Error("Accept the saved quote and booking agreement.");
     if(b.weddingDate<=new Date().toISOString().slice(0,10)) throw Error("This date has passed. Ask for an updated quote.");
     const settings=await tx.bookingSettings.findUniqueOrThrow({where:{shop}});
+    requireBookingNotice(parseConfig(settings.configJson),b.weddingDate);
     d.resources=allocate(parseConfig(settings.configJson),settings.dailyCapacity,await tx.weddingBooking.findMany({where:{shop,weddingDate:b.weddingDate}}),b.weddingDate,id);
     d.holdExpiresAt=new Date(Date.now()+15*60000).toISOString();
     if(d.agreement?.signatureRequired || form.has("contractHash")){
@@ -467,6 +489,7 @@ export async function countersignBookingContract(shop:string,id:string,form:Form
     if(result.alreadySigned)return result;
     if(b.status==="hold"){
       const settings=await tx.bookingSettings.findUniqueOrThrow({where:{shop}});
+      if(!b.paidCents && !(Date.parse(d.holdExpiresAt)>Date.now()))requireBookingNotice(parseConfig(settings.configJson),b.weddingDate);
       d.resources=allocate(parseConfig(settings.configJson),settings.dailyCapacity,await tx.weddingBooking.findMany({where:{shop,weddingDate:b.weddingDate}}),b.weddingDate,id);
       d.holdExpiresAt=new Date(Date.now()+15*60000).toISOString();
     }

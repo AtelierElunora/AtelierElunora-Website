@@ -2,6 +2,7 @@ export type StudioConfig = {
   currency: string;
   taxable: boolean;
   blockedDates: string[];
+  minimumNoticeDays: number;
   packages: {
     id: string;
     name: string;
@@ -26,6 +27,7 @@ export const defaultConfig: StudioConfig = {
   currency: "USD",
   taxable: true,
   blockedDates: [],
+  minimumNoticeDays: 14,
   packages: [],
   addons: [],
   resources: [],
@@ -50,6 +52,19 @@ export function dueDate(wedding: string, days: number) {
   d.setUTCDate(d.getUTCDate() - days);
   return d.toISOString().slice(0, 10);
 }
+export const BOOKING_TIME_ZONE = "America/New_York";
+export function bookingToday(now = Date.now()) {
+  const parts=new Intl.DateTimeFormat("en-US",{timeZone:BOOKING_TIME_ZONE,year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date(now));
+  const part=(type:string)=>parts.find(p=>p.type===type)!.value;
+  return `${part("year")}-${part("month")}-${part("day")}`;
+}
+export function minimumWeddingDate(config: Pick<StudioConfig,"minimumNoticeDays">, now = Date.now()) {
+  return dueDate(bookingToday(now),-config.minimumNoticeDays);
+}
+export function requireBookingNotice(config: Pick<StudioConfig,"minimumNoticeDays">, wedding:string, now = Date.now()) {
+  const earliest=minimumWeddingDate(config,now);
+  if(date(wedding)<earliest)throw Error(`Please book at least ${config.minimumNoticeDays} days in advance. Please choose ${earliest} or later (Eastern Time).`);
+}
 export function amount(value: unknown) {
   const s = String(value);
   if (!/^\d+(?:\.\d{1,2})?$/.test(s))
@@ -65,6 +80,7 @@ export function percentAmount(total: number, p: number) {
 export function parseConfig(raw: string): StudioConfig {
   const parsed=JSON.parse(raw);
   delete parsed.googleCalendar;
+  delete parsed.googleAdsFeed;
   const c: StudioConfig = { ...defaultConfig, ...parsed };
   if (!["USD", "CAD", "GBP", "EUR"].includes(c.currency))
     throw Error("Supported currencies: USD, CAD, GBP, EUR.");
@@ -78,6 +94,7 @@ export function parseConfig(raw: string): StudioConfig {
     if (!Array.isArray(c[list])) throw Error("Invalid " + list);
   if (typeof c.taxable !== "boolean")
     throw Error("Choose whether Shopify should calculate tax.");
+  if(!Number.isInteger(c.minimumNoticeDays)||c.minimumNoticeDays<0||c.minimumNoticeDays>730)throw Error("Minimum booking notice must be a whole number from 0–730 days.");
   c.blockedDates.forEach(date);
   if (typeof c.changesEnabled !== "boolean" || typeof c.travelApprovalRequired !== "boolean" || !Number.isInteger(c.changeCutoffDays) || c.changeCutoffDays < 0 || c.changeCutoffDays > 730) throw Error("Choose valid customer change and travel approval policies.");
   if (

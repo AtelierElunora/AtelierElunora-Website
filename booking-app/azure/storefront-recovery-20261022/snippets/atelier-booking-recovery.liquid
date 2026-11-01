@@ -1,0 +1,77 @@
+{% doc %}
+  Restores the existing booking app block when its CDN assets are unavailable.
+  Leaves a working extension's click handling in control.
+  @example
+  {% render 'atelier-booking-recovery' %}
+{% enddoc %}
+{% stylesheet %}
+.elunora-booking-trigger{width:100%;padding:16px;background:#4a4b36;color:#f4f2ef;border:0;letter-spacing:2px;cursor:pointer}
+.elunora-booking-block p{font-size:13px;line-height:1.6}
+.elunora-booking-dialog{padding:0;border:0;width:min(1100px,98vw);max-width:98vw;height:94vh;background:#f4f2ef;overflow:hidden}
+.elunora-booking-dialog::backdrop{background:#24271dcc}
+.elunora-booking-dialog iframe{display:block;width:100%;height:100%;border:0}
+.elunora-booking-dismiss{position:absolute;top:6px;right:6px;z-index:5;width:44px;height:44px;border:0;background:#4a4b36;color:#f4f2ef;font-size:26px;cursor:pointer}
+.elunora-booking-block button.elunora-booking-trigger,.elunora-booking-block button.elunora-booking-dismiss{color:#f4f2ef!important;-webkit-text-fill-color:#f4f2ef!important}
+.elunora-booking-trigger:focus-visible,.elunora-booking-dismiss:focus-visible{outline:2px solid currentColor;outline-offset:3px}
+{% endstylesheet %}
+{% javascript %}
+(() => {
+  const boundDialogs = new WeakSet();
+  const reportedInquiries = new Set();
+  document.addEventListener('click', event => {
+    const target = event.target instanceof Element ? event.target : null;
+    const dismiss = target?.closest('.elunora-booking-dismiss');
+    if (dismiss) {
+      const dialog = dismiss.closest('.elunora-booking-dialog');
+      if (dialog?.open && dialog.querySelector('iframe')?.dataset.elunoraRecovery === '1') dialog.close();
+      return;
+    }
+    const trigger = target?.closest('.elunora-booking-trigger');
+    if (!trigger) return;
+    const block = trigger.closest('.elunora-booking-block');
+    const dialog = block?.querySelector('.elunora-booking-dialog');
+    const frame = dialog?.querySelector('iframe');
+    // The extension handles the click first when its own script is available.
+    if (!dialog || !frame || dialog.open || !trigger.dataset.elunoraUrl) return;
+    let url;
+    try { url = new URL(trigger.dataset.elunoraUrl, location.origin); } catch { return; }
+    if (url.protocol !== 'https:') return;
+    let variants = [];
+    try { variants = JSON.parse(block.querySelector('.elunora-product-variants')?.textContent || '[]'); } catch { return; }
+    if (!Array.isArray(variants)) return;
+    const product = block.closest('product-component') || block.closest('.shopify-section') || block;
+    const candidates = [product.querySelector('input[type="radio"][data-variant-id]:checked')?.dataset.variantId, new URL(location.href).searchParams.get('variant'), product.querySelector('input[name="id"]')?.value];
+    const variant = candidates.find(id => variants.some(v => String(v.id) === String(id)));
+    const collection = variants.find(v => String(v.id) === String(variant))?.title || trigger.dataset.elunoraCollection;
+    url.searchParams.set('embed', '1');
+    url.searchParams.set('collection', collection || '');
+    url.searchParams.set('parentOrigin', location.origin);
+    if (variant) url.searchParams.set('variant', variant);
+    if (!boundDialogs.has(dialog)) {
+      boundDialogs.add(dialog);
+      dialog.addEventListener('close', () => {
+        frame.removeAttribute('src');
+        delete frame.dataset.elunoraRecovery;
+        trigger.focus();
+      });
+    }
+    frame.dataset.elunoraRecovery = '1';
+    frame.src = url.href;
+    dialog.showModal();
+  });
+  window.addEventListener('message', event => {
+    for (const frame of document.querySelectorAll('.elunora-booking-dialog iframe[data-elunora-recovery="1"]')) {
+      if (!frame.getAttribute('src') || event.source !== frame.contentWindow || event.origin !== new URL(frame.src).origin) continue;
+      if (event.data?.type === 'elunora:booking-close') { frame.closest('dialog').close(); return; }
+      const id = event.data?.conversionId;
+      if (event.data?.type !== 'elunora:inquiry-saved' || typeof id !== 'string' || !/^[a-f0-9]{64}$/.test(id) || reportedInquiries.has(id)) return;
+      const analytics = window.Shopify?.analytics;
+      if (typeof analytics?.publish !== 'function') return;
+      reportedInquiries.add(id);
+      try { Promise.resolve(analytics.publish('elunora:inquiry_saved', {conversion_id:id})).catch(() => reportedInquiries.delete(id)); }
+      catch { reportedInquiries.delete(id); }
+      return;
+    }
+  });
+})();
+{% endjavascript %}

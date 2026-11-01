@@ -68,7 +68,7 @@ export function emailProvider(
             subject: payload.content.subject,
             text: payload.content.plainText,
             html: payload.content.html,
-            reply_to: "support@atelierelunora.com",
+            reply_to: payload.replyTo[0]?.address || "support@atelierelunora.com",
           }),
           signal: AbortSignal.timeout(10000),
           redirect: "error",

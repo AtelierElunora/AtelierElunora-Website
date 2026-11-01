@@ -4,11 +4,11 @@ export function BookingCalendar({
   onSelect,
   allowUnavailable = false,
 }: {
-  availability: { date: string; open: boolean }[];
+  availability: { date: string; open: boolean; noticeAllowed?:boolean }[];
   onSelect?: (date: string) => void;
   allowUnavailable?: boolean;
 }) {
-  const [month, setMonth] = useState(new Date().toISOString().slice(0, 7)),
+  const [month, setMonth] = useState((availability.find(a=>a.open || (allowUnavailable && a.noticeAllowed!==false))?.date || availability[0]?.date || new Date().toISOString()).slice(0,7)),
     [selected, setSelected] = useState("");
   const start = new Date(month + "-01T00:00:00Z"),
     days = new Date(
@@ -16,7 +16,7 @@ export function BookingCalendar({
       start.getUTCMonth() + 1,
       0,
     ).getUTCDate(),
-    map = new Map(availability.map((a) => [a.date, a.open]));
+    map = new Map(availability.map((a) => [a.date, a]));
   function move(n: number) {
     const d = new Date(start);
     d.setUTCMonth(d.getUTCMonth() + n);
@@ -65,7 +65,8 @@ export function BookingCalendar({
         ))}
         {Array.from({ length: days }, (_, i) => {
           const date = month + "-" + String(i + 1).padStart(2, "0"),
-            open = map.get(date) === true || (allowUnavailable && map.has(date));
+            entry = map.get(date),
+            open = !!entry && entry.noticeAllowed!==false && (entry.open || allowUnavailable);
           return (
             <button
               type="button"
