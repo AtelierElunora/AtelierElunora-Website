@@ -1,6 +1,8 @@
+import { keepsakeLineTotal, type KeepsakeItem } from "../wedding-keepsakes";
 import {contractReadyForPayment} from "../booking-contract";
 import { useEffect, useRef } from "react";
 import {ContractCopy,ContractSigning} from "../BookingContract";
+import { WeddingKeepsakes } from "../WeddingKeepsakes";
 import {currentContract} from "../booking-contract.server";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { data, Form, useActionData, useLoaderData, useNavigation } from "react-router";
@@ -77,6 +79,9 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
       payments,
       booking: safeBooking,
       terms: {
+        keepsakes:d.keepsakes || null,
+        keepsakeReceipts:d.keepsakeReceipts || {},
+        keepsakesDue:d.keepsakes?.items?.length && !Object.values(d.keepsakeReceipts||{}).some((r:any)=>r.captured) ? d.keepsakes.subtotalCents : 0,
         currency: d.currency,
         percent: d.prepaymentPercent,
         agreement: d.agreement,
@@ -254,15 +259,16 @@ export default function Portal() {
           {!b.paidCents && (
             <button name="kind" value="prepayment">
               Pay {terms.percent}% prepayment ·{" "}
-              {money(percentAmount(b.totalCents, terms.percent))}
+              {money(percentAmount(b.totalCents, terms.percent)+terms.keepsakesDue)}
             </button>
           )}{" "}
           <button name="kind" value={b.paidCents ? "balance" : "full"}>
             {b.paidCents ? "Pay remaining balance" : "Pay in full"} ·{" "}
-            {money(remaining)}
+            {money(remaining+terms.keepsakesDue)}
           </button>
         </Form>
       )}
+      {terms.keepsakesDue > 0 && <p className="muted">Payment buttons include {money(terms.keepsakesDue)} for your keepsakes, paid in full. Shopify adds shipping and any tax. Your wedding prepayment is {money(percentAmount(b.totalCents,terms.percent))}.</p>}
       <Form method="post">
         <button name="op" value="refresh">
           Refresh Shopify payment status
@@ -282,10 +288,12 @@ export default function Portal() {
           </p>
         ),
       )}
-      </details><details className="portal-card"><summary>Payment history</summary>
+      </details>
+      {terms.keepsakes && <section className="portal-card"><h2>Your keepsake order</h2>{terms.keepsakes.items.map((i:KeepsakeItem)=><p key={i.variantId}>{i.name} · {i.variantName} · {money(keepsakeLineTotal(i))}{i.bulkPricing&&<small className="keepsake-bundle-saving">Save 15% · {money(i.bulkPricing.savingCents)} off {money(i.bulkPricing.subtotalCents)}</small>}{i.bundleDiscount&&<small style={{display:"block"}}>Save 15% · {money(i.bundleDiscount.savingCents)} off the regular {money(i.bundleDiscount.originalUnitCents)}</small>}{i.cardColor&&<small className="matching-card-summary">Card lettering color: {i.cardColor.toUpperCase()}</small>}{i.cardWording&&<small className="matching-card-summary">Matching card: {i.cardWording}</small>}</p>)}<p>Keepsake subtotal: {money(terms.keepsakes.subtotalCents)} · Paid in full with your first checkout. Shipping and any tax are shown in Shopify.</p><p>{Object.keys(terms.keepsakeReceipts).length ? "Verified keepsake payment, net of refunds: "+money(Object.values(terms.keepsakeReceipts).reduce((sum:number,r:any)=>sum+r.creditCents,0)) : "Awaiting verified payment."}</p></section>}
+      <details className="portal-card"><summary>Payment history</summary>
       {payments.map((p) => (
         <p key={p.id}>
-          {p.kind} · Received {money(p.receivedCents)} · Refunded{" "}
+          {p.kind} · Shopify receipt (including any keepsakes, shipping & tax): {money(p.receivedCents)} · Refunded{" "}
           {money(p.refundedCents)}
         </p>
       ))}
@@ -331,7 +339,9 @@ export default function Portal() {
       {events.map((e) => (
         <p key={e.id}>{e.text}</p>
       ))}
-      </details><footer>Thoughtfully created for your celebration.<br/>Atelier Elunora</footer>
+      </details>
+      {b.status==="confirmed" && <WeddingKeepsakes shop={b.shop} confirmed/>}
+      <footer>Thoughtfully created for your celebration.<br/>Atelier Elunora</footer>
     </main>
   );
 }

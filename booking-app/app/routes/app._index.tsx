@@ -168,6 +168,7 @@ export async function action({ request }: ActionFunctionArgs) {
           changesEnabled:form.get("changesEnabled")==="yes",
           changeCutoffDays:Number(form.get("changeCutoffDays")),
           travelApprovalRequired:form.get("travelApproval")==="yes",
+          minimumNoticeDays:form.has("minimumNoticeDays")?Number(form.get("minimumNoticeDays")):c.minimumNoticeDays,
           agreementVersion:
             c.agreementVersion +
             (agreementText !== prior.agreementText ? 1 : 0),
@@ -180,7 +181,7 @@ export async function action({ request }: ActionFunctionArgs) {
           prepaymentPercent,
           balanceDaysBefore,
           agreementText,
-          configJson: JSON.stringify({...config,eventAgreement:JSON.parse(prior.configJson).eventAgreement,googleCalendar:JSON.parse(prior.configJson).googleCalendar}),
+          configJson: JSON.stringify({...config,eventAgreement:JSON.parse(prior.configJson).eventAgreement,googleCalendar:JSON.parse(prior.configJson).googleCalendar,googleAdsFeed:JSON.parse(prior.configJson).googleAdsFeed}),
         },
       });
     });

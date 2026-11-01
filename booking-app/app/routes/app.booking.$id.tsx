@@ -1,3 +1,4 @@
+import { keepsakeLineTotal, type KeepsakeItem } from "../wedding-keepsakes";
 import {ownerAgreementFields} from "../event-agreement";
 import type {BookingContract} from "../booking-contract";
 import {ContractCopy,ProviderSigning} from "../BookingContract";
@@ -7,6 +8,7 @@ import { Form, Link, useActionData, useLoaderData } from "react-router";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
 import {calendarStatus,retryGoogle} from "../google-calendar.server";
+import { referralDescription } from "../referral-source";
 import { details, hash, locked, token, updateBooking, countersignBookingContract, requireOrigin } from "../booking.server";
 import { CalendarDownload } from "../CalendarDownload";
 import {
@@ -210,6 +212,7 @@ export default function BookingEditor() {
         {loaded.contract?.document.serviceAgreement&&<details className="portal-card"><summary>Edit agreement details</summary><Form method="post" className="contract-sign-form">{ownerAgreementFields.map(([key,label,required])=><label key={key}>{label}<textarea name={"contract_"+key} defaultValue={d.agreement?.fields?.[key]||""} maxLength={1000} required={required}/></label>)}<label className="contract-consent"><input type="checkbox" name="useLatestTemplate" value="yes"/><span>Use the latest business contract settings for this revision.</span></label><button name="op" value="contract_details">Save agreement details</button><p>Changes to signed content retain the original and require both signatures again. Void pending invoices before making such changes.</p></Form></details>}
         {!!d.agreement?.contractHistory?.length && <details className="contract-history"><summary>Earlier signed contracts ({d.agreement.contractHistory.length})</summary>{d.agreement.contractHistory.map((copy:any)=><details key={copy.hash}><summary>Signed revision {copy.revision} · {copy.document.weddingDate}</summary><ContractCopy contract={copy}/></details>)}</details>}
       </section>
+      {d.keepsakes?.items?.length>0 && <section style={{background:"#f3f2e9",padding:24,borderRadius:12,margin:"24px 0"}}><h2>Shipped keepsakes</h2>{d.keepsakes.items.map((i:any)=><p key={i.variantId}>{i.name} · {i.variantName} · {money(keepsakeLineTotal(i))}{i.bulkPricing&&<small className="keepsake-bundle-saving">Save 15% · {money(i.bulkPricing.savingCents)} off {money(i.bulkPricing.subtotalCents)}</small>}{i.bundleDiscount&&<small style={{display:"block"}}>Save 15% · {money(i.bundleDiscount.savingCents)} off the regular {money(i.bundleDiscount.originalUnitCents)}</small>}{i.cardColor&&<small className="matching-card-summary">Card lettering color: {i.cardColor.toUpperCase()}</small>}{i.cardWording&&<small className="matching-card-summary">Matching card: {i.cardWording}</small>}</p>)}<p>Paid in full with the first wedding checkout. Fulfill these product lines in Shopify. Keepsakes, shipping and tax do not reduce the wedding balance.</p></section>}
       <h2>Payment history</h2>
       {payments.map((p) => (
         <div key={p.id}>
@@ -265,6 +268,7 @@ export default function BookingEditor() {
         ),
       )}
       <h2>Wedding details</h2>
+      <p>Heard about us: {referralDescription(d)}</p>
       {d.phone && <p>Customer phone: {d.phone}</p>}
       {d.preferredStartTime && <p>Preferred service start: {d.preferredStartTime}</p>}
       {d.customerNotes && <p style={{whiteSpace:"pre-wrap"}}>Customer booking notes: {d.customerNotes}</p>}

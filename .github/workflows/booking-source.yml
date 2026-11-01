@@ -29,9 +29,14 @@ jobs:
           cache-dependency-path: booking-app/package-lock.json
       - run: npm ci --include=dev
       - run: npm run db:generate
+      - run: npm run fonts:prepare
       - name: Initialize disposable SQLite test database
-        run: npx prisma migrate deploy
+        run: |
+          touch prisma/dev.sqlite
+          npx prisma migrate deploy
       - name: Mocked booking and payment tests
-        run: node --test azure/booking-config.test.mjs azure/schema.test.mjs payments/ledger.test.mjs tests/*.test.mjs
+        run: node --test --test-concurrency=1 azure/booking-config.test.mjs azure/schema.test.mjs payments/ledger.test.mjs tests/*.test.mjs
+      - name: Mocked combined checkout and artwork integration tests
+        run: node --test tests/bulk-checkout.integration.mjs
       - run: npm run typecheck
       - run: npm run build

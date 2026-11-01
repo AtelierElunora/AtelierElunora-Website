@@ -1,3 +1,14 @@
-query ElunoraVerifyPayment($id: ID!) { order(id:$id) { id updatedAt taxesIncluded customAttributes { key value } lineItems(first:2) { nodes { quantity originalUnitPriceSet { presentmentMoney { amount currencyCode } } } } totalPriceSet { presentmentMoney { amount currencyCode } } totalTaxSet { presentmentMoney { amount currencyCode } } currentTotalTaxSet { presentmentMoney { amount currencyCode } } totalDiscountsSet { presentmentMoney { amount currencyCode } } totalReceivedSet { presentmentMoney { amount currencyCode } } totalRefundedSet { presentmentMoney { amount currencyCode } } } }
-query ElunoraExistingWebhooks { webhookSubscriptions(first:250) { nodes { topic uri } } }
-mutation ElunoraAppScopeHook($input:WebhookSubscriptionInput!) { webhookSubscriptionCreate(topic:APP_SCOPES_UPDATE,webhookSubscription:$input) { userErrors { field message } } }
+query ElunoraVerifyPayment($id: ID!) { order(id:$id) {
+  id updatedAt taxesIncluded customAttributes { key value }
+  lineItems(first:6) { pageInfo { hasNextPage } nodes { id quantity requiresShipping variant { id } customAttributes { key value } originalUnitPriceSet { presentmentMoney { amount currencyCode } } } }
+  shippingLines(first:10) { pageInfo { hasNextPage } nodes { originalPriceSet { presentmentMoney { amount currencyCode } } } }
+  refunds(first:20) { totalRefundedSet { presentmentMoney { amount currencyCode } }
+    orderAdjustments(first:1) { pageInfo { hasNextPage } nodes { id } }
+    refundLineItems(first:10) { pageInfo { hasNextPage } nodes { quantity lineItem { id } subtotalSet { presentmentMoney { amount currencyCode } } totalTaxSet { presentmentMoney { amount currencyCode } } } }
+    refundShippingLines(first:10) { pageInfo { hasNextPage } nodes { subtotalAmountSet { presentmentMoney { amount currencyCode } } taxAmountSet { presentmentMoney { amount currencyCode } } } }
+  }
+  totalShippingPriceSet { presentmentMoney { amount currencyCode } }
+  totalPriceSet { presentmentMoney { amount currencyCode } } totalTaxSet { presentmentMoney { amount currencyCode } }
+  currentTotalTaxSet { presentmentMoney { amount currencyCode } } totalDiscountsSet { presentmentMoney { amount currencyCode } }
+  totalReceivedSet { presentmentMoney { amount currencyCode } } totalRefundedSet { presentmentMoney { amount currencyCode } }
+} }

@@ -2,7 +2,7 @@
   "name": "atelier-elunora-booking-shopify",
   "private": true,
   "scripts": {
-    "build": "npm run db:generate && react-router build",
+    "build": "npm run fonts:prepare && npm run db:generate && react-router build",
     "dev": "shopify app dev",
     "config:link": "shopify app config link",
     "generate": "shopify app generate",
@@ -18,7 +18,8 @@
     "graphql-codegen": "graphql-codegen",
     "vite": "vite",
     "typecheck": "npm run db:generate && react-router typegen && tsc --noEmit",
-    "db:generate": "node azure/generate-clients.mjs"
+    "db:generate": "node azure/generate-clients.mjs",
+    "fonts:prepare": "node azure/prepare-brand-fonts.mjs"
   },
   "type": "module",
   "engines": {
@@ -45,7 +46,8 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router": "7.18.2",
-    "vite-tsconfig-paths": "^6.0.4"
+    "vite-tsconfig-paths": "^6.0.4",
+    "fontkit": "2.0.4"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.8",
