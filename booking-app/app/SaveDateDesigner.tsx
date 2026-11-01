@@ -33,7 +33,7 @@ export function SaveDateDesigner({ initialDate = "", initialDesign, onChange, on
   const [typography,setTypography]=useState<SaveDateTypography>(initialDesign?.typography??{topFont:"script",bottomFont:"modern",topSize:20,bottomSize:12});
   const [border,setBorder]=useState<PhotoBorder|null>(initialDesign?.border??null);
   const borderHost=useRef<HTMLDivElement>(null);
-  useEffect(()=>{if(!borderHost.current)return;const editor=createBorderEditor({value:initialDesign?.border??null,onChange:setBorder});borderHost.current.replaceChildren(editor.element);return()=>borderHost.current?.replaceChildren();},[]);
+  useEffect(()=>{if(!borderHost.current)return;const editor=createBorderEditor({value:initialDesign?.border??null,onChange:setBorder,optIn:true});borderHost.current.replaceChildren(editor.element);return()=>borderHost.current?.replaceChildren();},[]);
   const touchedDate = useRef(!!initialDesign);
   useEffect(() => { if (!touchedDate.current) setBottomText(suggestedDate(initialDate)); }, [initialDate]);
   useEffect(() => () => { generation.current++; }, []);
