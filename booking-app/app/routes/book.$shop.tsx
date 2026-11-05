@@ -158,7 +158,7 @@ export default function Booking() {
     {!c.embedded && <>
     <header className="experience-brand"><img src="/elunora-logo.png" alt="Atelier Elunora"/><span>{c.shop===liveBookingShop?"WEDDING BOOKING STUDIO":"DEVELOPMENT STORE PREVIEW"}</span></header>
     <div className="experience-intro"><p className="eyebrow">MADE FOR YOUR CELEBRATION</p><h1>Wedding & Event<br/>Photo Magnet Experience</h1><p>Select your collection, explore available dates, and make the experience yours.</p></div>
-    <fieldset className="collection-options"><legend>Your collection</legend>{c.packages.map(p=><label key={p.id} className={packageId===p.id?"selected":""}><input type="radio" name="collection" checked={packageId===p.id} onChange={()=>setPackageId(p.id)}/><strong>{p.name}</strong><span>{money(p.priceCents)} · up to {p.maxGuests} guests</span></label>)}</fieldset>
+    <fieldset className="collection-options"><legend>Your collection</legend>{c.packages.map(p=><label key={p.id} className={packageId===p.id?"selected":""}><input type="radio" name="collection" checked={packageId===p.id} onChange={()=>setPackageId(p.id)}/><strong>{p.name}</strong><span>{money(p.priceCents)}</span></label>)}</fieldset>
     {selected ? <button className="book-now" onClick={()=>{setWaitlist(false);setWeddingDate("");setStep(0);setOpen(true)}}>Book now</button>:<p>Collections are being prepared.</p>}
     <p className="availability-note">Don’t see your date? <button type="button" onClick={()=>{setWaitlist(true);setStep(0);setWeddingDate("");setOpen(true)}}>Join the waitlist</button> for an owner availability review.</p>
     </>}
