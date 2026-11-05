@@ -1,11 +1,13 @@
 {%- doc -%}
   Reads the current event variant price, independent of variant order or label.
-  @param {number} tier - Guest-count ceiling: 150, 200, 250, or 300.
+  @param {number} tier - Guest-count ceiling: 100, 150, 200, 250, or 300.
   @param {boolean} [retainer] - Output the 30 percent retainer.
 {%- enddoc -%}
 {%- liquid
   assign event_product = all_products['wedding-event-photo-magnet-experience']
   case tier
+    when 100
+      assign variant_id = 68068948836640
     when 150
       assign variant_id = 52203846697248
     when 200
