@@ -510,3 +510,30 @@ extension CommerceModel {
         return try await call("owner/station/" + eventID, ["action": "create", "purpose": "capture"], as: OwnerStationReply.self)
     }
 }
+
+extension CommerceModel {
+    func claimBoothPhoto(_ token: String) async throws -> BoothClaimReply {
+        try await call("customer/booth/claim", ["token": token], as: BoothClaimReply.self)
+    }
+    func loadBoothPhotos() async throws -> BoothPhotosReply {
+        try await call("customer/booth/photos", as: BoothPhotosReply.self)
+    }
+
+    func boothPhotoData(_ id: String, original: Bool = false) async throws -> Data {
+        guard UUID(uuidString: id) != nil else { throw CustomerError(message: "Photo unavailable.") }
+        let identity = session?.email
+        try await renew()
+        var request = URLRequest(url: URL(string: "https://gefdlubvqymyxrguhtnc.supabase.co/functions/v1/gallery-api/customer/booth/photos/\(id)/\(original ? "original" : "preview")")!)
+        request.setValue("1", forHTTPHeaderField: "X-Elunora-Request")
+        request.setValue("https://www.atelierelunora.com", forHTTPHeaderField: "Origin")
+        request.setValue("Bearer \(session?.access_token ?? "")", forHTTPHeaderField: "Authorization")
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        let configuration = URLSessionConfiguration.ephemeral; configuration.httpShouldSetCookies = false
+        let taskSession = URLSession(configuration: configuration); defer { taskSession.finishTasksAndInvalidate() }
+        let (data, response) = try await taskSession.data(for: request)
+        try Task.checkCancellation()
+        guard identity == session?.email else { throw CancellationError() }
+        guard let http = response as? HTTPURLResponse, http.statusCode == 200, http.mimeType == "image/jpeg", data.count <= (original ? 25 * 1024 * 1024 : 1024 * 1024) else { throw CustomerError(message: "Photo unavailable. Refresh or check your invitation access.") }
+        return data
+    }
+}

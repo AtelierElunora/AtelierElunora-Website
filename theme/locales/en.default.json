@@ -660,6 +660,16 @@
     "footer_tagline": "Where cherished memories become keepsakes"
   },
   "atelier_customer_gallery": {
+    "boothTitle": "My booth photos",
+    "boothHelp": "Sign in or create an account to add your private booth photo. For email invitations, use the email that received the link.",
+    "boothOpenApp": "Open in the Elunora app",
+    "boothClaim": "Add this photo to my account",
+    "boothAdded": "Your booth photo was added to your account.",
+    "boothEmpty": "No booth photos have been claimed yet.",
+    "boothUnavailable": "Booth photos are unavailable right now. Please retry.",
+    "boothPrivacy": "Only your claimed photos appear here. Photo access expires 14 days after capture.",
+    "boothSave": "Save original photo",
+    "boothReload": "Refresh booth photos",
     "eyebrow": "YOUR PRIVATE COLLECTION",
     "title": "Your gallery.",
     "intro": "Relive your celebration. Choose your favorite photographs and turn them into keepsakes.",

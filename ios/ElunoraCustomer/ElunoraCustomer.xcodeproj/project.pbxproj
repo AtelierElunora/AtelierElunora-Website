@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+        F00000000000000000000001 /* BoothPhotos.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000002 /* BoothPhotos.swift */; };
 		000000000000000000000014 /* App.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000010 /* App.swift */; };
 		000000000000000000000015 /* PhotoStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000011 /* PhotoStore.swift */; };
 		000000000000000000000016 /* Camera.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000012 /* Camera.swift */; };
@@ -43,6 +44,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+        F00000000000000000000002 /* BoothPhotos.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoothPhotos.swift; sourceTree = "<group>"; };
 		000000000000000000000006 /* ElunoraCustomer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; path = ElunoraCustomer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		000000000000000000000010 /* App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };
 		000000000000000000000011 /* PhotoStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoStore.swift; sourceTree = "<group>"; };
@@ -106,6 +108,7 @@
 				C00000000000000000000002 /* BackgroundTransfers.swift */,
 				C00000000000000000000003 /* GalleryExperience.swift */,
 				C00000000000000000000004 /* CustomerOrders.swift */,
+                F00000000000000000000002 /* BoothPhotos.swift */,
 				C00000000000000000000005 /* GuestWorkspaceView.swift */,
 				000000000000000000000010 /* App.swift */,
 				000000000000000000000011 /* PhotoStore.swift */,
@@ -231,6 +234,7 @@
 				D00000000000000000000002 /* BackgroundTransfers.swift in Sources */,
 				D00000000000000000000003 /* GalleryExperience.swift in Sources */,
 				D00000000000000000000004 /* CustomerOrders.swift in Sources */,
+                F00000000000000000000001 /* BoothPhotos.swift in Sources */,
 				D00000000000000000000005 /* GuestWorkspaceView.swift in Sources */,
 				000000000000000000000014 /* App.swift in Sources */,
 				000000000000000000000015 /* PhotoStore.swift in Sources */,
