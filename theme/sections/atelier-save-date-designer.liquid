@@ -1,0 +1,287 @@
+{% comment %}
+  Photo card magnet builder (save-the-date, holiday, birthday and more).
+  The shared booking-app designer prepares the photo and print preview; this
+  native Shopify form preserves the existing cart. Occasions are section
+  blocks, so they can be added, edited or reordered in the theme editor.
+  Card styles for each occasion live in assets/atelier-occasion-switcher.js
+  (the list) and assets/atelier-matching-card-preview.js (the artwork).
+{% endcomment %}
+{% liquid
+  assign form_id = 'SaveDate-' | append: section.id
+  assign occasion_blocks = section.blocks | where: 'type', 'occasion'
+  assign fixed_occasion = ''
+  case product.handle
+    when 'save-the-date-photo-magnets'
+      assign fixed_occasion = 'save-the-date'
+    when 'holiday-photo-magnets'
+      assign fixed_occasion = 'holiday'
+    when 'christmas-photo-magnets'
+      assign fixed_occasion = 'christmas'
+  endcase
+  if fixed_occasion != blank
+    for occasion_block in occasion_blocks
+      assign occasion_key = occasion_block.settings.key | handleize
+      if occasion_key == fixed_occasion
+        assign occasion_blocks = occasion_blocks | where: 'id', occasion_block.id
+        break
+      endif
+    endfor
+  endif
+  assign first_occasion = occasion_blocks | first
+  assign occ_card_title = 'save_dates.card_title' | t
+  assign occ_names_label = 'save_dates.booking_name' | t
+  assign occ_card_placeholder = 'save_dates.card_placeholder' | t
+  assign occ_button = 'save_dates.add' | t
+  assign occ_heading = 'save_dates.card_preview_heading' | t
+  if first_occasion
+    if first_occasion.settings.card_title != blank
+      assign occ_card_title = first_occasion.settings.card_title
+    endif
+    if first_occasion.settings.names_label != blank
+      assign occ_names_label = first_occasion.settings.names_label
+    endif
+    if first_occasion.settings.card_placeholder != blank
+      assign occ_card_placeholder = first_occasion.settings.card_placeholder
+    endif
+    if first_occasion.settings.button != blank
+      assign occ_button = first_occasion.settings.button
+    endif
+    if first_occasion.settings.heading != blank
+      assign occ_heading = first_occasion.settings.heading
+    endif
+  endif
+%}
+<atelier-save-date class="ae-save-date" data-designer-origin="https://app-elunora-bookings-nvo32m3ban2cc.azurewebsites.net" data-waiting="{{ 'save_dates.waiting' | t | escape }}" data-ready="{{ 'save_dates.ready' | t | escape }}" data-error="{{ 'save_dates.error' | t | escape }}" data-preview-error="{{ 'save_dates.card_preview_error' | t | escape }}" data-product-title="{{ product.title | escape }}"{% if first_occasion %} data-occasion="{{ first_occasion.settings.key | handleize }}" style="--occ-tint: {{ first_occasion.settings.tint }};"{% endif %}>
+  {%- if first_occasion -%}
+  <script type="application/json" data-occasions>{"items":[
+    {%- for block in occasion_blocks -%}
+      {%- capture occ_color -%}{{ block.settings.color }}{%- endcapture -%}
+      {%- capture occ_tint -%}{{ block.settings.tint }}{%- endcapture -%}
+      {"key":{{ block.settings.key | handleize | json }},"label":{{ block.settings.label | json }},"heading":{{ block.settings.heading | json }},"color":{{ occ_color | strip | json }},"tint":{{ occ_tint | strip | json }},"title":{{ block.settings.title | json }},"intro":{{ block.settings.intro | json }},"tip":{{ block.settings.tip | json }},"card_title":{{ block.settings.card_title | json }},"names_label":{{ block.settings.names_label | json }},"placeholder":{{ block.settings.placeholder | json }},"card_placeholder":{{ block.settings.card_placeholder | json }},"button":{{ block.settings.button | json }},"show_booking_note":{{ block.settings.show_booking_note | json }}}{% unless forloop.last %},{% endunless %}
+    {%- endfor -%}
+  ]}</script>
+  {%- endif -%}
+  <header class="ae-save-date__header">
+    <h1 data-occ-text="title">{{ first_occasion.settings.title | default: product.title | escape }}</h1>
+    <p data-occ-text="intro">{% if first_occasion.settings.intro != blank %}{{ first_occasion.settings.intro | escape }}{% else %}{{ 'save_dates.intro' | t }}{% endif %}</p>
+    <p class="ae-save-date__help" data-occ-booking-note{% if first_occasion and first_occasion.settings.show_booking_note == false %} hidden{% endif %}>{{ 'save_dates.booking_note' | t }}</p>
+  </header>
+  {% form 'product', product, id: form_id, enctype: 'multipart/form-data', class: 'ae-save-date__form' %}
+    {{ form.errors | default_errors }}
+    {%- if first_occasion -%}
+    {%- if fixed_occasion != blank -%}
+    <input type="hidden" name="properties[Occasion]" value="{{ first_occasion.settings.label | escape }}">
+    {%- else -%}
+    <fieldset class="ae-save-date__occasions">
+      <legend class="ae-step">Choose your occasion</legend>
+      <div class="ae-save-date__occasion-grid">
+        {%- for block in occasion_blocks -%}
+        <label {{ block.shopify_attributes }}><input type="radio" name="properties[Occasion]" value="{{ block.settings.label | escape }}" data-occasion-input data-key="{{ block.settings.key | handleize }}" {% if forloop.first %}checked{% endif %}><span>{{ block.settings.label | escape }}</span></label>
+        {%- endfor -%}
+      </div>
+    </fieldset>
+    {%- endif -%}
+    {%- endif -%}
+    <input type="file" name="properties[Original photograph]" data-original hidden aria-label="{{ 'save_dates.original' | t | escape }}">
+    <input type="file" name="properties[Prepared save-the-date design]" data-print hidden aria-label="{{ 'save_dates.print' | t | escape }}">
+    <input type="hidden" name="properties[Top wording]" data-top>
+    <input type="hidden" name="properties[Bottom date]" data-bottom>
+    <input type="hidden" name="properties[Lettering]" data-ink>
+    <input type="hidden" name="properties[Top lettering]" data-top-style>
+    <input type="hidden" name="properties[Date lettering]" data-date-style>
+    <input type="hidden" name="properties[Design scope]" value="{{ 'save_dates.scope' | t | escape }}">
+    <h2 class="ae-step">Pick your set</h2>
+    {% assign unit_variant = product.variants | where: 'sku', 'AE-SAVE-DATE-EACH' | first %}
+{% if unit_variant != blank or template.suffix contains '-quantity-preview' %}
+{% render 'atelier-magnet-quantity', product: product, section_id: section.id, unit_sku: 'AE-SAVE-DATE-EACH' %}
+{% else %}
+<input type="hidden" name="quantity" value="1">
+{% assign selected_variant = product.selected_or_first_available_variant %}
+    <label class="ae-sr" for="SaveDatePack-{{ section.id }}">{{ 'save_dates.quantity' | t }}</label>
+    <div class="ae-select"><select id="SaveDatePack-{{ section.id }}" name="id" required data-unit-variant data-pack-select data-available="{{ selected_variant.available }}">{% for variant in product.variants %}<option value="{{ variant.id }}" data-available="{{ variant.available }}"{% if variant.id == selected_variant.id %} selected{% endif %}{% unless variant.available %} disabled{% endunless %}>{{ variant.title | escape }} &amp; matching cards · {{ variant.price | money_without_trailing_zeros }}{% unless variant.available %} ({{ 'save_dates.unavailable' | t }}){% endunless %}</option>{% endfor %}</select></div>
+{% endif %}
+    <h2 class="ae-step">Add your photo</h2>
+    <p class="ae-save-date__tip" data-occ-text="tip"{% if first_occasion.settings.tip == blank %} hidden{% endif %}>{{ first_occasion.settings.tip | escape }}</p>
+    <iframe class="ae-save-date__designer" data-designer title="{{ 'save_dates.designer_title' | t | escape }}" referrerpolicy="no-referrer" loading="eager"></iframe>
+    <noscript><p>{{ 'save_dates.no_script' | t }}</p></noscript>
+    <section class="ae-save-date__card" aria-labelledby="SaveDateCardTitle-{{ section.id }}">
+      <h2 id="SaveDateCardTitle-{{ section.id }}" class="ae-step" data-occ-text="card_title">{{ occ_card_title | escape }}</h2>
+      <div class="ae-save-date__card-fields">
+        {%- if first_occasion -%}
+        <fieldset class="ae-styles">
+          <legend>Card style: <span data-style-name>Classic</span></legend>
+          <div class="ae-styles__grid" data-style-options data-upload-label="{{ 'save_dates.upload_card_choice' | t | escape }}" data-custom-label="{{ 'save_dates.custom_card_choice' | t | escape }}"></div>
+        </fieldset>
+        <fieldset class="ae-card-upload" data-card-upload-panel hidden disabled>
+          <legend>{{ 'save_dates.upload_card_choice' | t }}</legend>
+          <p id="CardUploadHelp-{{ section.id }}">{{ 'save_dates.upload_card_help' | t }}</p>
+          <label for="CardUpload-{{ section.id }}">{{ 'save_dates.upload_card_label' | t }}</label>
+          <input id="CardUpload-{{ section.id }}" type="file" name="properties[Custom card artwork]" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" data-card-upload aria-describedby="CardUploadHelp-{{ section.id }} CardUploadStatus-{{ section.id }}" data-invalid="{{ 'save_dates.upload_card_invalid' | t | escape }}" data-required="{{ 'save_dates.upload_card_required' | t | escape }}">
+          <p id="CardUploadStatus-{{ section.id }}" data-card-upload-status role="status" aria-live="polite"></p>
+          <img data-card-upload-preview hidden width="300" height="420" alt="{{ 'save_dates.upload_card_preview' | t | escape }}">
+          <p>{{ 'save_dates.upload_card_proof' | t }}</p>
+        </fieldset>
+        <div class="ae-custom-card" data-custom-card-panel hidden>
+          <h3>{{ 'save_dates.custom_card_title' | t }}</h3>
+          <p>{{ 'save_dates.custom_card_help' | t }}</p>
+          <a class="ae-custom-card__button" href="mailto:support@atelierelunora.com" data-custom-card-email data-subject="{{ 'save_dates.custom_card_subject' | t | escape }}">{{ 'save_dates.custom_card_email' | t }}</a>
+          <p><a href="{{ pages.contact.url }}">{{ 'save_dates.custom_card_contact' | t }}</a></p>
+        </div>
+        {%- endif -%}
+        <fieldset class="ae-card-standard" data-card-standard-fields>
+          <legend class="ae-sr">{{ 'save_dates.card_details' | t }}</legend>
+        {%- if first_occasion -%}
+        <label for="SaveDateHeading-{{ section.id }}">Card heading</label>
+        <input id="SaveDateHeading-{{ section.id }}" name="properties[Card heading]" type="text" maxlength="40" autocomplete="off" value="{{ first_occasion.settings.heading | escape }}" data-card-heading>
+        {%- endif -%}
+        <label for="SaveDateName-{{ section.id }}" data-occ-text="names_label">{{ occ_names_label | escape }}</label>
+        <input id="SaveDateName-{{ section.id }}" name="properties[Your names]" type="text" maxlength="200" required autocomplete="off" data-couple-names>
+        <label for="SaveDateInk-{{ section.id }}">{{ 'save_dates.card_color' | t }}</label>
+        <div class="ae-color" data-color-control>
+          <span class="ae-color__dot" data-color-dot aria-hidden="true"></span>
+          <div class="ae-select"><select id="SaveDateInk-{{ section.id }}" data-color-select><option value="#4a4b36">{{ 'save_dates.color_olive' | t }}</option><option value="#20201d">{{ 'save_dates.color_black' | t }}</option><option value="#8b1e2d">Holiday red</option><option value="#28394d">{{ 'save_dates.color_navy' | t }}</option><option value="#2f4a35">Evergreen</option><option value="#a8873f">Gold</option><option value="#b97878">{{ 'save_dates.color_blush' | t }}</option><option value="#fffdf8">{{ 'save_dates.color_cream' | t }}</option><option value="custom">Custom color…</option></select></div>
+        </div>
+        <div class="ae-color__custom" data-color-custom hidden>
+          <input type="text" maxlength="7" placeholder="#8B1E2D" autocomplete="off" spellcheck="false" autocapitalize="characters" aria-label="Hex color code" data-color-hex>
+          <input type="color" value="#4a4b36" aria-label="Pick a color" data-color-picker>
+        </div>
+        <input type="hidden" name="properties[Matching card lettering color]" value="#4a4b36" data-card-color-input>
+        </fieldset>
+      </div>
+      <atelier-card-preview data-card-preview view="set" card-style="classic" data-title="{{ 'save_dates.card_preview_title' | t | escape }}" data-heading="{{ occ_heading | escape }}" data-placeholder="{{ 'save_dates.card_preview_placeholder' | t | escape }}" data-caption="{{ 'save_dates.card_preview_caption' | t | escape }}" data-empty="{{ 'save_dates.set_preview_empty' | t | escape }}" data-magnet-alt="{{ 'save_dates.set_preview_alt' | t | escape }}" data-overflow="{{ 'save_dates.card_preview_overflow' | t | escape }}"></atelier-card-preview>
+    </section>
+    <details class="ae-save-date__optional">
+      <summary>Add a message or design notes <span>(optional)</span></summary>
+      <div class="ae-save-date__optional-fields">
+        <label for="SaveDateCard-{{ section.id }}">Message for your card</label>
+        <textarea id="SaveDateCard-{{ section.id }}" name="properties[Matching card wording]" maxlength="1000" rows="4" placeholder="{{ occ_card_placeholder | escape }}" data-card-wording></textarea>
+        <label for="SaveDateNotes-{{ section.id }}">Notes for our designer</label>
+        <textarea id="SaveDateNotes-{{ section.id }}" name="properties[Design notes]" maxlength="2000" rows="3"></textarea>
+      </div>
+    </details>
+    <div class="ae-save-date__finish"><p role="status" data-status>{{ 'save_dates.waiting' | t }}</p><button type="submit" data-add disabled data-occ-text="button">{{ occ_button | escape }}</button><p class="ae-save-date__help">We email a digital proof before printing. Shipping is calculated at checkout.</p></div>
+  {% endform %}
+  <details class="ae-save-date__details"><summary>{{ 'save_dates.details' | t }}</summary><div class="rte">{{ product.description }}</div></details>
+</atelier-save-date>
+
+{% assign seo_bulk_variant = product.variants | where: 'sku', 'AE-SAVE-DATE-EACH' | first %}
+{% if seo_bulk_variant == blank %}
+<script type="application/ld+json">
+  {{ product | structured_data }}
+</script>
+{% endif %}
+
+{% stylesheet %}
+  .ae-save-date { display: block; max-width: 1180px; margin-inline: auto; padding: 48px 24px; color: var(--color-foreground, #4a4b36); }
+  .ae-save-date__header { max-width: 780px; margin-block-end: 8px; }
+  .ae-save-date h1 { font-family: var(--font-heading--family, Georgia, serif); font-size: clamp(30px, 4vw, 48px); line-height: 1.15; font-weight: 400; margin-block: 18px; }
+  .ae-save-date h2 { font-size: 25px; margin-block: 32px 16px; }
+  .ae-save-date p { line-height: 1.6; }
+  .ae-save-date__form { counter-reset: ae-step; }
+  .ae-save-date .ae-step { counter-increment: ae-step; display: flex; align-items: center; gap: 12px; font-size: 22px; font-weight: 400; margin-block: 36px 14px; padding: 0; }
+  .ae-save-date .ae-step::before { content: counter(ae-step); flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: #4a4b36; color: #fffdf8; font-size: 15px; font-family: Arial, sans-serif; }
+  .ae-save-date legend.ae-step { margin-block: 0 14px; }
+  .ae-sr { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .ae-save-date__help { font-size: 14px; }
+  .ae-save-date__occasions { padding: 0; border: 0; margin: 24px 0 0; }
+  .ae-save-date__occasion-grid { display: flex; flex-wrap: wrap; gap: 10px; }
+  .ae-save-date__occasion-grid label { position: relative; display: inline-flex; align-items: center; min-height: 44px; padding: 10px 16px; border: 1px solid #bdb9aa; border-radius: 999px; background: #fffdf8; cursor: pointer; font-size: 15px; }
+  .ae-save-date__occasion-grid input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+  .ae-save-date__occasion-grid label:has(input:checked) { background: #4a4b36; border-color: #4a4b36; color: #fffdf8; }
+  .ae-save-date__occasion-grid label:has(input:focus-visible) { outline: 3px solid #797b61; outline-offset: 3px; }
+  .ae-save-date__tip { max-width: 780px; margin: -4px 0 16px; padding: 12px 16px; border-left: 3px solid #b19a73; background: var(--occ-tint, #f5f3ec); font-size: 15px; }
+  .ae-select { position: relative; max-width: 460px; }
+  .ae-select::after { content: ""; position: absolute; right: 16px; top: 50%; width: 8px; height: 8px; border-right: 2px solid #4a4b36; border-bottom: 2px solid #4a4b36; transform: translateY(-70%) rotate(45deg); pointer-events: none; }
+  .ae-select select { -webkit-appearance: none; appearance: none; width: 100%; min-height: 50px; padding: 12px 44px 12px 14px; border: 1px solid #bdb9aa; border-radius: 5px; background: #fffdf8; color: #323326; font: inherit; font-size: 16px; cursor: pointer; }
+  .ae-color { display: flex; align-items: center; gap: 10px; }
+  .ae-color .ae-select { flex: 1; }
+  .ae-color__dot { flex: none; width: 30px; height: 30px; border-radius: 50%; border: 1px solid #aaa694; background: var(--ae-ink, #4a4b36); }
+  .ae-color__custom { display: flex; align-items: center; gap: 10px; max-width: 460px; }
+  .ae-color__custom[hidden] { display: none; }
+  .ae-color__custom input[type="text"] { flex: 1; font-family: ui-monospace, Menlo, monospace; text-transform: uppercase; letter-spacing: .04em; }
+  .ae-color__custom input[aria-invalid="true"] { border-color: #a33a2c; }
+  .ae-color__custom input[type="color"] { flex: none; width: 50px; height: 48px; padding: 4px; border: 1px solid #bdb9aa; border-radius: 5px; background: #fffdf8; cursor: pointer; }
+  .ae-styles { margin: 0 0 6px; padding: 0; border: 0; min-width: 0; }
+  .ae-styles legend { padding: 0; margin-bottom: 10px; font-weight: 600; }
+  .ae-styles legend span { font-weight: 400; }
+  .ae-card-standard { display: grid; gap: 10px; margin: 0; padding: 0; border: 0; min-width: 0; }
+  .ae-card-upload[hidden], .ae-card-upload img[hidden], .ae-card-standard[hidden], .ae-custom-card[hidden] { display: none; }
+  .ae-card-upload { display: grid; gap: 12px; min-width: 0; margin: 0; padding: 12px 0; border: 0; }
+  .ae-card-upload input { max-width: 100%; }
+  .ae-card-upload img { max-width: 100%; width: 300px; height: auto; object-fit: contain; }
+  .ae-card-upload [role="status"] { overflow-wrap: anywhere; }
+  .ae-save-date[data-card-upload="true"] [data-card-preview] { display: none; }
+  .ae-custom-card { display: grid; justify-items: start; gap: 12px; padding-block: 12px; }
+  .ae-custom-card h3 { margin: 0; font-size: 22px; font-weight: 400; }
+  .ae-save-date a.ae-custom-card__button, .ae-save-date a.ae-custom-card__button:visited { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 12px 20px; border-radius: 5px; background: #4a4b36; color: #fffdf8; text-decoration: none; }
+  .ae-save-date[data-custom-card="true"] [data-card-preview], .ae-save-date[data-custom-card="true"] .ae-save-date__optional, .ae-save-date[data-custom-card="true"] .ae-save-date__finish { display: none; }
+  .ae-save-date[data-custom-card="true"] .ae-save-date__card-fields { grid-column: 1 / -1; }
+  .ae-styles__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .ae-style { position: relative; display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 7px 12px 7px 8px; border: 1px solid #bdb9aa; border-radius: 6px; background: #fffdf8; cursor: pointer; font-size: 15px; font-weight: 400 !important; line-height: 1.25; }
+  .ae-style input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+  .ae-style__swatch { flex: none; width: 30px; height: 42px; border-radius: 3px; border: 1px solid #00000024; background: linear-gradient(var(--sw-bg) 64%, var(--sw-ac) 64%); }
+  .ae-style:has(input:checked) { border-color: #4a4b36; box-shadow: inset 0 0 0 1px #4a4b36; background: #fff; }
+  .ae-style:has(input:focus-visible) { outline: 3px solid #797b61; outline-offset: 2px; }
+  @media (min-width: 640px) { .ae-styles__grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); } }
+    .ae-save-date__designer { display: block; width: 100%; min-height: 700px; border: 1px solid #c9c5b5; border-radius: 8px; background: #f5f3ec; }
+  .ae-save-date__card { max-width: 700px; margin-block: 28px; padding: 20px; display: grid; gap: 10px; border: 1px solid #c9c5b5; border-radius: 8px; background: var(--occ-tint, #f5f3ec); transition: background-color .3s ease; }
+  .ae-save-date__card h2, .ae-save-date__card p { margin: 0; }
+  .ae-save-date__card .ae-step { margin: 0 0 4px; }
+  .ae-save-date__card label { font-weight: 600; }
+  .ae-save-date__card-fields { display: grid; gap: 10px; align-content: start; min-width: 0; }
+  .ae-save-date__optional { max-width: 700px; margin-block: 8px 0; border-block: 1px solid #c9c5b5; }
+  .ae-save-date__optional summary { padding: 16px 0; cursor: pointer; font-weight: 600; }
+  .ae-save-date__optional summary span { font-weight: 400; color: #77745d; }
+  .ae-save-date__optional-fields { display: grid; gap: 8px; padding-block-end: 18px; }
+  .ae-save-date__optional label { font-weight: 600; font-size: 15px; }
+  .ae-save-date__optional textarea { width: 100%; box-sizing: border-box; border: 1px solid #bdb9aa; border-radius: 5px; padding: 12px; background: #fffdf8; color: #323326; font: inherit; }
+  .ae-save-date__finish { max-width: 700px; margin-block: 24px 28px; display: grid; gap: 10px; }
+  .ae-save-date__finish p { margin: 0; }
+  .ae-save-date__finish input, .ae-save-date__finish textarea, .ae-save-date__card textarea, .ae-save-date__card input[type="text"] { width: 100%; box-sizing: border-box; border: 1px solid #bdb9aa; border-radius: 5px; padding: 12px; background: #fffdf8; color: #323326; font: inherit; }
+  .ae-save-date__finish button { min-height: 50px; padding: 14px 20px; background: #4a4b36; color: #fffdf8; border: 1px solid #4a4b36; border-radius: 5px; cursor: pointer; font: inherit; }
+  .ae-save-date__finish button:disabled { opacity: .55; cursor: default; }
+  .ae-save-date__details summary { padding: 18px 0; border-block: 1px solid #c9c5b5; cursor: pointer; }
+  .ae-save-date :focus-visible { outline: 3px solid #797b61; outline-offset: 3px; }
+  @media (prefers-reduced-motion: reduce) { .ae-save-date__card { transition: none; } }
+  @media (min-width: 900px) { .ae-save-date__card { max-width: none; grid-template-columns: minmax(0, 1fr) minmax(280px, .9fr); gap: 24px 32px; align-items: start; } .ae-save-date__card h2 { grid-column: 1 / -1; } .ae-save-date__card-fields { grid-column: 1; } .ae-save-date__card atelier-card-preview { grid-column: 2; grid-row: 2; } }
+  @media (max-width: 639px) { .ae-save-date { padding: 28px 16px; } .ae-save-date__occasion-grid label { padding: 10px 14px; font-size: 14px; } }
+
+{% endstylesheet %}
+
+<script type="module" src="{{ 'atelier-matching-card-preview.js' | asset_url }}"></script>
+<script src="{{ 'atelier-save-date-designer.js' | asset_url }}" defer></script>
+<script src="{{ 'atelier-occasion-switcher.js' | asset_url }}" defer></script>
+
+{% schema %}
+{
+  "name": "t:save_dates.designer_section",
+  "settings": [],
+  "blocks": [
+    {
+      "type": "occasion",
+      "name": "Occasion",
+      "settings": [
+        { "type": "text", "id": "label", "label": "Button label", "default": "New occasion" },
+        { "type": "text", "id": "key", "label": "Link key", "info": "Used in links like ?occasion=christmas. Lowercase, no spaces.", "default": "occasion" },
+        { "type": "text", "id": "heading", "label": "Card heading", "default": "Save the date" },
+        { "type": "color", "id": "color", "label": "Starting card lettering color", "default": "#4a4b36" },
+        { "type": "color", "id": "tint", "label": "Card panel background", "default": "#f5f3ec" },
+        { "type": "checkbox", "id": "show_booking_note", "label": "Show the wedding-booking 15% note", "default": false },
+        { "type": "header", "content": "Page wording" },
+        { "type": "text", "id": "title", "label": "Page title", "info": "Leave blank to use the product title." },
+        { "type": "textarea", "id": "intro", "label": "Intro", "info": "Keep it to one sentence." },
+        { "type": "textarea", "id": "tip", "label": "Designer tip", "info": "Tells customers what to put in the magnet's top and bottom lines." },
+        { "type": "header", "content": "Card wording" },
+        { "type": "text", "id": "card_title", "label": "Card section heading" },
+        { "type": "text", "id": "names_label", "label": "Names field label" },
+        { "type": "text", "id": "placeholder", "label": "Card preview placeholder", "info": "Use | to start a new line." },
+        { "type": "text", "id": "card_placeholder", "label": "Card message placeholder" },
+        { "type": "text", "id": "button", "label": "Add-to-cart button" }
+      ]
+    }
+  ]
+}
+{% endschema %}
+
+
+

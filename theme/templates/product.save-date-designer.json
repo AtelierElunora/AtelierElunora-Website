@@ -1,0 +1,164 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "main": {
+      "type": "atelier-save-date-designer",
+      "blocks": {
+        "occasion_save_the_date": {
+          "type": "occasion",
+          "settings": {
+            "key": "save-the-date",
+            "label": "Save the Date",
+            "heading": "Save the date",
+            "color": "#4a4b36",
+            "tint": "#f5f3ec",
+            "show_booking_note": true,
+            "title": "Save-the-Date Photo Magnets",
+            "intro": "Your photo and wedding date on a keepsake magnet, with a matching card for every guest.",
+            "tip": "Tip: in the designer, put your wording on top and your wedding date on the bottom line.",
+            "card_title": "Your matching save-the-date card",
+            "names_label": "Couple\u2019s names",
+            "placeholder": "Your names | Your wedding date",
+            "card_placeholder": "Venue, wedding website or a personal message",
+            "button": "Add save-the-date magnets to cart"
+          }
+        },
+        "occasion_christmas": {
+          "type": "occasion",
+          "settings": {
+            "key": "christmas",
+            "label": "Christmas",
+            "heading": "Merry Christmas",
+            "color": "#8b1e2d",
+            "tint": "#f4ebe8",
+            "show_booking_note": false,
+            "title": "Christmas Photo Magnets",
+            "intro": "Celebrate Christmas with a photo magnet and a matching card. Choose your design and make the greeting your own.",
+            "tip": "Tip: put your greeting (like \u201cMerry Christmas\u201d) on top and your family name or the year on the bottom line.",
+            "card_title": "Your matching Christmas card",
+            "names_label": "Family name",
+            "placeholder": "Your family name | Your holiday greeting",
+            "card_placeholder": "A short holiday message or family update",
+            "button": "Add Christmas magnets to cart"
+          }
+        },
+        "occasion_birthday": {
+          "type": "occasion",
+          "settings": {
+            "key": "birthday",
+            "label": "Birthday",
+            "heading": "You\u2019re invited",
+            "color": "#a8873f",
+            "tint": "#f6f0e4",
+            "show_booking_note": false,
+            "title": "Birthday Photo Magnets",
+            "intro": "A party invitation guests will keep long after the cake is gone.",
+            "tip": "Tip: put something like \u201cSarah turns 30\u201d on top and the party date on the bottom line.",
+            "card_title": "Your matching invitation card",
+            "names_label": "Who\u2019s celebrating",
+            "placeholder": "Who\u2019s celebrating | Party date",
+            "card_placeholder": "Time, place and how to RSVP",
+            "button": "Add birthday magnets to cart"
+          }
+        },
+        "occasion_graduation": {
+          "type": "occasion",
+          "settings": {
+            "key": "graduation",
+            "label": "Graduation",
+            "heading": "Class of 2027",
+            "color": "#28394d",
+            "tint": "#eceff2",
+            "show_booking_note": false,
+            "title": "Graduation Photo Magnets",
+            "intro": "Announce the big day or invite family to the open house with a keepsake magnet.",
+            "tip": "Tip: put the graduate\u2019s name on top and the graduation or open-house date on the bottom line.",
+            "card_title": "Your matching graduation card",
+            "names_label": "Graduate\u2019s name",
+            "placeholder": "Graduate\u2019s name | Date",
+            "card_placeholder": "School, degree, open-house time and place",
+            "button": "Add graduation magnets to cart"
+          }
+        },
+        "occasion_baby": {
+          "type": "occasion",
+          "settings": {
+            "key": "baby",
+            "label": "Baby Announcement",
+            "heading": "Hello, little one",
+            "color": "#b97878",
+            "tint": "#f6eeec",
+            "show_booking_note": false,
+            "title": "Birth Announcement Photo Magnets",
+            "intro": "Share your newest arrival with a keepsake family will keep on the fridge.",
+            "tip": "Tip: put the baby\u2019s name on top and the birth date on the bottom line.",
+            "card_title": "Your matching announcement card",
+            "names_label": "Baby\u2019s name",
+            "placeholder": "Baby\u2019s name | Birth date",
+            "card_placeholder": "Weight, length, time of birth or a note from the family",
+            "button": "Add birth announcement magnets to cart"
+          }
+        },
+        "occasion_thank_you": {
+          "type": "occasion",
+          "settings": {
+            "key": "thank-you",
+            "label": "Thank You",
+            "heading": "Thank you",
+            "color": "#4a4b36",
+            "tint": "#f5f3ec",
+            "show_booking_note": false,
+            "title": "Thank-You Card Photo Magnets",
+            "intro": "Say thanks with a favorite photo they\u2019ll keep in view.",
+            "tip": "Tip: put your thank-you on top and a date or your names on the bottom line.",
+            "card_title": "Your matching thank-you card",
+            "names_label": "Your name(s)",
+            "placeholder": "Your names | A date or short note",
+            "card_placeholder": "A personal thank-you message",
+            "button": "Add thank-you magnets to cart"
+          }
+        },
+        "occasion_holiday": {
+          "type": "occasion",
+          "settings": {
+            "key": "holiday",
+            "label": "Holiday",
+            "heading": "Happy Holidays",
+            "color": "#4a4b36",
+            "tint": "#f5f3ec",
+            "show_booking_note": false,
+            "title": "Holiday Photo Magnets",
+            "intro": "Celebrate your favorite holidays with a photo magnet and a matching card. Choose a holiday design and make the greeting your own.",
+            "tip": "Tip: choose your holiday card design, then personalize the greeting, names and message.",
+            "card_title": "Your matching holiday card",
+            "names_label": "Your name(s)",
+            "placeholder": "Your names | Your holiday greeting",
+            "card_placeholder": "A short holiday message or family update",
+            "button": "Add holiday magnets to cart"
+          }
+        }
+      },
+      "block_order": [
+        "occasion_save_the_date",
+        "occasion_christmas",
+        "occasion_holiday",
+        "occasion_birthday",
+        "occasion_graduation",
+        "occasion_baby",
+        "occasion_thank_you"
+      ],
+      "settings": {}
+    }
+  },
+  "order": [
+    "main"
+  ]
+}
