@@ -91,3 +91,8 @@ await test("branded print artwork uses portable letter outlines and honors date-
  assert.equal(attrs.find(a=>a.key==="Date lettering").value,"Atelier Modern, 12 pt");
 });
 } finally { await rm("tests/.save-date-bundle.mjs",{force:true}); }
+
+test("non-wedding occasions may leave the bottom line empty",()=>{
+  assert.equal(validateSaveDateDesign({...design,topText:"Merry Christmas",bottomText:""},{bottomOptional:true}).bottomText,"");
+  assert.throws(()=>validateSaveDateDesign({...design,bottomText:""}));
+});

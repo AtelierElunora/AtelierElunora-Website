@@ -22,19 +22,25 @@ function LetteringControls({name,font,size,onFont,onSize}:{name:string;font:Save
  return <fieldset className="save-date-lettering"><legend>{name} style</legend><div className="save-date-font-options">{SAVE_DATE_FONTS.map(f=><label key={f.id}><input type="radio" aria-label={f.label} name={id+"-font"} checked={font===f.id} onChange={()=>onFont(f.id)}/><span><span className="save-date-font-sample" aria-hidden="true" style={{fontFamily:`"${f.family}"`}}>Our day</span><small>{f.label}</small></span></label>)}</div><label className="save-date-size" htmlFor={id+"-size"}><span>{name} size</span><output htmlFor={id+"-size"}>{size} pt</output></label><input id={id+"-size"} aria-label={name+" size"} type="range" min="8" max="24" step="0.5" value={size} onChange={e=>onSize(Number(e.target.value))}/></fieldset>;
 }
 
-export function SaveDateDesigner({ initialDate = "", initialDesign, onChange, onPrepared, onPreview, customColors = true }: { customColors?:boolean; initialDate?: string; initialDesign?: SaveDateDesign | null; onChange: (design: SaveDateDesign | null) => void; onPrepared?: (value: PreparedSaveDate | null) => void; onPreview?: (value: SaveDatePreview | null) => void }) {
+// Default top wording for the storefront occasions. Only the wedding
+// save-the-date requires a date on the bottom line.
+const OCCASION_TOP: Record<string,string> = { "save-the-date": "Save the date", christmas: "Merry Christmas", holiday: "Happy Holidays", birthday: "You’re invited", graduation: "Congratulations", baby: "Hello, little one", "thank-you": "Thank you" };
+export const topWordingFor = (occasion: string) => OCCASION_TOP[occasion] ?? "Save the date";
+
+export function SaveDateDesigner({ initialDate = "", initialDesign, onChange, onPrepared, onPreview, customColors = true, occasion = "save-the-date" }: { occasion?: string; customColors?:boolean; initialDate?: string; initialDesign?: SaveDateDesign | null; onChange: (design: SaveDateDesign | null) => void; onPrepared?: (value: PreparedSaveDate | null) => void; onPreview?: (value: SaveDatePreview | null) => void }) {
   const id = useId(), canvas = useRef<HTMLCanvasElement>(null), image = useRef<HTMLImageElement | null>(null), file = useRef<File | null>(null), generation = useRef(0);
   const callback = useRef(onChange), prepared = useRef(onPrepared), preview = useRef(onPreview);
   const normalizedPhoto = useRef<string | undefined>(undefined);
   callback.current = onChange; prepared.current = onPrepared; preview.current = onPreview;
   const restored = useRef(initialDesign);
-  const [photo, setPhoto] = useState(0), [topEnabled, setTopEnabled] = useState(initialDesign?.topEnabled ?? true), [topText, setTopText] = useState(initialDesign?.topText ?? "Save the date"), [bottomText, setBottomText] = useState(initialDesign?.bottomText ?? suggestedDate(initialDate));
+  const [photo, setPhoto] = useState(0), [topEnabled, setTopEnabled] = useState(initialDesign?.topEnabled ?? true), [topText, setTopText] = useState(initialDesign?.topText ?? topWordingFor(occasion)), [bottomText, setBottomText] = useState(initialDesign?.bottomText ?? suggestedDate(initialDate));
   const [ink, setInk] = useState<LetteringInk>(initialDesign?.ink ?? "white"), [zoom, setZoom] = useState(1), [x, setX] = useState(50), [y, setY] = useState(50), [error, setError] = useState(""), [busy, setBusy] = useState(false);
   const [typography,setTypography]=useState<SaveDateTypography>(initialDesign?.typography??{topFont:"script",bottomFont:"modern",topSize:20,bottomSize:12});
   const [border,setBorder]=useState<PhotoBorder|null>(initialDesign?.border??null);
   const borderHost=useRef<HTMLDivElement>(null);
   useEffect(()=>{if(!borderHost.current)return;const editor=createBorderEditor({value:initialDesign?.border??null,onChange:setBorder,optIn:true});borderHost.current.replaceChildren(editor.element);return()=>borderHost.current?.replaceChildren();},[]);
-  const touchedDate = useRef(!!initialDesign);
+  const touchedDate = useRef(!!initialDesign), touchedTop = useRef(!!initialDesign), wedding = occasion === "save-the-date";
+  useEffect(() => { if (!touchedTop.current) setTopText(topWordingFor(occasion)); }, [occasion]);
   useEffect(() => { if (!touchedDate.current) setBottomText(suggestedDate(initialDate)); }, [initialDate]);
   useEffect(() => () => { generation.current++; }, []);
 
@@ -104,8 +110,8 @@ export function SaveDateDesigner({ initialDate = "", initialDesign, onChange, on
         for (const line of lines) drawLettering(ctx,line.text,line.font,line.size,line.y);
         const sample=document.createElement("canvas");sample.width=sample.height=440;sample.getContext("2d")!.drawImage(target,0,0,440,440);
         preview.current?.({src:sample.toDataURL("image/jpeg",.85),date:bottom});
-        if (!bottom || (topEnabled && !top)) return;
-        const design = validateSaveDateDesign({ version: 1, topEnabled, topText: top, bottomText: bottom, ink, photoDataUrl, typography,...(border?{border}:{}) });
+        if ((wedding && !bottom) || (topEnabled && !top)) return;
+        const design = validateSaveDateDesign({ version: 1, topEnabled, topText: top, bottomText: bottom, ink, photoDataUrl, typography,...(border?{border}:{}) }, { bottomOptional: !wedding });
         const print = await blobFor(target);
         if (cancelled) return;
         setError(""); callback.current(design); prepared.current?.({ design, original: file.current!, print });
@@ -113,23 +119,23 @@ export function SaveDateDesigner({ initialDate = "", initialDesign, onChange, on
       finally { if (!cancelled) setBusy(false); }
     }, 180);
     return () => { cancelled = true; window.clearTimeout(timer); };
-  }, [photo, topEnabled, topText, bottomText, ink, zoom, x, y, typography,border]);
+  }, [photo, topEnabled, topText, bottomText, ink, zoom, x, y, typography,border,wedding]);
 
-  return <section className="save-date-designer" aria-label="Personalize your save-the-date magnets">
-    <div className="save-date-preview"><canvas ref={canvas} width={DESIGN_SIZE} height={DESIGN_SIZE} aria-label={image.current ? "Your save-the-date design preview" : "Empty preview. Upload your photograph to begin."} role="img"/></div>
+  return <section className="save-date-designer" aria-label={wedding ? "Personalize your save-the-date magnets" : "Personalize your photo magnets"}>
+    <div className="save-date-preview"><canvas ref={canvas} width={DESIGN_SIZE} height={DESIGN_SIZE} aria-label={image.current ? (wedding ? "Your save-the-date design preview" : "Your magnet design preview") : "Empty preview. Upload your photograph to begin."} role="img"/></div>
     <div className="save-date-controls">
       <label htmlFor={id + "-photo"}>Your photograph</label><input id={id + "-photo"} type="file" accept="image/jpeg,image/png,image/webp" onChange={e => void choose(e.target.files?.[0])}/>
       <p className="save-date-help">One photo, repeated across your set. JPG, PNG or WebP · up to 10 MB.</p>
-      <label className="save-date-switch"><input type="checkbox" checked={topEnabled} onChange={e => setTopEnabled(e.target.checked)}/><span>Show “Save the date” at the top</span></label>
-      {topEnabled && <><label htmlFor={id + "-top"}>Top wording</label><input id={id + "-top"} type="text" value={topText} maxLength={60} onChange={e => setTopText(e.target.value)}/><LetteringControls name="Top wording" font={typography.topFont} size={typography.topSize} onFont={topFont=>setTypography({...typography,topFont})} onSize={topSize=>setTypography({...typography,topSize})}/></>}
-      <label htmlFor={id + "-date"}>Date at the bottom</label><input id={id + "-date"} type="text" value={bottomText} maxLength={60} placeholder="For example, July 24, 2027" onChange={e => { touchedDate.current = true; setBottomText(e.target.value); }}/>
-      <LetteringControls name="Date" font={typography.bottomFont} size={typography.bottomSize} onFont={bottomFont=>setTypography({...typography,bottomFont})} onSize={bottomSize=>setTypography({...typography,bottomSize})}/>
+      <label className="save-date-switch"><input type="checkbox" checked={topEnabled} onChange={e => setTopEnabled(e.target.checked)}/><span>{wedding ? "Show “Save the date” at the top" : "Show wording at the top"}</span></label>
+      {topEnabled && <><label htmlFor={id + "-top"}>Top wording</label><input id={id + "-top"} type="text" value={topText} maxLength={60} onChange={e => { touchedTop.current = true; setTopText(e.target.value); }}/><LetteringControls name="Top wording" font={typography.topFont} size={typography.topSize} onFont={topFont=>setTypography({...typography,topFont})} onSize={topSize=>setTypography({...typography,topSize})}/></>}
+      <label htmlFor={id + "-date"}>{wedding ? "Date at the bottom" : <>Bottom line <span className="save-date-optional">(optional)</span></>}</label><input id={id + "-date"} type="text" value={bottomText} maxLength={60} placeholder={wedding ? "For example, July 24, 2027" : "For example, The Smith Family · 2026"} onChange={e => { touchedDate.current = true; setBottomText(e.target.value); }}/>
+      <LetteringControls name={wedding ? "Date" : "Bottom line"} font={typography.bottomFont} size={typography.bottomSize} onFont={bottomFont=>setTypography({...typography,bottomFont})} onSize={bottomSize=>setTypography({...typography,bottomSize})}/>
       <p className="save-date-help">Choose an Atelier font for each line. Longer wording automatically fits inside the magnet.</p>
       {customColors ? <LetteringColorControls label="Magnet lettering color" value={ink} onChange={setInk}/> : <fieldset className="save-date-ink"><legend>Lettering</legend><label><input type="radio" name={id+"-ink"} checked={ink==="white"} onChange={()=>setInk("white")}/>Cream</label><label><input type="radio" name={id+"-ink"} checked={ink==="olive"} onChange={()=>setInk("olive")}/>Olive</label></fieldset>}
       <div ref={borderHost}/>
       {image.current && <details className="save-date-crop"><summary>Adjust photo crop</summary><label>Zoom<input type="range" min="1" max="3" step="0.01" value={zoom} onChange={e => setZoom(Number(e.target.value))}/></label><label>Move photo left or right<input type="range" min="0" max="100" value={x} onChange={e => setX(Number(e.target.value))}/></label><label>Move photo up or down<input type="range" min="0" max="100" value={y} onChange={e => setY(Number(e.target.value))}/></label></details>}
-      <p className="save-date-help">Your date stays visible when the top line is switched off. We’ll send a digital proof for approval before printing.</p>
-      <p className="save-date-status" role={error ? "alert" : "status"}>{error || (busy ? "Preparing your preview…" : image.current ? !bottomText.trim() ? "Add your date to finish your design." : topEnabled && !topText.trim() ? "Add top wording or switch off the top line." : "Preview ready. Check the wording, date and crop." : "Choose a photo to see your design.")}</p>
+      <p className="save-date-help">{wedding ? "Your date stays visible when the top line is switched off." : "Leave the bottom line empty if you only want wording at the top."} We’ll send a digital proof for approval before printing.</p>
+      <p className="save-date-status" role={error ? "alert" : "status"}>{error || (busy ? "Preparing your preview…" : image.current ? wedding && !bottomText.trim() ? "Add your date to finish your design." : topEnabled && !topText.trim() ? "Add top wording or switch off the top line." : (wedding ? "Preview ready. Check the wording, date and crop." : "Preview ready. Check the wording and crop.") : "Choose a photo to see your design.")}</p>
     </div>
   </section>;
 }

@@ -41,7 +41,9 @@ export function photoBytes(value: unknown): Uint8Array {
   return bytes;
 }
 
-export function validateSaveDateDesign(value: unknown): SaveDateDesign {
+// Wedding save-the-dates always need a date. Other occasions (Christmas,
+// birthdays and so on) may leave the bottom line empty.
+export function validateSaveDateDesign(value: unknown, options: { bottomOptional?: boolean } = {}): SaveDateDesign {
   const d = value as Partial<SaveDateDesign> | null;
   if (!d || d.version !== 1 || typeof d.topEnabled !== "boolean") throw Error("Review your save-the-date design.");
   const ink = d.ink === "white" || d.ink === "olive" ? d.ink : letteringHex(d.ink) as LetteringInk;
@@ -49,7 +51,7 @@ export function validateSaveDateDesign(value: unknown): SaveDateDesign {
     if (typeof v !== "string" || v.length > 60 || /[\u0000-\u001f\u007f]/.test(v) || (required && !v.trim())) throw Error("Enter your save-the-date wording and date (up to 60 characters per line).");
     return v.normalize("NFC").trim();
   };
-  const topText = text(d.topText, d.topEnabled), bottomText = text(d.bottomText, true);
+  const topText = text(d.topText, d.topEnabled), bottomText = text(d.bottomText, !options.bottomOptional);
   let typography:SaveDateTypography|undefined;
   if(d.typography!==undefined){
     const t=d.typography;
